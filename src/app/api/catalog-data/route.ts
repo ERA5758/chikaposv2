@@ -24,17 +24,15 @@ export async function GET(req: NextRequest) {
     const storeId = storeDocSnapshot.id;
     const storeData = storeDocSnapshot.data();
 
-    // Cek apakah katalog aktif dan langganan valid - SEMENTARA DIMATIKAN
+    // Cek langganan dinonaktifkan sementara untuk debugging
     // const now = new Date();
     // const expiryDate = storeData?.catalogSubscriptionExpiry ? new Date(storeData.catalogSubscriptionExpiry) : null;
-    
-    // if (!storeData?.isCatalogPublished || !expiryDate || expiryDate < now) {
+    // if (!expiryDate || expiryDate < now) {
     //     return NextResponse.json({ error: 'Katalog saat ini tidak tersedia atau langganan telah berakhir.' }, { status: 403 });
     // }
 
-    // 2. Ambil produk yang dipublikasikan dari subkoleksi 'products'
+    // 2. Ambil semua produk dari subkoleksi 'products'
     const productsSnapshot = await db.collection('stores').doc(storeId).collection('products')
-      .where('isPublished', '==', true)
       .orderBy('name')
       .get();
       
