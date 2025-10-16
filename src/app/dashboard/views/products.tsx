@@ -332,7 +332,7 @@ export default function Products() {
             <TableHeader>
               <TableRow>
                 <TableHead>Nama</TableHead>
-                <TableHead>Deskripsi</TableHead>
+                <TableHead>Kategori</TableHead>
                 <TableHead className="text-center w-[180px]">Status Ketersediaan</TableHead>
                 <TableHead className="text-right">Harga</TableHead>
                 {isAdmin && <TableHead className="w-[100px] text-right">Aksi</TableHead>}
@@ -343,7 +343,7 @@ export default function Products() {
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
                     <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-full" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-20" /></TableCell>
                     <TableCell className="text-center"><Skeleton className="h-8 w-24 mx-auto" /></TableCell>
                     <TableCell className="text-right"><Skeleton className="h-5 w-20 ml-auto" /></TableCell>
                     {isAdmin && <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>}
@@ -354,29 +354,7 @@ export default function Products() {
                   <TableRow key={product.id}>
                     <TableCell className="font-medium">{product.name}</TableCell>
                     <TableCell>
-                      {product.description ? (
-                         <Tooltip>
-                            <TooltipTrigger asChild>
-                                <p className="text-sm text-muted-foreground truncate max-w-xs">{product.description}</p>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom" align="start" className="max-w-xs">
-                                <p>{product.description}</p>
-                            </TooltipContent>
-                        </Tooltip>
-                      ) : (
-                        <AIConfirmationDialog
-                            featureName="Deskripsi Produk"
-                            featureDescription={`Buat deskripsi produk yang menarik untuk "${product.name}".`}
-                            feeSettings={feeSettings}
-                            onConfirm={() => handleGenerateDescription(product)}
-                            onSuccess={(result) => handleDescriptionGenerated(product, result)}
-                        >
-                            <Button variant="outline" size="sm" className="gap-1 text-primary hover:text-primary hover:bg-primary/10 border-primary/50" disabled={!feeSettings}>
-                                <Sparkles className="h-3 w-3" />
-                                <span>Buat dengan AI</span>
-                            </Button>
-                        </AIConfirmationDialog>
-                      )}
+                      <Badge variant="outline">{product.category}</Badge>
                     </TableCell>
                     <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                        {isAdmin ? (
