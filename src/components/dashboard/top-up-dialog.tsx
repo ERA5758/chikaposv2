@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader, Banknote, History, Send, Copy } from 'lucide-react';
+import { Loader, Banknote, History, Send, Copy, Coins } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { db } from '@/lib/firebase';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -25,6 +25,7 @@ import { Badge } from '../ui/badge';
 import { format } from 'date-fns';
 import { Skeleton } from '../ui/skeleton';
 import { auth } from '@/lib/firebase';
+import { useDashboard } from '@/contexts/dashboard-context';
 
 type TopUpDialogProps = {
   setDialogOpen: (open: boolean) => void;
@@ -32,6 +33,8 @@ type TopUpDialogProps = {
 
 export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
   const { activeStore, currentUser } = useAuth();
+  const { dashboardData } = useDashboard();
+  const { feeSettings } = dashboardData;
   const { toast } = useToast();
   const [amount, setAmount] = React.useState(50000);
   const [uniqueCode, setUniqueCode] = React.useState(0);
@@ -41,7 +44,6 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
   const [bankSettings, setBankSettings] = React.useState<BankAccountSettings | null>(null);
 
   React.useEffect(() => {
-    // Generate unique code only on the client-side to prevent hydration mismatch
     setUniqueCode(Math.floor(Math.random() * 900) + 100);
     getBankAccountSettings().then(setBankSettings);
   }, []);
@@ -72,7 +74,7 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeStore || !currentUser || !proofFile || amount <= 0) {
+    if (!activeStore || !currentUser || !proofFile || amount <= 0 || !feeSettings) {
       toast({
         variant: 'destructive',
         title: 'Data Tidak Lengkap',
@@ -83,19 +85,18 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
     setIsLoading(true);
 
     try {
-      // 1. Get user auth token
       const idToken = await auth.currentUser?.getIdToken();
       if (!idToken) {
         throw new Error("Authentication failed. Please log in again.");
       }
       
-      // 2. Upload proof to Firebase Storage
       const storage = getStorage();
       const proofRef = ref(storage, `top-up-proofs/${activeStore.id}/${Date.now()}-${proofFile.name}`);
       const uploadResult = await uploadBytes(proofRef, proofFile);
       const proofUrl = await getDownloadURL(uploadResult.ref);
 
       const totalAmount = amount + uniqueCode;
+      const tokensToAdd = amount / feeSettings.tokenValueRp;
       
       const response = await fetch('/api/top-up', {
         method: 'POST',
@@ -107,6 +108,7 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
             storeId: activeStore.id,
             storeName: activeStore.name,
             amount: amount,
+            tokensToAdd: tokensToAdd,
             uniqueCode: uniqueCode,
             totalAmount: totalAmount,
             proofUrl: proofUrl,
@@ -156,6 +158,7 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
   }
   
   const topUpOptions = [50000, 100000, 200000, 500000];
+  const tokensFromAmount = amount && feeSettings ? amount / feeSettings.tokenValueRp : 0;
 
   return (
     <DialogContent className="sm:max-w-4xl">
@@ -216,18 +219,27 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
                             size="sm"
                             onClick={() => setAmount(option)}
                         >
-                            {option / 1000} Token
+                            Rp {option.toLocaleString('id-ID')}
                         </Button>
                     ))}
                 </div>
               </div>
               <Card className="bg-primary/10 border-primary/30">
-                <CardHeader className="p-4">
-                  <CardDescription>Total yang harus ditransfer (termasuk kode unik)</CardDescription>
-                  <CardTitle className="text-3xl font-mono text-primary">
-                    Rp {(amount + uniqueCode).toLocaleString('id-ID')}
-                  </CardTitle>
-                </CardHeader>
+                <CardContent className="p-4 space-y-2">
+                    <div className="flex justify-between items-center">
+                        <CardDescription>Anda akan mendapatkan</CardDescription>
+                         <div className="flex items-center gap-2 font-bold text-primary">
+                            <Coins className="h-4 w-4" />
+                            <span>{tokensFromAmount.toLocaleString('id-ID')} Token</span>
+                        </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                        <CardDescription>Total Transfer (termasuk kode unik)</CardDescription>
+                         <CardTitle className="text-2xl font-mono text-primary">
+                            Rp {(amount + uniqueCode).toLocaleString('id-ID')}
+                        </CardTitle>
+                    </div>
+                </CardContent>
               </Card>
               <div className="space-y-2">
                 <Label htmlFor="proof">Unggah Bukti Transfer</Label>
@@ -259,7 +271,7 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
                 <TableHeader>
                     <TableRow>
                         <TableHead>Tanggal</TableHead>
-                        <TableHead>Jumlah</TableHead>
+                        <TableHead className="text-right">Token</TableHead>
                         <TableHead>Status</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -267,7 +279,7 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
                     {history.slice(0, 5).map(item => (
                         <TableRow key={item.id}>
                             <TableCell>{format(new Date(item.requestedAt), 'dd/MM/yy HH:mm')}</TableCell>
-                            <TableCell className="font-mono">Rp {item.totalAmount.toLocaleString('id-ID')}</TableCell>
+                            <TableCell className="font-mono text-right">{item.tokensToAdd.toLocaleString('id-ID')}</TableCell>
                             <TableCell>{getStatusBadge(item.status)}</TableCell>
                         </TableRow>
                     ))}

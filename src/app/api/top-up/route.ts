@@ -85,9 +85,9 @@ export async function POST(req: NextRequest) {
     try {
         const decodedToken = await auth.verifyIdToken(idToken);
         const { uid, name } = decodedToken;
-        const { storeId, storeName, amount, uniqueCode, totalAmount, proofUrl } = await req.json();
+        const { storeId, storeName, amount, tokensToAdd, uniqueCode, totalAmount, proofUrl } = await req.json();
 
-        if (!storeId || !storeName || !amount || !totalAmount || !proofUrl) {
+        if (!storeId || !storeName || !amount || !tokensToAdd || !totalAmount || !proofUrl) {
             return NextResponse.json({ error: 'Missing required top-up data.' }, { status: 400 });
         }
 
@@ -97,6 +97,7 @@ export async function POST(req: NextRequest) {
             userId: uid,
             userName: name || 'User',
             amount,
+            tokensToAdd,
             uniqueCode,
             totalAmount,
             proofUrl,
@@ -121,7 +122,7 @@ export async function POST(req: NextRequest) {
                 
                 // Notify platform admin
                 if (adminGroup) {
-                    const adminMessage = `*PENGAJUAN TOP UP BARU*\nToko: *${storeName}*\nAdmin: *${name}*\nJumlah: *Rp ${totalAmount.toLocaleString('id-ID')}*\nStatus: *Pending*\n\nMohon untuk segera diverifikasi melalui panel Superadmin.\nLihat bukti: ${proofUrl}`;
+                    const adminMessage = `*PENGAJUAN TOP UP BARU*\nToko: *${storeName}*\nAdmin: *${name}*\nJumlah: *Rp ${totalAmount.toLocaleString('id-ID')}* (+${tokensToAdd.toLocaleString('id-ID')} Token)\nStatus: *Pending*\n\nMohon untuk segera diverifikasi melalui panel Superadmin.\nLihat bukti: ${proofUrl}`;
                     internalSendWhatsapp(deviceId, adminGroup, adminMessage, true);
                 }
                 

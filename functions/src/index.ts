@@ -18,7 +18,8 @@ interface WhatsappSettings {
   adminGroup?: string;
 }
 
-// Duplicating this interface here as it's a separate runtime from the main app.
+// This interface is not strictly needed here anymore since we pass the token amount,
+// but it's good for reference.
 interface TransactionFeeSettings {
     tokenValueRp: number;
     // ... other fields are not needed for this function
@@ -255,7 +256,7 @@ export const onTopUpRequestUpdate = onDocumentUpdated("topUpRequests/{requestId}
     return;
   }
 
-  const { storeId, status, amount } = after;
+  const { storeId, status, tokensToAdd } = after;
   const requestId = event.params.requestId;
 
   if (!storeId) {
@@ -269,16 +270,10 @@ export const onTopUpRequestUpdate = onDocumentUpdated("topUpRequests/{requestId}
   try {
     // Check if the status changed from something else to 'completed'.
     if (before.status !== 'completed' && status === 'completed') {
-      if (!amount || typeof amount !== 'number' || amount <= 0) {
-        throw new Error(`Invalid 'amount' for completed request ${requestId}`);
+      if (!tokensToAdd || typeof tokensToAdd !== 'number' || tokensToAdd <= 0) {
+        throw new Error(`Invalid 'tokensToAdd' for completed request ${requestId}`);
       }
-
-      const settingsRef = db.collection('appSettings').doc('transactionFees');
-      const settingsDoc = await settingsRef.get();
-      const settingsData = settingsDoc.data() as TransactionFeeSettings | undefined;
-      const tokenValueRp = settingsData?.tokenValueRp || 1000;
-      const tokensToAdd = amount / tokenValueRp;
-
+      
       // Use a transaction to ensure atomicity of token update and history sync.
       await db.runTransaction(async (transaction) => {
         const storeDoc = await transaction.get(storeRef);
@@ -286,7 +281,7 @@ export const onTopUpRequestUpdate = onDocumentUpdated("topUpRequests/{requestId}
           throw new Error(`Store with ID ${storeId} not found.`);
         }
         
-        // 1. Increment store's token balance.
+        // 1. Increment store's token balance using the pre-calculated token amount.
         transaction.update(storeRef, {
           pradanaTokenBalance: FieldValue.increment(tokensToAdd)
         });

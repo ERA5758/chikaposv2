@@ -180,6 +180,7 @@ export type TopUpRequest = {
   userId: string;
   userName: string;
   amount: number;
+  tokensToAdd: number;
   uniqueCode: number;
   totalAmount: number;
   proofUrl: string;
