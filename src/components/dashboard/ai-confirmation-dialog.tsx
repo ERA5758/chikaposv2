@@ -50,20 +50,24 @@ export function AIConfirmationDialog<T>({
   const { activeStore, pradanaTokenBalance, refreshPradanaTokenBalance } = useAuth();
   const { toast } = useToast();
 
-  const actualFee = feeToDeduct ?? feeSettings?.aiUsageFee ?? 0;
+  const actualFee = skipFeeDeduction ? 0 : (feeToDeduct ?? feeSettings?.aiUsageFee ?? 0);
 
   const handleConfirm = async () => {
-    if (!activeStore || !feeSettings) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Pengaturan biaya atau toko tidak tersedia.' });
+    if (!activeStore) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Toko tidak aktif.' });
       return;
     }
 
     if (!skipFeeDeduction) {
+        if (!feeSettings) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Pengaturan biaya tidak tersedia.' });
+            return;
+        }
         try {
             await deductAiUsageFee(pradanaTokenBalance, actualFee, activeStore.id, toast, featureName);
         } catch {
             setIsOpen(false);
-            return;
+            return; // Stop if fee deduction fails
         }
     }
     
@@ -72,11 +76,14 @@ export function AIConfirmationDialog<T>({
 
     try {
       const result = await onConfirm();
+      
       if (!skipFeeDeduction) {
         refreshPradanaTokenBalance();
       }
+
       toast({ title: 'Sukses!', description: `${featureName} berhasil diproses.` });
       onSuccess(result);
+
     } catch (error) {
       console.error(`Error executing AI feature '${featureName}':`, error);
       toast({
@@ -85,8 +92,10 @@ export function AIConfirmationDialog<T>({
         description: (error as Error).message || 'Terjadi kesalahan. Silakan coba lagi.',
       });
       
-      if (!skipFeeDeduction) {
+      // Refund logic only if the fee was deducted in the first place
+      if (!skipFeeDeduction && feeSettings) {
         try {
+          // Use a negative fee to add tokens back
           await deductAiUsageFee(pradanaTokenBalance, -actualFee, activeStore.id, () => {});
           refreshPradanaTokenBalance();
           toast({
@@ -94,12 +103,14 @@ export function AIConfirmationDialog<T>({
             description: `Biaya token sebesar ${actualFee} telah dikembalikan karena terjadi kesalahan.`,
           });
         } catch (refundError) {
-          console.error("Critical: Failed to refund tokens after AI error.", refundError);
+          console.error("CRITICAL: Failed to refund tokens after AI error.", refundError);
         }
       }
+
       if (onError && error instanceof Error) {
         onError(error);
       }
+
     } finally {
       setIsProcessing(false);
     }
@@ -121,22 +132,24 @@ export function AIConfirmationDialog<T>({
               {featureDescription}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="rounded-lg border bg-secondary/50 p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-muted-foreground">Biaya Penggunaan</span>
-              <span className="flex items-center gap-2 font-bold text-primary">
-                <Coins className="h-4 w-4" />
-                {actualFee} Pradana Token
-              </span>
+          {!skipFeeDeduction && (
+            <div className="rounded-lg border bg-secondary/50 p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-muted-foreground">Biaya Penggunaan</span>
+                <span className="flex items-center gap-2 font-bold text-primary">
+                  <Coins className="h-4 w-4" />
+                  {actualFee} Pradana Token
+                </span>
+              </div>
+              <div className="mt-2 flex items-center justify-between">
+                <span className="text-sm font-medium text-muted-foreground">Saldo Token Toko Anda</span>
+                <span className="text-sm font-semibold">{pradanaTokenBalance.toFixed(2)} Token</span>
+              </div>
             </div>
-            <div className="mt-2 flex items-center justify-between">
-              <span className="text-sm font-medium text-muted-foreground">Saldo Token Toko Anda</span>
-              <span className="text-sm font-semibold">{pradanaTokenBalance.toFixed(2)} Token</span>
-            </div>
-          </div>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirm} disabled={!feeSettings || !activeStore}>
+            <AlertDialogAction onClick={handleConfirm} disabled={!activeStore}>
               Ya, Lanjutkan
             </AlertDialogAction>
           </AlertDialogFooter>

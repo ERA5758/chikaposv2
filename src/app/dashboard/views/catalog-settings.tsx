@@ -5,7 +5,7 @@ import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/auth-context';
-import { CheckCircle, ExternalLink, QrCode, Sparkles, Star, Calendar, AlertCircle } from 'lucide-react';
+import { CheckCircle, ExternalLink, QrCode, Star, Calendar, AlertCircle } from 'lucide-react';
 import { useDashboard } from '@/contexts/dashboard-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AIConfirmationDialog } from '@/components/dashboard/ai-confirmation-dialog';
@@ -57,6 +57,7 @@ export default function CatalogSettings() {
         }
         
         const result = await response.json();
+        // Refresh the store data from context to get the new expiry date
         refreshActiveStore(); 
         return result;
 
@@ -163,6 +164,7 @@ export default function CatalogSettings() {
                           feeSettings={feeSettings}
                           feeToDeduct={feeSettings.catalogMonthlyFee}
                           onConfirm={() => handleSubscription(1)}
+                          onSuccess={() => {}}
                           skipFeeDeduction={true}
                         >
                             <Button className="w-full" variant="outline">Pilih Paket</Button>
@@ -192,6 +194,7 @@ export default function CatalogSettings() {
                           feeSettings={feeSettings}
                           feeToDeduct={feeSettings.catalogSixMonthFee}
                           onConfirm={() => handleSubscription(6)}
+                          onSuccess={() => {}}
                           skipFeeDeduction={true}
                         >
                            <Button className="w-full">Pilih Paket</Button>
@@ -216,6 +219,7 @@ export default function CatalogSettings() {
                           feeSettings={feeSettings}
                           feeToDeduct={feeSettings.catalogYearlyFee}
                           onConfirm={() => handleSubscription(12)}
+                          onSuccess={() => {}}
                           skipFeeDeduction={true}
                         >
                             <Button className="w-full" variant="outline">Pilih Paket</Button>
