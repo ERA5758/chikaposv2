@@ -1,8 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/server/firebase-admin'; // Menggunakan instance adminDb langsung
+import { getFirebaseAdmin } from '@/lib/server/firebase-admin';
 import type { Store, Product } from '@/lib/types';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 
 // This is a new API route to fetch data for the client-side catalog page,
 // because server components can't be used on dynamic pages that also need client-side interactivity.
@@ -15,7 +14,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const storesRef = adminDb.collection('stores');
+    const { db } = getFirebaseAdmin();
+    const storesRef = db.collection('stores');
     const q = storesRef.where('catalogSlug', '==', slug);
     const querySnapshot = await q.get();
 
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ store, products: [], error: "Fitur katalog premium tidak aktif atau sudah berakhir untuk toko ini." });
     }
     
-    const productsRef = adminDb.collection('stores').doc(store.id).collection('products');
+    const productsRef = db.collection('stores').doc(store.id).collection('products');
     const productsQuery = productsRef.orderBy('category').orderBy('name');
     const productsSnapshot = await productsQuery.get();
 
