@@ -24,12 +24,12 @@ export async function GET(req: NextRequest) {
     const storeId = storeDocSnapshot.id;
     const storeData = storeDocSnapshot.data();
 
-    // Cek langganan dinonaktifkan sementara untuk debugging
-    // const now = new Date();
-    // const expiryDate = storeData?.catalogSubscriptionExpiry ? new Date(storeData.catalogSubscriptionExpiry) : null;
-    // if (!expiryDate || expiryDate < now) {
-    //     return NextResponse.json({ error: 'Katalog saat ini tidak tersedia atau langganan telah berakhir.' }, { status: 403 });
-    // }
+    // Re-enable subscription check
+    const now = new Date();
+    const expiryDate = storeData?.catalogSubscriptionExpiry ? new Date(storeData.catalogSubscriptionExpiry) : null;
+    if (!expiryDate || expiryDate < now) {
+        return NextResponse.json({ error: 'Katalog saat ini tidak tersedia atau langganan telah berakhir.' }, { status: 403 });
+    }
 
     // 2. Ambil semua produk dari subkoleksi 'products'
     const productsSnapshot = await db.collection('stores').doc(storeId).collection('products')
