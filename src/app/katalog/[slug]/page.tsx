@@ -2,11 +2,11 @@
 'use client';
 
 import * as React from 'react';
-import type { Store, Product, ProductCategory, ProductInfo } from '@/lib/types';
+import type { Store, Product, ProductCategory, ProductInfo, RedemptionOption } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Image from 'next/image';
-import { UtensilsCrossed, PackageX, MessageCircle, Sparkles, Send, Loader } from 'lucide-react';
+import { UtensilsCrossed, PackageX, MessageCircle, Sparkles, Send, Loader, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,14 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import ReactMarkdown from 'react-markdown';
 import { CatalogAssistantInput, CatalogAssistantOutput } from '@/lib/types';
 import { useParams } from 'next/navigation';
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel"
+import Autoplay from "embla-carousel-autoplay"
 
 
 function groupProducts(products: Product[]): Record<string, Product[]> {
@@ -153,11 +161,64 @@ function CatalogAIChat({ store, products, open, onOpenChange }: { store: Store, 
   )
 }
 
+function PromotionSection({ promotions }: { promotions: RedemptionOption[] }) {
+    if (promotions.length === 0) return null;
+
+    if (promotions.length === 1) {
+        const promo = promotions[0];
+        return (
+            <section className="mb-8">
+                 <Card className="bg-primary/10 border-primary/30">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-primary"><Gift /> Promo Spesial!</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-lg font-semibold">{promo.description}</p>
+                        <p className="text-muted-foreground">Tukarkan dengan {promo.pointsRequired.toLocaleString('id-ID')} Poin</p>
+                    </CardContent>
+                </Card>
+            </section>
+        )
+    }
+
+    return (
+        <section className="mb-8">
+            <Carousel
+                plugins={[
+                    Autoplay({
+                        delay: 5000,
+                    }),
+                ]}
+                className="w-full"
+            >
+                <CarouselContent>
+                    {promotions.map((promo) => (
+                        <CarouselItem key={promo.id}>
+                            <Card className="bg-primary/10 border-primary/30">
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2 text-primary"><Gift /> Promo Spesial!</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <p className="text-lg font-semibold">{promo.description}</p>
+                                    <p className="text-muted-foreground">Tukarkan dengan {promo.pointsRequired.toLocaleString('id-ID')} Poin</p>
+                                </CardContent>
+                            </Card>
+                        </CarouselItem>
+                    ))}
+                </CarouselContent>
+                <CarouselPrevious className="left-2" />
+                <CarouselNext className="right-2" />
+            </Carousel>
+        </section>
+    );
+}
+
 export default function CatalogPage() {
     const params = useParams();
     const slug = params?.slug as string;
     const [store, setStore] = React.useState<Store | null>(null);
     const [products, setProducts] = React.useState<Product[]>([]);
+    const [promotions, setPromotions] = React.useState<RedemptionOption[]>([]);
     const [error, setError] = React.useState<string | undefined>(undefined);
     const [isLoading, setIsLoading] = React.useState(true);
     const [isChatOpen, setIsChatOpen] = React.useState(false);
@@ -179,10 +240,12 @@ export default function CatalogPage() {
                 }
                 setStore(data.store);
                 setProducts(data.products);
+                setPromotions(data.promotions);
             } catch (e) {
                 setError((e as Error).message);
                 setStore(null);
                 setProducts([]);
+                setPromotions([]);
             } finally {
                 setIsLoading(false);
             }
@@ -221,6 +284,7 @@ export default function CatalogPage() {
             </header>
             
             <main className="container mx-auto max-w-4xl p-4 md:p-8">
+                 <PromotionSection promotions={promotions} />
                  {products.length > 0 ? (
                     <div className="space-y-12">
                         {Object.entries(groupedProducts).map(([category, productsInCategory]) => (

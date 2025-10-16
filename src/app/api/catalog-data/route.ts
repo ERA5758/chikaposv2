@@ -11,7 +11,6 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // 1. Cari dokumen toko yang memiliki catalogSlug yang cocok.
     const storesRef = db.collection('stores');
     const querySnapshot = await storesRef.where('catalogSlug', '==', slug).limit(1).get();
 
@@ -19,7 +18,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Katalog tidak ditemukan.' }, { status: 404 });
     }
     
-    // Ambil data toko dari hasil query
     const storeDocSnapshot = querySnapshot.docs[0];
     const storeId = storeDocSnapshot.id;
     const storeData = storeDocSnapshot.data();
@@ -31,17 +29,27 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Katalog saat ini tidak tersedia atau langganan telah berakhir.' }, { status: 403 });
     }
 
-    // 2. Ambil semua produk dari subkoleksi 'products'
-    const productsSnapshot = await db.collection('stores').doc(storeId).collection('products')
+    const productsPromise = db.collection('stores').doc(storeId).collection('products')
       .orderBy('name')
       .get();
+      
+    const promotionsPromise = db.collection('stores').doc(storeId).collection('redemptionOptions')
+        .where('isActive', '==', true)
+        .get();
+
+    const [productsSnapshot, promotionsSnapshot] = await Promise.all([productsPromise, promotionsPromise]);
       
     const products = productsSnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
     }));
 
-    // 3. Gabungkan dan kirim data
+    const promotions = promotionsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+    }));
+
+
     const catalogData = {
       store: {
         name: storeData?.name,
@@ -52,6 +60,7 @@ export async function GET(req: NextRequest) {
         location: storeData?.location,
       },
       products,
+      promotions,
     };
 
     return NextResponse.json(catalogData);
