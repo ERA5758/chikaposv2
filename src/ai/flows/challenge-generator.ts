@@ -49,7 +49,8 @@ const promptText = `Anda adalah Chika AI, seorang ahli dalam merancang program i
 Tugas Anda adalah membuat 3-4 tingkatan tantangan penjualan untuk karyawan berdasarkan total anggaran hadiah untuk periode tertentu. Tantangan harus didasarkan pada pencapaian total pendapatan penjualan (omset) dalam Rupiah Indonesia (Rp).
 
 Gunakan Bahasa Indonesia untuk semua output teks.
-Nama tingkatan (tier) harus kreatif dan memotivasi, relevan dengan **{{businessDescription}}** (contoh untuk kafe: "Barista Gesit", "Penyeduh Bintang", "Raja Omset").
+Nama tingkatan (tier) harus kreatif dan memotivasi, relevan dengan **{{businessDescription}}**.
+Contoh untuk F&B: "Koki Andal", "Pramusaji Cepat", "Kasir Juara", "Barista Gesit", "Penyeduh Bintang", "Raja Omset".
 Deskripsi tantangan harus singkat, memotivasi, dan dalam Bahasa Indonesia.
 Target harus realistis namun menantang bagi karyawan toko, dimulai dari dasar yang wajar dan meningkat untuk setiap tingkatan. Pertimbangkan durasi tantangan saat menetapkan target. Periode yang lebih pendek harus memiliki target yang lebih rendah.
 Hadiah harus didistribusikan dari anggaran yang disediakan. Tingkat tertinggi harus mendapatkan hadiah terbesar. Hadiahnya bisa berupa bonus tunai.

@@ -32,7 +32,7 @@ export async function getAdminRecommendations(
   return adminRecommendationFlow(input);
 }
 
-const promptText = `Anda adalah Chika AI, seorang analis bisnis ahli untuk Kasir POS Chika. Anda sedang memberikan saran untuk sebuah **{{businessDescription}}**.
+const promptText = `Anda adalah Chika AI, seorang analis bisnis ahli untuk Kasir POS Chika F&B. Anda sedang memberikan saran untuk sebuah **{{businessDescription}}**.
 
 Tugas Anda adalah memberikan rekomendasi strategis mingguan dan bulanan untuk admin toko berdasarkan data kinerja berikut. Rekomendasi harus singkat, dapat ditindaklanjuti, relevan dengan jenis bisnis, dan dalam Bahasa Indonesia.
 

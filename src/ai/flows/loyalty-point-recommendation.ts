@@ -25,15 +25,19 @@ export const LoyaltyPointRecommendationOutputSchema = z.object({
 export type LoyaltyPointRecommendationOutput = z.infer<typeof LoyaltyPointRecommendationOutputSchema>;
 
 
-const PROMPT_TEMPLATE = `You are an expert in loyalty programs and customer engagement. A customer has {{loyaltyPoints}} loyalty points and is making a purchase of Rp {{totalPurchaseAmount}}. Here are the available redemption options:
+const PROMPT_TEMPLATE = `Anda adalah seorang ahli dalam program loyalitas dan interaksi pelanggan untuk bisnis F&B.
+Seorang pelanggan memiliki {{loyaltyPoints}} poin loyalitas dan sedang melakukan pembelian sebesar Rp {{totalPurchaseAmount}}.
+Berikut adalah pilihan penukaran yang tersedia:
 
 {{#each availableRedemptionOptions}}
-- {{description}} ({{pointsRequired}} points, Value: Rp {{value}})
+- {{description}} ({{pointsRequired}} poin, Senilai: Rp {{value}})
 {{/each}}
 
-Based on this information, recommend the optimal way for the customer to redeem their points to maximize their benefit and encourage redemption. The recommendation should be a single sentence in Indonesian.
+Berdasarkan informasi ini, rekomendasikan cara optimal bagi pelanggan untuk menukarkan poin mereka guna memaksimalkan keuntungan dan mendorong penukaran.
+Rekomendasi harus berupa satu kalimat dalam Bahasa Indonesia.
+Berikan contoh yang relevan dengan F&B, misalnya "Tukarkan poin Anda dengan hidangan penutup gratis!" atau "Dapatkan diskon untuk pesanan Anda berikutnya!".
 
-Recommendation: `;
+Rekomendasi: `;
 
 export const loyaltyPointRecommendationFlow = ai.defineFlow(
   {

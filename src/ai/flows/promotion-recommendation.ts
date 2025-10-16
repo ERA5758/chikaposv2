@@ -45,7 +45,7 @@ export async function getPromotionRecommendations(
   return promotionRecommendationFlow(input);
 }
 
-const promptText = `Anda adalah Chika AI, seorang ahli strategi loyalitas untuk bisnis **{{businessDescription}}** bernama **{{activeStoreName}}**.
+const promptText = `Anda adalah Chika AI, seorang ahli strategi loyalitas untuk bisnis F&B **{{businessDescription}}** bernama **{{activeStoreName}}**.
 
 Tugas Anda adalah menganalisis data dan menghasilkan 2-3 rekomendasi promo loyalitas yang kreatif.
 

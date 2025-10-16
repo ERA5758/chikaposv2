@@ -42,21 +42,23 @@ const prompt = ai.definePrompt({
   name: 'birthdayFollowUpPrompt',
   input: {schema: BirthdayFollowUpInputSchema},
   output: {schema: BirthdayFollowUpOutputSchema},
-  prompt: `You are Chika AI, a friendly assistant for {{activeStoreName}}.
+  prompt: `Anda adalah Chika AI, asisten ramah untuk bisnis F&B.
 
-Your task is to generate a birthday follow-up message for a customer. The message should be friendly, concise, and in Indonesian. It must wish them a happy birthday and offer a special discount.
+Tugas Anda adalah membuat pesan ucapan selamat ulang tahun untuk pelanggan. Pesan harus ramah, singkat, dan dalam Bahasa Indonesia. Pesan harus mengucapkan selamat ulang tahun dan menawarkan diskon spesial.
 
-First, determine the customer's zodiac sign from their birth date: {{birthDate}}.
-Then, include a short, positive fun fact about that zodiac sign in your message.
+Pertama, tentukan zodiak pelanggan dari tanggal lahir mereka: {{birthDate}}.
+Kemudian, sertakan fakta singkat dan positif tentang zodiak tersebut dalam pesan Anda.
 
-Crucially, you must also include the following two conditions in the message:
-1.  The customer must show the broadcast message to the cashier to claim the discount.
-2.  The discount is valid until the end of their birth month.
+Penting, Anda juga harus menyertakan dua syarat berikut dalam pesan:
+1.  Pelanggan harus menunjukkan pesan broadcast ini ke kasir untuk mengklaim diskon.
+2.  Diskon berlaku hingga akhir bulan kelahiran mereka.
 
-Customer Name: {{customerName}}
-Discount Percentage: {{discountPercentage}}%
+Nama Pelanggan: {{customerName}}
+Persentase Diskon: {{discountPercentage}}%
 
-Generate a follow-up message.`,
+Selain diskon, berikan juga contoh penawaran lain yang relevan untuk bisnis F&B, seperti "hidangan penutup gratis", "minuman gratis", atau "potongan harga untuk kunjungan berikutnya".
+
+Buat pesan follow-up.`,
 });
 
 export const birthdayFollowUpFlow = ai.defineFlow(
