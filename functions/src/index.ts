@@ -242,7 +242,9 @@ export const syncTopUpRequestToStore = onDocumentCreated("topUpRequests/{request
 
 
 /**
- * Handles the business logic when a top-up request's status is updated by a superadmin.
+ * Handles the business logic when a top-up request is updated.
+ * It always syncs the data to the store's subcollection and handles token logic
+ * if the status changes to 'completed'.
  */
 export const onTopUpRequestUpdate = onDocumentUpdated("topUpRequests/{requestId}", async (event) => {
   const before = event.data?.before.data();
@@ -253,68 +255,56 @@ export const onTopUpRequestUpdate = onDocumentUpdated("topUpRequests/{requestId}
     return;
   }
 
-  // Check if the 'status' field was the one that changed.
-  if (before.status === after.status) {
-    logger.info(`Status for request ${event.params.requestId} did not change. No action needed.`);
-    return;
-  }
-
   const { storeId, status, amount } = after;
   const requestId = event.params.requestId;
 
-  if (!storeId || !status) {
-    logger.error(`Request ${requestId} is missing 'storeId' or 'status'.`);
+  if (!storeId) {
+    logger.error(`Request ${requestId} is missing 'storeId'. Cannot process update.`);
     return;
   }
 
   const storeRef = db.collection('stores').doc(storeId);
   const historyRef = storeRef.collection('topUpRequests').doc(requestId);
-  const updatePayload = {
-      status: status,
-      processedAt: new Date().toISOString(),
-  };
 
   try {
-    if (status === 'completed') {
+    // Check if the status changed from something else to 'completed'.
+    if (before.status !== 'completed' && status === 'completed') {
       if (!amount || typeof amount !== 'number' || amount <= 0) {
         throw new Error(`Invalid 'amount' for completed request ${requestId}`);
       }
 
-      // Fetch transaction fee settings to get token value
       const settingsRef = db.collection('appSettings').doc('transactionFees');
       const settingsDoc = await settingsRef.get();
       const settingsData = settingsDoc.data() as TransactionFeeSettings | undefined;
-      const tokenValueRp = settingsData?.tokenValueRp || 1000; // Fallback to 1000
-      
+      const tokenValueRp = settingsData?.tokenValueRp || 1000;
       const tokensToAdd = amount / tokenValueRp;
 
-      // Use a transaction to ensure atomicity
+      // Use a transaction to ensure atomicity of token update and history sync.
       await db.runTransaction(async (transaction) => {
         const storeDoc = await transaction.get(storeRef);
         if (!storeDoc.exists) {
           throw new Error(`Store with ID ${storeId} not found.`);
         }
-
-        // 1. Increment store's token balance
+        
+        // 1. Increment store's token balance.
         transaction.update(storeRef, {
           pradanaTokenBalance: FieldValue.increment(tokensToAdd)
         });
 
-        // 2. Update the history subcollection
-        transaction.set(historyRef, updatePayload, { merge: true });
+        // 2. Sync the latest data to the history subcollection.
+        transaction.set(historyRef, after, { merge: true });
       });
 
-      logger.info(`Successfully processed COMPLETED top-up ${requestId} for store ${storeId}. Added ${tokensToAdd} tokens.`);
-
-    } else if (status === 'rejected') {
-      // For rejected requests, just update the history subcollection
-      await historyRef.set(updatePayload, { merge: true });
-      logger.info(`Successfully processed REJECTED top-up ${requestId} for store ${storeId}.`);
+      logger.info(`Successfully processed COMPLETED top-up ${requestId} for store ${storeId}. Added ${tokensToAdd} tokens and synced data.`);
+    
+    } else {
+      // For any other update (including status changes to 'rejected' or simple metadata changes),
+      // just sync the latest data to the history subcollection.
+      await historyRef.set(after, { merge: true });
+      logger.info(`Successfully synced update for request ${requestId} to store ${storeId}. New status: ${status}`);
     }
 
   } catch (error) {
     logger.error(`Failed to process top-up update for request ${requestId} for store ${storeId}:`, error);
-    // Optionally, you could try to revert the status in the root request
-    // to 'pending' to allow for reprocessing.
   }
 });
