@@ -32,10 +32,12 @@ import { db, storage } from '@/lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import Image from 'next/image';
+import { Textarea } from '../ui/textarea';
 
 const FormSchema = z.object({
   name: z.string().min(2, { message: 'Nama harus minimal 2 karakter.' }),
   category: z.enum(productCategories),
+  description: z.string().optional(),
   barcode: z.string().optional(),
   price: z.coerce.number().min(0, "Harga harus diisi"),
   costPrice: z.coerce.number().min(0).optional(),
@@ -70,6 +72,7 @@ export function EditProductForm({ setDialogOpen, userRole, onProductUpdated, act
       costPrice: product.costPrice,
       brand: product.attributes.brand,
       category: product.category,
+      description: product.description || '',
     },
   });
 
@@ -109,6 +112,7 @@ export function EditProductForm({ setDialogOpen, userRole, onProductUpdated, act
         await updateDoc(productRef, {
             name: data.name,
             category: data.category,
+            description: data.description || '',
             price: data.price,
             costPrice: (userRole === 'admin') ? data.costPrice : product.costPrice,
             'attributes.brand': data.brand,
@@ -217,6 +221,19 @@ export function EditProductForm({ setDialogOpen, userRole, onProductUpdated, act
               </FormItem>
             )}
           />
+           <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Deskripsi (Opsional)</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Contoh: Perpaduan kopi dan susu yang nikmat..." {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           <FormField
             control={form.control}
             name="barcode"

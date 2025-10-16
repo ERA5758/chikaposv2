@@ -32,12 +32,14 @@ import { db, storage } from '@/lib/firebase';
 import { addDoc, collection } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import Image from 'next/image';
+import { Textarea } from '../ui/textarea';
 
 const FormSchema = z.object({
   name: z.string().min(2, {
     message: 'Name must be at least 2 characters.',
   }),
   category: z.enum(productCategories),
+  description: z.string().optional(),
   barcode: z.string().optional(),
   price: z.coerce.number().min(0, "Harga harus diisi"),
   costPrice: z.coerce.number().min(0).optional(),
@@ -73,6 +75,7 @@ export function AddProductForm({ setDialogOpen, userRole, onProductAdded, active
       costPrice: 0,
       brand: '',
       stock: 1,
+      description: '',
     },
   });
 
@@ -116,6 +119,7 @@ export function AddProductForm({ setDialogOpen, userRole, onProductAdded, active
         await addDoc(collection(db, 'stores', activeStore.id, 'products'), {
             name: data.name,
             category: data.category,
+            description: data.description || '',
             price: data.price,
             costPrice: costPrice,
             stock: data.stock,
@@ -225,6 +229,19 @@ export function AddProductForm({ setDialogOpen, userRole, onProductAdded, active
                   ))}
                 </SelectContent>
               </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Deskripsi (Opsional)</FormLabel>
+              <FormControl>
+                <Textarea placeholder="Contoh: Perpaduan kopi dan susu yang nikmat..." {...field} />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
