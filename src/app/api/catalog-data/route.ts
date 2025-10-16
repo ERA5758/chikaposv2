@@ -1,5 +1,6 @@
+
 import { NextRequest, NextResponse } from 'next/server';
-import { getFirebaseAdmin } from '@/lib/server/firebase-admin';
+import { adminDb } from '@/lib/server/firebase-admin'; // Menggunakan instance adminDb langsung
 import type { Store, Product } from '@/lib/types';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 
@@ -14,10 +15,9 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const { db } = getFirebaseAdmin();
-    const storesRef = collection(db, 'stores');
-    const q = query(storesRef, where('catalogSlug', '==', slug));
-    const querySnapshot = await getDocs(q);
+    const storesRef = adminDb.collection('stores');
+    const q = storesRef.where('catalogSlug', '==', slug);
+    const querySnapshot = await q.get();
 
     if (querySnapshot.empty) {
       return NextResponse.json({ store: null, products: [], error: "Katalog tidak ditemukan." }, { status: 404 });
@@ -33,9 +33,9 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ store, products: [], error: "Fitur katalog premium tidak aktif atau sudah berakhir untuk toko ini." });
     }
     
-    const productsRef = collection(db, 'stores', store.id, 'products');
-    const productsQuery = query(productsRef, orderBy('category'), orderBy('name'));
-    const productsSnapshot = await getDocs(productsQuery);
+    const productsRef = adminDb.collection('stores').doc(store.id).collection('products');
+    const productsQuery = productsRef.orderBy('category').orderBy('name');
+    const productsSnapshot = await productsQuery.get();
 
     const products = productsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
 
