@@ -1,49 +1,66 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/lib/server/firebase-admin';
-import type { Store, Product } from '@/lib/types';
 
-// This is a new API route to fetch data for the client-side catalog page,
-// because server components can't be used on dynamic pages that also need client-side interactivity.
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const slug = searchParams.get('slug');
+export async function GET(req: NextRequest) {
+  const { db } = getFirebaseAdmin();
+  const slug = req.nextUrl.searchParams.get('slug');
 
   if (!slug) {
-    return NextResponse.json({ error: "Slug toko tidak valid." }, { status: 400 });
+    return NextResponse.json({ error: 'Parameter slug diperlukan.' }, { status: 400 });
   }
 
   try {
-    const { db } = getFirebaseAdmin(); // Correctly get Admin DB instance
-    const storesRef = db.collection('stores');
-    const q = storesRef.where('catalogSlug', '==', slug);
-    const querySnapshot = await q.get();
-
-    if (querySnapshot.empty) {
-      return NextResponse.json({ store: null, products: [], error: "Katalog tidak ditemukan." }, { status: 404 });
+    // 1. Cari storeId berdasarkan slug (ID dokumen)
+    const slugDocSnapshot = await db.collection('catalogSlugs').doc(slug).get();
+    if (!slugDocSnapshot.exists) {
+      return NextResponse.json({ error: 'Katalog tidak ditemukan.' }, { status: 404 });
     }
+    const { storeId } = slugDocSnapshot.data() as { storeId: string };
 
-    const storeDoc = querySnapshot.docs[0];
-    const storeData = storeDoc.data();
-    // Ensure store has an ID
-    const store = { id: storeDoc.id, ...storeData } as Store;
-
-    const expiryDate = store.catalogSubscriptionExpiry ? new Date(store.catalogSubscriptionExpiry) : null;
-    const isSubscriptionActive = expiryDate ? expiryDate > new Date() : false;
-
-    if (!isSubscriptionActive) {
-        return NextResponse.json({ store, products: [], error: "Fitur katalog premium tidak aktif atau sudah berakhir untuk toko ini." });
+    // 2. Ambil data toko (store)
+    const storeDocSnapshot = await db.collection('stores').doc(storeId).get();
+    if (!storeDocSnapshot.exists) {
+      return NextResponse.json({ error: 'Detail toko tidak ditemukan.' }, { status: 404 });
     }
+    const storeData = storeDocSnapshot.data();
+
+     // Cek apakah katalog aktif dan langganan valid
+    const now = new Date();
+    const expiryDate = storeData?.catalogSubscriptionExpiry ? new Date(storeData.catalogSubscriptionExpiry) : null;
     
-    const productsRef = storeDoc.ref.collection('products');
-    const productsQuery = productsRef.orderBy('category').orderBy('name');
-    const productsSnapshot = await productsQuery.get();
+    if (!storeData?.isCatalogPublished || !expiryDate || expiryDate < now) {
+        return NextResponse.json({ error: 'Katalog saat ini tidak tersedia atau langganan telah berakhir.' }, { status: 403 });
+    }
 
-    const products = productsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+    // 3. Ambil produk yang dipublikasikan dari subkoleksi 'products'
+    const productsSnapshot = await db.collection('stores').doc(storeId).collection('products')
+      .where('isPublished', '==', true)
+      .orderBy('name')
+      .get();
+      
+    const products = productsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
 
-    return NextResponse.json({ store, products, error: null });
+    // 4. Gabungkan dan kirim data
+    const catalogData = {
+      store: {
+        name: storeData?.name,
+        description: storeData?.description,
+        logoUrl: storeData?.logoUrl,
+        theme: storeData?.theme,
+        socialLinks: storeData?.socialLinks,
+        location: storeData?.location,
+      },
+      products,
+    };
+
+    return NextResponse.json(catalogData);
 
   } catch (error) {
-    console.error("Error fetching catalog data for client:", error);
-    return NextResponse.json({ store: null, products: [], error: "Terjadi kesalahan saat memuat katalog." }, { status: 500 });
+    console.error('Error fetching catalog data:', error);
+    return NextResponse.json({ error: 'Terjadi kesalahan internal saat memuat katalog.' }, { status: 500 });
   }
 }

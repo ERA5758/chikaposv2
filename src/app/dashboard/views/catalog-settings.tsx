@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { AIConfirmationDialog } from '@/components/dashboard/ai-confirmation-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { auth, db } from '@/lib/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc } from 'firebase/firestore'; // Import setDoc
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -24,7 +24,7 @@ const features = [
 ];
 
 export default function CatalogSettings() {
-  const { activeStore, refreshActiveStore } = useAuth();
+  const { activeStore, refreshActiveStore, updateActiveStore } = useAuth();
   const { dashboardData, isLoading } = useDashboard();
   const { feeSettings } = dashboardData;
   const { toast } = useToast();
@@ -44,14 +44,18 @@ export default function CatalogSettings() {
             .replace(/-+$/, '') + '-' + Math.random().toString(36).substring(2, 7);
 
           const storeRef = doc(db, 'stores', activeStore.id);
-          await updateDoc(storeRef, { catalogSlug: newSlug });
+          const slugRef = doc(db, 'catalogSlugs', newSlug);
+
+          await Promise.all([
+            updateDoc(storeRef, { catalogSlug: newSlug }),
+            setDoc(slugRef, { storeId: activeStore.id })
+          ]);
           
           toast({
             title: "Pembaruan Toko",
             description: "URL katalog unik telah dibuat untuk toko Anda.",
           });
           
-          // Refresh the store data in context to get the new slug
           refreshActiveStore();
 
         } catch (error) {
@@ -92,22 +96,31 @@ export default function CatalogSettings() {
 
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.error || `Gagal memproses langganan ${months} bulan.`);
+            throw new Error(errorData.error || `Gagal memproses langganan.`);
         }
         
+        const result = await response.json();
+
         toast({
             title: 'Langganan Berhasil!',
-            description: `Katalog Digital Premium Anda telah diperpanjang selama ${months} bulan.`,
+            description: `Katalog Digital Premium Anda telah diperpanjang.`,
         });
 
-        // After a successful API call, refresh the store data to get the new expiry date.
-        refreshActiveStore(); 
-        return response.json();
+        // FIX: Update context immediately with the new expiry date from the API
+        if (result.newExpiryDate) {
+            updateActiveStore({ 
+                ...activeStore, 
+                catalogSubscriptionExpiry: result.newExpiryDate,
+                pradanaTokenBalance: result.newBalance, // Also update balance
+            });
+        } else {
+            // Fallback to refresh if API response is not as expected
+            refreshActiveStore(); 
+        }
 
     } catch (error) {
-        console.error(`Subscription error for ${months} months:`, error);
-        // Re-throw to be caught by AIConfirmationDialog's error handler
-        throw error;
+        console.error(`Subscription error:`, error);
+        throw error; // Re-throw for AIConfirmationDialog
     }
   };
 
@@ -191,7 +204,6 @@ export default function CatalogSettings() {
                 </CardDescription>
             </CardHeader>
             <CardContent className="grid md:grid-cols-3 gap-6">
-                {/* Monthly Package */}
                 <Card>
                     <CardHeader className="text-center">
                         <CardTitle className="text-xl">Bulanan</CardTitle>
@@ -214,7 +226,6 @@ export default function CatalogSettings() {
                     </CardFooter>
                 </Card>
 
-                 {/* 6-Month Package */}
                  <Card className="border-primary shadow-lg relative">
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2">
                         <div className="flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
@@ -245,7 +256,6 @@ export default function CatalogSettings() {
                     </CardFooter>
                 </Card>
 
-                 {/* Yearly Package */}
                  <Card>
                     <CardHeader className="text-center">
                         <CardTitle className="text-xl">Tahunan</CardTitle>

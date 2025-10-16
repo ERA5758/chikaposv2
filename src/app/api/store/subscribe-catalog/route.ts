@@ -28,9 +28,7 @@ export async function POST(req: NextRequest) {
         case 12: feeToDeduct = feeSettings.catalogYearlyFee; break;
     }
 
-    if (feeToDeduct <= 0) {
-        return NextResponse.json({ error: 'Biaya langganan tidak valid.' }, { status: 400 });
-    }
+    // Tidak perlu cek feeToDeduct > 0, karena bisa jadi ada promo gratis
 
     const storeRef = db.collection('stores').doc(storeId);
 
@@ -53,6 +51,7 @@ export async function POST(req: NextRequest) {
         transaction.update(storeRef, {
             pradanaTokenBalance: currentBalance - feeToDeduct,
             catalogSubscriptionExpiry: newExpiryDate.toISOString(),
+            isCatalogPublished: true, // Pastikan katalog dipublikasikan saat langganan
         });
         
         return { newExpiryDate: newExpiryDate.toISOString(), newBalance: currentBalance - feeToDeduct };

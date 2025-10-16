@@ -166,6 +166,7 @@ export default function CatalogPage() {
         if (!slug) return;
         async function fetchData() {
             setIsLoading(true);
+            setError(undefined); // Reset error state on new fetch
             try {
                 const response = await fetch(`/api/catalog-data?slug=${slug}`);
                 if (!response.ok) {
@@ -173,11 +174,15 @@ export default function CatalogPage() {
                     throw new Error(errorData.error || 'Gagal memuat data katalog.');
                 }
                 const data = await response.json();
+                if (data.error) {
+                    throw new Error(data.error);
+                }
                 setStore(data.store);
                 setProducts(data.products);
-                setError(data.error);
             } catch (e) {
                 setError((e as Error).message);
+                setStore(null);
+                setProducts([]);
             } finally {
                 setIsLoading(false);
             }
