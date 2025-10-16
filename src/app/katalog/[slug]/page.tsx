@@ -155,7 +155,7 @@ function CatalogAIChat({ store, products, open, onOpenChange }: { store: Store, 
 
 export default function CatalogPage() {
     const params = useParams();
-    const slug = params.slug as string;
+    const slug = params?.slug as string;
     const [store, setStore] = React.useState<Store | null>(null);
     const [products, setProducts] = React.useState<Product[]>([]);
     const [error, setError] = React.useState<string | undefined>(undefined);
