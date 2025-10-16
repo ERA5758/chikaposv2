@@ -14,6 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import ReactMarkdown from 'react-markdown';
 import { CatalogAssistantInput, CatalogAssistantOutput } from '@/lib/types';
+import { useParams } from 'next/navigation';
 
 
 function groupProducts(products: Product[]): Record<string, Product[]> {
@@ -152,7 +153,9 @@ function CatalogAIChat({ store, products, open, onOpenChange }: { store: Store, 
   )
 }
 
-export default function CatalogPage({ params }: { params: { slug: string } }) {
+export default function CatalogPage() {
+    const params = useParams();
+    const slug = params.slug as string;
     const [store, setStore] = React.useState<Store | null>(null);
     const [products, setProducts] = React.useState<Product[]>([]);
     const [error, setError] = React.useState<string | undefined>(undefined);
@@ -160,10 +163,11 @@ export default function CatalogPage({ params }: { params: { slug: string } }) {
     const [isChatOpen, setIsChatOpen] = React.useState(false);
 
     React.useEffect(() => {
+        if (!slug) return;
         async function fetchData() {
             setIsLoading(true);
             try {
-                const response = await fetch(`/api/catalog-data?slug=${params.slug}`);
+                const response = await fetch(`/api/catalog-data?slug=${slug}`);
                 if (!response.ok) {
                     const errorData = await response.json();
                     throw new Error(errorData.error || 'Gagal memuat data katalog.');
@@ -179,7 +183,7 @@ export default function CatalogPage({ params }: { params: { slug: string } }) {
             }
         }
         fetchData();
-    }, [params.slug]);
+    }, [slug]);
 
     if (isLoading) {
         return (
@@ -271,4 +275,3 @@ export default function CatalogPage({ params }: { params: { slug: string } }) {
         </>
     );
 }
-
