@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/lib/server/firebase-admin';
 import type { Store, Product } from '@/lib/types';
@@ -14,7 +13,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const { db } = getFirebaseAdmin();
+    const { db } = getFirebaseAdmin(); // Correctly get Admin DB instance
     const storesRef = db.collection('stores');
     const q = storesRef.where('catalogSlug', '==', slug);
     const querySnapshot = await q.get();
@@ -24,7 +23,9 @@ export async function GET(request: NextRequest) {
     }
 
     const storeDoc = querySnapshot.docs[0];
-    const store = { id: storeDoc.id, ...storeDoc.data() } as Store;
+    const storeData = storeDoc.data();
+    // Ensure store has an ID
+    const store = { id: storeDoc.id, ...storeData } as Store;
 
     const expiryDate = store.catalogSubscriptionExpiry ? new Date(store.catalogSubscriptionExpiry) : null;
     const isSubscriptionActive = expiryDate ? expiryDate > new Date() : false;
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ store, products: [], error: "Fitur katalog premium tidak aktif atau sudah berakhir untuk toko ini." });
     }
     
-    const productsRef = db.collection('stores').doc(store.id).collection('products');
+    const productsRef = storeDoc.ref.collection('products');
     const productsQuery = productsRef.orderBy('category').orderBy('name');
     const productsSnapshot = await productsQuery.get();
 
