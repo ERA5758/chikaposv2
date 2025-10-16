@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -10,9 +9,10 @@ import { useDashboard } from '@/contexts/dashboard-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AIConfirmationDialog } from '@/components/dashboard/ai-confirmation-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
-import { id } from 'date-fns/locale';
+import { id as idLocale } from 'date-fns/locale';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const features = [
@@ -28,6 +28,45 @@ export default function CatalogSettings() {
   const { dashboardData, isLoading } = useDashboard();
   const { feeSettings } = dashboardData;
   const { toast } = useToast();
+
+  // Self-healing logic for missing catalogSlug
+  React.useEffect(() => {
+    if (activeStore && !activeStore.catalogSlug) {
+      console.log("Toko lama terdeteksi, membuat catalogSlug...");
+      const generateAndSaveSlug = async () => {
+        try {
+          const newSlug = activeStore.name
+            .toLowerCase()
+            .replace(/\s+/g, '-')
+            .replace(/[^\w\-]+/g, '')
+            .replace(/\-\-+/g, '-')
+            .replace(/^-+/, '')
+            .replace(/-+$/, '') + '-' + Math.random().toString(36).substring(2, 7);
+
+          const storeRef = doc(db, 'stores', activeStore.id);
+          await updateDoc(storeRef, { catalogSlug: newSlug });
+          
+          toast({
+            title: "Pembaruan Toko",
+            description: "URL katalog unik telah dibuat untuk toko Anda.",
+          });
+          
+          // Refresh the store data in context to get the new slug
+          refreshActiveStore();
+
+        } catch (error) {
+            console.error("Gagal membuat dan menyimpan catalogSlug:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Gagal Memperbarui Toko',
+                description: 'Tidak dapat membuat URL katalog unik saat ini.',
+            });
+        }
+      };
+      generateAndSaveSlug();
+    }
+  }, [activeStore, refreshActiveStore, toast]);
+
 
   const handleOpenCatalog = () => {
     if (activeStore?.catalogSlug) {
@@ -56,10 +95,14 @@ export default function CatalogSettings() {
             throw new Error(errorData.error || `Gagal memproses langganan ${months} bulan.`);
         }
         
-        // This is the crucial part: after a successful API call, refresh the store data.
-        // This will update the AuthContext, which in turn re-renders this component.
+        toast({
+            title: 'Langganan Berhasil!',
+            description: `Katalog Digital Premium Anda telah diperpanjang selama ${months} bulan.`,
+        });
+
+        // After a successful API call, refresh the store data to get the new expiry date.
         refreshActiveStore(); 
-        return response.json(); // Return the success data to AIConfirmationDialog
+        return response.json();
 
     } catch (error) {
         console.error(`Subscription error for ${months} months:`, error);
@@ -99,7 +142,7 @@ export default function CatalogSettings() {
                 <Calendar className="h-4 w-4" />
                 <AlertTitle className="font-semibold">Langganan Katalog Premium Aktif</AlertTitle>
                 <AlertDescription>
-                    Fitur katalog digital Anda aktif hingga {format(expiryDate, "d MMMM yyyy, HH:mm", { locale: id })}.
+                    Fitur katalog digital Anda aktif hingga {format(expiryDate, "d MMMM yyyy, HH:mm", { locale: idLocale })}.
                 </AlertDescription>
             </Alert>
         )}
