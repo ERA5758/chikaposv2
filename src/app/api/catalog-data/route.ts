@@ -11,21 +11,20 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // 1. Cari storeId berdasarkan slug (ID dokumen)
-    const slugDocSnapshot = await db.collection('catalogSlugs').doc(slug).get();
-    if (!slugDocSnapshot.exists) {
+    // 1. Cari dokumen toko yang memiliki catalogSlug yang cocok.
+    const storesRef = db.collection('stores');
+    const querySnapshot = await storesRef.where('catalogSlug', '==', slug).limit(1).get();
+
+    if (querySnapshot.empty) {
       return NextResponse.json({ error: 'Katalog tidak ditemukan.' }, { status: 404 });
     }
-    const { storeId } = slugDocSnapshot.data() as { storeId: string };
-
-    // 2. Ambil data toko (store)
-    const storeDocSnapshot = await db.collection('stores').doc(storeId).get();
-    if (!storeDocSnapshot.exists) {
-      return NextResponse.json({ error: 'Detail toko tidak ditemukan.' }, { status: 404 });
-    }
+    
+    // Ambil data toko dari hasil query
+    const storeDocSnapshot = querySnapshot.docs[0];
+    const storeId = storeDocSnapshot.id;
     const storeData = storeDocSnapshot.data();
 
-     // Cek apakah katalog aktif dan langganan valid - SEMENTARA DIMATIKAN UNTUK DEBUG
+    // Cek apakah katalog aktif dan langganan valid - SEMENTARA DIMATIKAN
     // const now = new Date();
     // const expiryDate = storeData?.catalogSubscriptionExpiry ? new Date(storeData.catalogSubscriptionExpiry) : null;
     
@@ -33,7 +32,7 @@ export async function GET(req: NextRequest) {
     //     return NextResponse.json({ error: 'Katalog saat ini tidak tersedia atau langganan telah berakhir.' }, { status: 403 });
     // }
 
-    // 3. Ambil produk yang dipublikasikan dari subkoleksi 'products'
+    // 2. Ambil produk yang dipublikasikan dari subkoleksi 'products'
     const productsSnapshot = await db.collection('stores').doc(storeId).collection('products')
       .where('isPublished', '==', true)
       .orderBy('name')
@@ -44,7 +43,7 @@ export async function GET(req: NextRequest) {
       ...doc.data(),
     }));
 
-    // 4. Gabungkan dan kirim data
+    // 3. Gabungkan dan kirim data
     const catalogData = {
       store: {
         name: storeData?.name,
