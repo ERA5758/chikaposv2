@@ -25,13 +25,13 @@ type AIConfirmationDialogProps<T> = {
   featureName: string;
   featureDescription: string;
   feeSettings: TransactionFeeSettings | null;
-  feeToDeduct?: number; // Optional specific fee for the feature
+  feeToDeduct?: number;
   onConfirm: () => Promise<T>;
-  onSuccess: (result: T) => void;
+  onSuccess?: (result: T) => void;
   onError?: (error: Error) => void;
   children: React.ReactNode;
   buttonProps?: ButtonProps;
-  skipFeeDeduction?: boolean; // New prop to skip fee deduction
+  skipFeeDeduction?: boolean;
 };
 
 export function AIConfirmationDialog<T>({
@@ -43,7 +43,7 @@ export function AIConfirmationDialog<T>({
   onSuccess,
   onError,
   children,
-  skipFeeDeduction = false, // Default to false
+  skipFeeDeduction = false,
 }: AIConfirmationDialogProps<T>) {
   const [isOpen, setIsOpen] = React.useState(false);
   const [isProcessing, setIsProcessing] = React.useState(false);
@@ -58,6 +58,7 @@ export function AIConfirmationDialog<T>({
       return;
     }
 
+    // The fee deduction logic is now more cleanly separated.
     if (!skipFeeDeduction) {
         if (!feeSettings) {
             toast({ variant: 'destructive', title: 'Error', description: 'Pengaturan biaya tidak tersedia.' });
@@ -82,7 +83,10 @@ export function AIConfirmationDialog<T>({
       }
 
       toast({ title: 'Sukses!', description: `${featureName} berhasil diproses.` });
-      onSuccess(result);
+      
+      if (onSuccess) {
+        onSuccess(result);
+      }
 
     } catch (error) {
       console.error(`Error executing AI feature '${featureName}':`, error);
@@ -95,7 +99,6 @@ export function AIConfirmationDialog<T>({
       // Refund logic only if the fee was deducted in the first place
       if (!skipFeeDeduction && feeSettings) {
         try {
-          // Use a negative fee to add tokens back
           await deductAiUsageFee(pradanaTokenBalance, -actualFee, activeStore.id, () => {});
           refreshPradanaTokenBalance();
           toast({

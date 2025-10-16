@@ -56,15 +56,15 @@ export default function CatalogSettings() {
             throw new Error(errorData.error || `Gagal memproses langganan ${months} bulan.`);
         }
         
-        const result = await response.json();
-        // Refresh the store data from context to get the new expiry date
+        // This is the crucial part: after a successful API call, refresh the store data.
+        // This will update the AuthContext, which in turn re-renders this component.
         refreshActiveStore(); 
-        return result;
+        return response.json(); // Return the success data to AIConfirmationDialog
 
     } catch (error) {
         console.error(`Subscription error for ${months} months:`, error);
-        // Toast is now handled by AIConfirmationDialog's onError
-        throw error; // Re-throw to be caught by AIConfirmationDialog
+        // Re-throw to be caught by AIConfirmationDialog's error handler
+        throw error;
     }
   };
 
@@ -83,10 +83,10 @@ export default function CatalogSettings() {
   }
   
   const originalMonthly = feeSettings.catalogMonthlyFee * 6;
-  const sixMonthSaving = originalMonthly - feeSettings.catalogSixMonthFee;
+  const sixMonthSaving = originalMonthly > 0 ? originalMonthly - feeSettings.catalogSixMonthFee : 0;
 
   const originalYearly = feeSettings.catalogMonthlyFee * 12;
-  const yearlySaving = originalYearly - feeSettings.catalogYearlyFee;
+  const yearlySaving = originalYearly > 0 ? originalYearly - feeSettings.catalogYearlyFee : 0;
 
   const expiryDate = activeStore?.catalogSubscriptionExpiry ? new Date(activeStore.catalogSubscriptionExpiry) : null;
   const isSubscriptionActive = expiryDate ? expiryDate > new Date() : false;
@@ -164,7 +164,6 @@ export default function CatalogSettings() {
                           feeSettings={feeSettings}
                           feeToDeduct={feeSettings.catalogMonthlyFee}
                           onConfirm={() => handleSubscription(1)}
-                          onSuccess={() => {}}
                           skipFeeDeduction={true}
                         >
                             <Button className="w-full" variant="outline">Pilih Paket</Button>
@@ -185,7 +184,9 @@ export default function CatalogSettings() {
                     </CardHeader>
                     <CardContent className="text-center">
                         <p className="text-4xl font-bold">{feeSettings.catalogSixMonthFee} <span className="text-base font-normal text-muted-foreground">Token/6 bulan</span></p>
-                        <p className="text-sm text-muted-foreground">Hemat {sixMonthSaving} Token!</p>
+                        {sixMonthSaving > 0 && (
+                            <p className="text-sm text-muted-foreground">Hemat {sixMonthSaving} Token!</p>
+                        )}
                     </CardContent>
                     <CardFooter>
                          <AIConfirmationDialog
@@ -194,7 +195,6 @@ export default function CatalogSettings() {
                           feeSettings={feeSettings}
                           feeToDeduct={feeSettings.catalogSixMonthFee}
                           onConfirm={() => handleSubscription(6)}
-                          onSuccess={() => {}}
                           skipFeeDeduction={true}
                         >
                            <Button className="w-full">Pilih Paket</Button>
@@ -210,7 +210,9 @@ export default function CatalogSettings() {
                     </CardHeader>
                     <CardContent className="text-center">
                         <p className="text-4xl font-bold">{feeSettings.catalogYearlyFee} <span className="text-base font-normal text-muted-foreground">Token/tahun</span></p>
-                        <p className="text-sm text-muted-foreground">Hemat {yearlySaving} Token!</p>
+                         {yearlySaving > 0 && (
+                            <p className="text-sm text-muted-foreground">Hemat {yearlySaving} Token!</p>
+                        )}
                     </CardContent>
                     <CardFooter>
                          <AIConfirmationDialog
@@ -219,7 +221,6 @@ export default function CatalogSettings() {
                           feeSettings={feeSettings}
                           feeToDeduct={feeSettings.catalogYearlyFee}
                           onConfirm={() => handleSubscription(12)}
-                          onSuccess={() => {}}
                           skipFeeDeduction={true}
                         >
                             <Button className="w-full" variant="outline">Pilih Paket</Button>
