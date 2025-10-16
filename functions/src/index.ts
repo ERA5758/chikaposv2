@@ -18,13 +18,6 @@ interface WhatsappSettings {
   adminGroup?: string;
 }
 
-// This interface is not strictly needed here anymore since we pass the token amount,
-// but it's good for reference.
-interface TransactionFeeSettings {
-    tokenValueRp: number;
-    // ... other fields are not needed for this function
-}
-
 async function getWhatsappSettings(storeId: string): Promise<WhatsappSettings> {
   const defaultSettings: WhatsappSettings = { deviceId: '', adminGroup: '' };
   if (!storeId) {

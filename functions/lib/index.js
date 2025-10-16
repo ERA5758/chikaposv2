@@ -242,7 +242,7 @@ exports.onTopUpRequestUpdate = (0, firestore_1.onDocumentUpdated)("topUpRequests
         logger.info("No data change detected in onTopUpRequestUpdate, exiting.");
         return;
     }
-    const { storeId, status, amount } = after;
+    const { storeId, status, tokensToAdd } = after;
     const requestId = event.params.requestId;
     if (!storeId) {
         logger.error(`Request ${requestId} is missing 'storeId'. Cannot process update.`);
@@ -253,21 +253,16 @@ exports.onTopUpRequestUpdate = (0, firestore_1.onDocumentUpdated)("topUpRequests
     try {
         // Check if the status changed from something else to 'completed'.
         if (before.status !== 'completed' && status === 'completed') {
-            if (!amount || typeof amount !== 'number' || amount <= 0) {
-                throw new Error(`Invalid 'amount' for completed request ${requestId}`);
+            if (!tokensToAdd || typeof tokensToAdd !== 'number' || tokensToAdd <= 0) {
+                throw new Error(`Invalid 'tokensToAdd' for completed request ${requestId}`);
             }
-            const settingsRef = db.collection('appSettings').doc('transactionFees');
-            const settingsDoc = await settingsRef.get();
-            const settingsData = settingsDoc.data();
-            const tokenValueRp = (settingsData === null || settingsData === void 0 ? void 0 : settingsData.tokenValueRp) || 1000;
-            const tokensToAdd = amount / tokenValueRp;
             // Use a transaction to ensure atomicity of token update and history sync.
             await db.runTransaction(async (transaction) => {
                 const storeDoc = await transaction.get(storeRef);
                 if (!storeDoc.exists) {
                     throw new Error(`Store with ID ${storeId} not found.`);
                 }
-                // 1. Increment store's token balance.
+                // 1. Increment store's token balance using the pre-calculated token amount.
                 transaction.update(storeRef, {
                     pradanaTokenBalance: firestore_2.FieldValue.increment(tokensToAdd)
                 });
