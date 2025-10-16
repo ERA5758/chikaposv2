@@ -25,13 +25,13 @@ export async function GET(req: NextRequest) {
     }
     const storeData = storeDocSnapshot.data();
 
-     // Cek apakah katalog aktif dan langganan valid
-    const now = new Date();
-    const expiryDate = storeData?.catalogSubscriptionExpiry ? new Date(storeData.catalogSubscriptionExpiry) : null;
+     // Cek apakah katalog aktif dan langganan valid - SEMENTARA DIMATIKAN UNTUK DEBUG
+    // const now = new Date();
+    // const expiryDate = storeData?.catalogSubscriptionExpiry ? new Date(storeData.catalogSubscriptionExpiry) : null;
     
-    if (!storeData?.isCatalogPublished || !expiryDate || expiryDate < now) {
-        return NextResponse.json({ error: 'Katalog saat ini tidak tersedia atau langganan telah berakhir.' }, { status: 403 });
-    }
+    // if (!storeData?.isCatalogPublished || !expiryDate || expiryDate < now) {
+    //     return NextResponse.json({ error: 'Katalog saat ini tidak tersedia atau langganan telah berakhir.' }, { status: 403 });
+    // }
 
     // 3. Ambil produk yang dipublikasikan dari subkoleksi 'products'
     const productsSnapshot = await db.collection('stores').doc(storeId).collection('products')
