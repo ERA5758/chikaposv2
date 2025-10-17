@@ -28,7 +28,7 @@ import { Form, FormField, FormItem, FormControl, FormMessage } from '@/component
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { Logo } from '@/components/dashboard/logo';
-import { Loader, Sparkles, LogIn, Megaphone, Eye, EyeOff, MessageSquare, Phone, Building, Utensils, Wrench } from 'lucide-react';
+import { Loader, Sparkles, LogIn, Megaphone, Eye, EyeOff, MessageSquare, Phone, Building, Utensils, Wrench, Store } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import Link from 'next/link';
 import { auth } from '@/lib/firebase';
@@ -229,6 +229,19 @@ export default function LoginPage() {
             </CardContent>
         </Card>
 
+        <Link href="https://chikapos.vercel.app" target="_blank" className="block">
+            <Card className="text-center hover:bg-muted">
+                <CardHeader>
+                    <CardTitle className="text-lg font-headline tracking-wider">APLIKASI POS RETAIL</CardTitle>
+                    <CardDescription>Coba aplikasi POS retail kami yang baru!</CardDescription>
+                </CardHeader>
+                <CardContent className="flex justify-center items-center p-4">
+                    <Store className="h-12 w-12 text-primary" />
+                </CardContent>
+            </Card>
+        </Link>
+
+
       </div>
     </main>
 
@@ -239,7 +252,7 @@ export default function LoginPage() {
                 <div className="rounded-full bg-primary/20 p-3 w-fit mb-4">
                   <Megaphone className="h-8 w-8 text-primary" />
                 </div>
-                <DialogTitle className="font-headline tracking-wider text-2xl">PROMO SPESIAL!</DialogTitle>
+                <DialogTitle className="font-headline tracking-wider text-2l">PROMO SPESIAL!</DialogTitle>
                 <DialogDescription>Dapatkan aplikasi kasir canggih sesuai kebutuhan Anda!</DialogDescription>
             </DialogHeader>
             <div className="py-4 space-y-4">
