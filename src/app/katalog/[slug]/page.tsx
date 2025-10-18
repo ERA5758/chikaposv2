@@ -23,6 +23,7 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel"
 import Autoplay from "embla-carousel-autoplay"
+import { cn } from '@/lib/utils';
 
 
 function groupProducts(products: Product[]): Record<string, Product[]> {
@@ -222,6 +223,7 @@ export default function CatalogPage() {
     const [error, setError] = React.useState<string | undefined>(undefined);
     const [isLoading, setIsLoading] = React.useState(true);
     const [isChatOpen, setIsChatOpen] = React.useState(false);
+    const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null);
 
     React.useEffect(() => {
         if (!slug) return;
@@ -253,6 +255,20 @@ export default function CatalogPage() {
         fetchData();
     }, [slug]);
 
+    const categories = React.useMemo(() => {
+        const uniqueCategories = new Set(products.map(p => p.category));
+        return ['Semua', ...Array.from(uniqueCategories)];
+    }, [products]);
+    
+    const filteredProducts = React.useMemo(() => {
+        if (!selectedCategory || selectedCategory === 'Semua') {
+            return groupProducts(products);
+        }
+        return {
+            [selectedCategory]: products.filter(p => p.category === selectedCategory)
+        };
+    }, [products, selectedCategory]);
+
     if (isLoading) {
         return (
              <div className="flex min-h-screen items-center justify-center bg-secondary">
@@ -272,8 +288,6 @@ export default function CatalogPage() {
             </div>
         );
     }
-    
-    const groupedProducts = groupProducts(products);
 
     return (
         <>
@@ -285,9 +299,29 @@ export default function CatalogPage() {
             
             <main className="container mx-auto max-w-4xl p-4 md:p-8">
                  <PromotionSection promotions={promotions} />
+                 
+                {products.length > 0 && (
+                    <div className="mb-8">
+                        <ScrollArea className="w-full whitespace-nowrap">
+                             <div className="flex space-x-2 pb-4">
+                                {categories.map(category => (
+                                    <Button
+                                        key={category}
+                                        variant={(selectedCategory === category || (selectedCategory === null && category === 'Semua')) ? 'default' : 'outline'}
+                                        onClick={() => setSelectedCategory(category === 'Semua' ? null : category)}
+                                        className="shrink-0"
+                                    >
+                                        {category}
+                                    </Button>
+                                ))}
+                            </div>
+                        </ScrollArea>
+                    </div>
+                )}
+
                  {products.length > 0 ? (
                     <div className="space-y-12">
-                        {Object.entries(groupedProducts).map(([category, productsInCategory]) => (
+                        {Object.entries(filteredProducts).map(([category, productsInCategory]) => (
                             <section key={category} id={category.replace(/\s+/g, '-')}>
                                 <h2 className="text-2xl font-bold font-headline mb-6 border-b-2 border-primary pb-2">{category}</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -344,3 +378,5 @@ export default function CatalogPage() {
         </>
     );
 }
+
+    
