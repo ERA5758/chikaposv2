@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -69,8 +70,6 @@ const SheetContent = React.forwardRef<
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
       </SheetPrimitive.Close>
-      <SheetPrimitive.Title className="sr-only">Sidebar Menu</SheetPrimitive.Title>
-      <SheetPrimitive.Description className="sr-only">A list of navigation links for the application.</SheetPrimitive.Description>
     </SheetPrimitive.Content>
   </SheetPortal>
 ))
@@ -82,7 +81,7 @@ const SheetHeader = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex flex-col space-y-2 text-center sm:text-left",
+      "flex flex-col space-y-1.5 text-center sm:text-left",
       className
     )}
     {...props}

@@ -2,13 +2,14 @@
 'use client';
 
 import * as React from 'react';
-import type { Store, Product, ProductCategory, ProductInfo, RedemptionOption } from '@/lib/types';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import type { Store, Product, ProductCategory, RedemptionOption } from '@/lib/types';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Image from 'next/image';
-import { UtensilsCrossed, PackageX, MessageCircle, Sparkles, Send, Loader, Gift } from 'lucide-react';
+import { UtensilsCrossed, PackageX, MessageCircle, Sparkles, Send, Loader, Gift, ShoppingCart, PlusCircle, MinusCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetTrigger, SheetClose } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -24,7 +25,14 @@ import {
 } from "@/components/ui/carousel"
 import Autoplay from "embla-carousel-autoplay"
 import { cn } from '@/lib/utils';
+import { Separator } from '@/components/ui/separator';
 
+type CartItem = {
+    productId: string;
+    name: string;
+    price: number;
+    quantity: number;
+};
 
 function groupProducts(products: Product[]): Record<string, Product[]> {
     return products.reduce((acc, product) => {
@@ -224,6 +232,7 @@ export default function CatalogPage() {
     const [isLoading, setIsLoading] = React.useState(true);
     const [isChatOpen, setIsChatOpen] = React.useState(false);
     const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null);
+    const [cart, setCart] = React.useState<CartItem[]>([]);
 
     React.useEffect(() => {
         if (!slug) return;
@@ -254,6 +263,34 @@ export default function CatalogPage() {
         }
         fetchData();
     }, [slug]);
+    
+    const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
+    const cartSubtotal = cart.reduce((total, item) => total + item.price * item.quantity, 0);
+
+    const addToCart = (product: Product) => {
+        setCart(currentCart => {
+            const existingItem = currentCart.find(item => item.productId === product.id);
+            if (existingItem) {
+                return currentCart.map(item =>
+                    item.productId === product.id ? { ...item, quantity: item.quantity + 1 } : item
+                );
+            }
+            return [...currentCart, { productId: product.id, name: product.name, price: product.price, quantity: 1 }];
+        });
+    };
+
+    const updateQuantity = (productId: string, newQuantity: number) => {
+        if (newQuantity <= 0) {
+            setCart(currentCart => currentCart.filter(item => item.productId !== productId));
+        } else {
+            setCart(currentCart =>
+                currentCart.map(item =>
+                    item.productId === productId ? { ...item, quantity: newQuantity } : item
+                )
+            );
+        }
+    };
+
 
     const categories = React.useMemo(() => {
         const uniqueCategories = new Set(products.map(p => p.category));
@@ -290,7 +327,7 @@ export default function CatalogPage() {
     }
 
     return (
-        <>
+        <Sheet>
         <div className="min-h-screen bg-background">
             <header className="p-4 border-b text-center sticky top-0 bg-background/80 backdrop-blur-sm z-10">
                 <h1 className="text-3xl font-headline tracking-wider font-bold">{store.name}</h1>
@@ -325,8 +362,10 @@ export default function CatalogPage() {
                             <section key={category} id={category.replace(/\s+/g, '-')}>
                                 <h2 className="text-2xl font-bold font-headline mb-6 border-b-2 border-primary pb-2">{category}</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {productsInCategory.map(product => (
-                                        <Card key={product.id} className="overflow-hidden group">
+                                    {productsInCategory.map(product => {
+                                        const itemInCart = cart.find(item => item.productId === product.id);
+                                        return (
+                                        <Card key={product.id} className="overflow-hidden group flex flex-col">
                                             <div className="relative aspect-square">
                                                 <Image src={product.imageUrl} alt={product.name} fill className="object-cover transition-transform group-hover:scale-105" unoptimized/>
                                                 {product.stock === 0 && (
@@ -338,19 +377,34 @@ export default function CatalogPage() {
                                                     </div>
                                                 )}
                                             </div>
-                                            <CardHeader>
+                                            <CardHeader className="flex-grow">
                                                 <CardTitle className="text-lg">{product.name}</CardTitle>
                                                 <CardDescription className="text-primary font-bold text-base">
                                                     Rp {product.price.toLocaleString('id-ID')}
                                                 </CardDescription>
                                             </CardHeader>
                                             {product.description && (
-                                                <CardContent>
+                                                <CardContent className="flex-grow">
                                                     <p className="text-sm text-muted-foreground">{product.description}</p>
                                                 </CardContent>
                                             )}
+                                            <CardFooter>
+                                                {product.stock > 0 ? (
+                                                    itemInCart ? (
+                                                        <div className="flex items-center gap-2 w-full">
+                                                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => updateQuantity(product.id, itemInCart.quantity - 1)}><MinusCircle className="h-4 w-4" /></Button>
+                                                            <span className="font-bold text-center flex-grow">{itemInCart.quantity}</span>
+                                                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => updateQuantity(product.id, itemInCart.quantity + 1)}><PlusCircle className="h-4 w-4" /></Button>
+                                                        </div>
+                                                    ) : (
+                                                        <Button variant="outline" className="w-full" onClick={() => addToCart(product)}>Tambah</Button>
+                                                    )
+                                                ) : (
+                                                    <Button variant="outline" className="w-full" disabled>Stok Habis</Button>
+                                                )}
+                                            </CardFooter>
                                         </Card>
-                                    ))}
+                                    )})}
                                 </div>
                             </section>
                         ))}
@@ -361,7 +415,18 @@ export default function CatalogPage() {
             </main>
         </div>
 
-        <div className="fixed bottom-6 right-6 z-20">
+        <div className="fixed bottom-6 right-6 z-20 flex flex-col gap-4 items-end">
+            {cartItemCount > 0 && (
+                <SheetTrigger asChild>
+                    <Button size="lg" className="rounded-full shadow-lg h-16 w-auto pl-4 pr-6">
+                        <ShoppingCart className="h-7 w-7 mr-3"/>
+                        <div className="text-left">
+                            <p className="font-bold">{cartItemCount} Item</p>
+                            <p className="text-xs">Rp {cartSubtotal.toLocaleString('id-ID')}</p>
+                        </div>
+                    </Button>
+                </SheetTrigger>
+            )}
             <Button size="icon" className="rounded-full h-14 w-14 shadow-lg" onClick={() => setIsChatOpen(true)}>
                 <MessageCircle className="h-7 w-7"/>
             </Button>
@@ -375,8 +440,54 @@ export default function CatalogPage() {
                 onOpenChange={setIsChatOpen}
             />
         )}
-        </>
+        
+        <SheetContent>
+            <SheetHeader>
+                <SheetTitle className="font-headline tracking-wider text-2xl">Pesanan Anda</SheetTitle>
+            </SheetHeader>
+            {cart.length > 0 ? (
+                <>
+                <ScrollArea className="h-[calc(100vh-200px)] my-4 pr-4 -mr-6">
+                    <div className="space-y-4">
+                        {cart.map(item => (
+                            <div key={item.productId} className="flex items-center gap-4">
+                                <div className="flex-1">
+                                    <p className="font-semibold">{item.name}</p>
+                                    <p className="text-sm text-muted-foreground">Rp {item.price.toLocaleString('id-ID')}</p>
+                                </div>
+                                 <div className="flex items-center gap-2">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateQuantity(item.productId, item.quantity - 1)}><MinusCircle className="h-4 w-4" /></Button>
+                                    <span className="font-bold text-center w-4">{item.quantity}</span>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateQuantity(item.productId, item.quantity + 1)}><PlusCircle className="h-4 w-4" /></Button>
+                                </div>
+                                <p className="font-mono text-sm w-20 text-right">Rp {(item.price * item.quantity).toLocaleString('id-ID')}</p>
+                                 <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive/70" onClick={() => updateQuantity(item.productId, 0)}><XCircle className="h-5 w-5" /></Button>
+                            </div>
+                        ))}
+                    </div>
+                </ScrollArea>
+                <SheetFooter className="flex-col space-y-4 pt-4 border-t">
+                    <div className="flex justify-between font-bold text-lg">
+                        <span>Total</span>
+                        <span>Rp {cartSubtotal.toLocaleString('id-ID')}</span>
+                    </div>
+                    <Alert>
+                        <UtensilsCrossed className="h-4 w-4" />
+                        <AlertTitle>Langkah Berikutnya</AlertTitle>
+                        <AlertDescription>
+                            Tunjukkan halaman ini ke kasir untuk melanjutkan pembayaran.
+                        </AlertDescription>
+                    </Alert>
+                </SheetFooter>
+                </>
+            ) : (
+                <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-center">
+                    <ShoppingCart className="h-16 w-16 mb-4" />
+                    <p className="font-semibold">Keranjang Anda Kosong</p>
+                    <p className="text-sm">Tambahkan item dari menu untuk memulai.</p>
+                </div>
+            )}
+        </SheetContent>
+        </Sheet>
     );
 }
-
-    
