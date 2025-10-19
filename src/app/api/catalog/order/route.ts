@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/lib/server/firebase-admin';
 import type { OrderPayload, Table } from '@/lib/types';
@@ -7,7 +8,7 @@ export async function POST(req: NextRequest) {
     const { db } = getFirebaseAdmin();
     try {
         const payload: OrderPayload = await req.json();
-        const { storeId, customer, cart, totalAmount } = payload;
+        const { storeId, customer, cart, subtotal, taxAmount, serviceFeeAmount, totalAmount } = payload;
 
         if (!storeId || !customer || !cart || cart.length === 0) {
             return NextResponse.json({ error: 'Data pesanan tidak lengkap.' }, { status: 400 });
@@ -37,6 +38,9 @@ export async function POST(req: NextRequest) {
                 isVirtual: true,
                 currentOrder: {
                     items: cart,
+                    subtotal: subtotal,
+                    taxAmount: taxAmount,
+                    serviceFeeAmount: serviceFeeAmount,
                     totalAmount: totalAmount,
                     orderTime: new Date().toISOString(),
                     customer: {

@@ -1,5 +1,6 @@
+
 'use client';
-import type { PointEarningSettings } from './server/point-earning-settings';
+import type { PointEarningSettings } from './point-earning-settings';
 
 // Untuk menambah kategori produk baru, tambahkan nama kategori di dalam daftar di bawah ini.
 // Pastikan untuk mengapitnya dengan tanda kutip tunggal (') dan menambahkan koma di akhir.
@@ -28,6 +29,11 @@ export type NotificationSettings = {
   dailySummaryEnabled: boolean;
 };
 
+export type FinancialSettings = {
+  taxPercentage: number;
+  serviceFeePercentage: number;
+};
+
 export type Store = {
   id: string;
   name: string;
@@ -36,6 +42,7 @@ export type Store = {
   receiptSettings?: ReceiptSettings;
   pointEarningSettings?: PointEarningSettings;
   notificationSettings?: NotificationSettings;
+  financialSettings?: FinancialSettings;
   pradanaTokenBalance: number;
   adminUids: string[];
   createdAt: string;
@@ -104,6 +111,8 @@ export type Transaction = {
   createdAt: string; // ISO 8601
   subtotal: number;
   discountAmount: number;
+  taxAmount: number;
+  serviceFeeAmount: number;
   totalAmount: number; // subtotal - discountAmount
   paymentMethod: 'Cash' | 'Card' | 'QRIS' | 'Belum Dibayar';
   pointsEarned: number;
@@ -128,6 +137,8 @@ export type OrderPayload = {
     customer: Customer;
     cart: CartItem[];
     subtotal: number;
+    taxAmount: number;
+    serviceFeeAmount: number;
     totalAmount: number;
 };
 

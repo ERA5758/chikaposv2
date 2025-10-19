@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -6,7 +7,7 @@ import type { Store, Product, ProductCategory, RedemptionOption, Customer, Order
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Image from 'next/image';
-import { UtensilsCrossed, PackageX, MessageCircle, Sparkles, Send, Loader, Gift, ShoppingCart, PlusCircle, MinusCircle, XCircle, LogIn, UserCircle, LogOut, Crown, Coins, Receipt } from 'lucide-react';
+import { UtensilsCrossed, PackageX, MessageCircle, Sparkles, Send, Loader, Gift, ShoppingCart, PlusCircle, MinusCircle, XCircle, LogIn, UserCircle, LogOut, Crown, Coins, Receipt, Percent, HandCoins } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetTrigger } from '@/components/ui/sheet';
@@ -27,8 +28,8 @@ import Autoplay from "embla-carousel-autoplay"
 import { cn } from '@/lib/utils';
 import { CustomerAuthDialog } from '@/components/catalog/customer-auth-dialog';
 import { useToast } from '@/hooks/use-toast';
-import type { PointEarningSettings } from '@/lib/server/point-earning-settings';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Separator } from '@/components/ui/separator';
 
 
 type CartItem = {
@@ -254,7 +255,6 @@ export default function CatalogPage() {
     const [store, setStore] = React.useState<Store | null>(null);
     const [products, setProducts] = React.useState<Product[]>([]);
     const [promotions, setPromotions] = React.useState<RedemptionOption[]>([]);
-    const [pointSettings, setPointSettings] = React.useState<PointEarningSettings | null>(null);
     const [error, setError] = React.useState<string | undefined>(undefined);
     const [isLoading, setIsLoading] = React.useState(true);
     const [isChatOpen, setIsChatOpen] = React.useState(false);
@@ -302,21 +302,6 @@ export default function CatalogPage() {
                 setStore(data.store);
                 setProducts(data.products);
                 setPromotions(data.promotions);
-                
-                if (data.store?.id) {
-                    try {
-                        const idToken = 'dummy-token'; // The API is now public
-                        const settingsRes = await fetch(`/api/point-settings?storeId=${data.store.id}`, {
-                            headers: { 'Authorization': `Bearer ${idToken}` }
-                        });
-                        if (settingsRes.ok) {
-                            const settings = await settingsRes.json();
-                            setPointSettings(settings);
-                        }
-                    } catch (settingsError) {
-                        console.error("Could not fetch point settings, proceeding without it.");
-                    }
-                }
 
             } catch (e) {
                 setError((e as Error).message);
@@ -331,8 +316,29 @@ export default function CatalogPage() {
         
     }, [slug]);
     
+    const {
+        cartSubtotal,
+        taxAmount,
+        serviceFeeAmount,
+        totalAmount
+    } = React.useMemo(() => {
+        const subtotal = cart.reduce((total, item) => total + item.price * item.quantity, 0);
+        const taxRate = store?.financialSettings?.taxPercentage ?? 0;
+        const serviceRate = store?.financialSettings?.serviceFeePercentage ?? 0;
+        
+        const tax = subtotal * (taxRate / 100);
+        const service = subtotal * (serviceRate / 100);
+        const total = subtotal + tax + service;
+
+        return {
+            cartSubtotal: subtotal,
+            taxAmount: tax,
+            serviceFeeAmount: service,
+            totalAmount: total
+        };
+    }, [cart, store]);
+
     const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
-    const cartSubtotal = cart.reduce((total, item) => total + item.price * item.quantity, 0);
 
     const handleLoginSuccess = (customer: Customer) => {
         setLoggedInCustomer(customer);
@@ -386,7 +392,9 @@ export default function CatalogPage() {
                 customer: loggedInCustomer,
                 cart: cart,
                 subtotal: cartSubtotal,
-                totalAmount: cartSubtotal,
+                taxAmount: taxAmount,
+                serviceFeeAmount: serviceFeeAmount,
+                totalAmount: totalAmount,
             };
             const response = await fetch('/api/catalog/order', {
                 method: 'POST',
@@ -648,9 +656,29 @@ export default function CatalogPage() {
                     </div>
                 </ScrollArea>
                 <SheetFooter className="flex-col space-y-4 pt-4 border-t">
+                    <div className="space-y-1 text-sm">
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Subtotal</span>
+                            <span>Rp {cartSubtotal.toLocaleString('id-ID')}</span>
+                        </div>
+                         {taxAmount > 0 && (
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground flex items-center gap-1"><Percent className="h-3 w-3"/> Pajak ({store.financialSettings?.taxPercentage}%)</span>
+                                <span>Rp {taxAmount.toLocaleString('id-ID')}</span>
+                            </div>
+                        )}
+                        {serviceFeeAmount > 0 && (
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground flex items-center gap-1"><HandCoins className="h-3 w-3"/> Biaya Layanan ({store.financialSettings?.serviceFeePercentage}%)</span>
+                                <span>Rp {serviceFeeAmount.toLocaleString('id-ID')}</span>
+                            </div>
+                        )}
+                    </div>
+                    <Separator />
+
                     <div className="flex justify-between font-bold text-lg">
                         <span>Total</span>
-                        <span>Rp {cartSubtotal.toLocaleString('id-ID')}</span>
+                        <span>Rp {totalAmount.toLocaleString('id-ID')}</span>
                     </div>
                     {loggedInCustomer ? (
                          <Button className="w-full" onClick={handleCreateOrder} disabled={isSubmittingOrder}>

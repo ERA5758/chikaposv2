@@ -1,4 +1,5 @@
 
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/lib/server/firebase-admin';
 
@@ -59,6 +60,7 @@ export async function GET(req: NextRequest) {
         theme: storeData?.theme,
         socialLinks: storeData?.socialLinks,
         location: storeData?.location,
+        financialSettings: storeData?.financialSettings,
       },
       products,
       promotions,

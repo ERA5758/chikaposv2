@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -31,13 +32,13 @@ import {
   reauthenticateWithCredential,
   updatePassword,
 } from 'firebase/auth';
-import { Loader, KeyRound, UserCircle, Building, Eye, EyeOff, Save, Play, MessageSquareQuote, Zap, Info, Newspaper, Sparkles } from 'lucide-react';
+import { Loader, KeyRound, UserCircle, Building, Eye, EyeOff, Save, Play, MessageSquareQuote, Zap, Info, Newspaper, Sparkles, Percent, HandCoins } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useDashboard } from '@/contexts/dashboard-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getReceiptSettings, updateReceiptSettings } from '@/lib/receipt-settings';
-import type { ReceiptSettings, NotificationSettings } from '@/lib/types';
+import type { ReceiptSettings, NotificationSettings, FinancialSettings } from '@/lib/types';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { FirebaseError } from 'firebase/app';
 import { Textarea } from '@/components/ui/textarea';
@@ -116,6 +117,7 @@ export default function Settings() {
   const [isGeneralSettingLoading, setIsGeneralSettingLoading] = React.useState(false);
   const [isSamplePlaying, setIsSamplePlaying] = React.useState(false);
   const [generalSettings, setGeneralSettings] = React.useState<Pick<ReceiptSettings, 'voiceGender' | 'notificationStyle'> | null>(null);
+  const [financialSettings, setFinancialSettings] = React.useState<FinancialSettings | null>(null);
   const [notificationSettings, setNotificationSettings] = React.useState<NotificationSettings | null>(null);
   const [businessDescription, setBusinessDescription] = React.useState('');
   
@@ -134,6 +136,7 @@ export default function Settings() {
         });
         setBusinessDescription(activeStore.businessDescription || '');
         setNotificationSettings(activeStore.notificationSettings || { dailySummaryEnabled: true });
+        setFinancialSettings(activeStore.financialSettings || { taxPercentage: 0, serviceFeePercentage: 0 });
     }
   }, [activeStore]);
 
@@ -193,13 +196,14 @@ export default function Settings() {
   };
   
   const handleGeneralSettingSave = async () => {
-    if (!activeStore || !generalSettings || !notificationSettings) return;
+    if (!activeStore || !generalSettings || !notificationSettings || !financialSettings) return;
     setIsGeneralSettingLoading(true);
     try {
         const storeRef = doc(db, 'stores', activeStore.id);
         await setDoc(storeRef, {
             businessDescription: businessDescription,
-            notificationSettings: notificationSettings
+            notificationSettings: notificationSettings,
+            financialSettings: financialSettings,
         }, { merge: true });
   
       await updateReceiptSettings(activeStore.id, {
@@ -340,7 +344,28 @@ export default function Settings() {
                         </div>
                         <p className="text-xs text-muted-foreground">Berikan AI konteks tentang jenis bisnis Anda untuk rekomendasi yang lebih relevan.</p>
                     </div>
-
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor='tax-percentage' className='flex items-center gap-2'><Percent className='h-4 w-4' /> Pajak (Tax %)</Label>
+                          <Input
+                            id='tax-percentage'
+                            type='number'
+                            step="0.1"
+                            value={financialSettings?.taxPercentage ?? 0}
+                            onChange={(e) => setFinancialSettings(s => s ? { ...s, taxPercentage: parseFloat(e.target.value) || 0 } : null)}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor='service-fee' className='flex items-center gap-2'><HandCoins className='h-4 w-4' /> Biaya Layanan (%)</Label>
+                          <Input
+                            id='service-fee'
+                            type='number'
+                            step="0.1"
+                            value={financialSettings?.serviceFeePercentage ?? 0}
+                            onChange={(e) => setFinancialSettings(s => s ? { ...s, serviceFeePercentage: parseFloat(e.target.value) || 0 } : null)}
+                          />
+                        </div>
+                    </div>
                     <div className="space-y-2">
                         <Label>Gender Suara Panggilan</Label>
                         {generalSettings ? (
@@ -478,7 +503,7 @@ export default function Settings() {
                   )}
                 />
                 <FormField
-                  control={passwordForm.control}
+                  control={form.control}
                   name="confirmPassword"
                   render={({ field }) => (
                     <FormItem>
