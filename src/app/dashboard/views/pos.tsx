@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -101,7 +102,6 @@ export default function POS({ onPrintRequest }: POSProps) {
         try {
           const idToken = await auth.currentUser?.getIdToken();
           if (!idToken) {
-            // Silently fail if not authenticated, as auth state will handle redirects
             return;
           }
           const response = await fetch(`/api/point-settings?storeId=${activeStore.id}`, {
@@ -111,17 +111,28 @@ export default function POS({ onPrintRequest }: POSProps) {
               const data = await response.json();
               setPointSettings(data);
           } else {
-            console.error("Failed to fetch point settings.");
+            const errorData = await response.json();
+            console.error("Failed to fetch point settings:", errorData.error);
+            toast({
+                variant: 'destructive',
+                title: 'Gagal Memuat Pengaturan Poin',
+                description: errorData.error || "Silakan coba muat ulang halaman.",
+            });
             setPointSettings(null); 
           }
         } catch (error) {
            console.error("Error fetching point settings:", error);
+           toast({
+                variant: 'destructive',
+                title: 'Error Koneksi',
+                description: "Tidak dapat terhubung ke server untuk mengambil pengaturan poin.",
+           });
            setPointSettings(null);
         }
       }
     }
     fetchSettings();
-  }, [activeStore]);
+  }, [activeStore, toast]);
 
 
   const customerOptions = (customers || []).map((c) => ({
@@ -271,7 +282,7 @@ export default function POS({ onPrintRequest }: POSProps) {
   );
 
   const handleCheckout = async (isPaid: boolean) => {
-    setConfirmationAction(null); // Close confirmation dialog
+    setConfirmationAction(null);
     if (cart.length === 0) {
       toast({ variant: 'destructive', title: 'Keranjang Kosong', description: 'Silakan tambahkan produk ke keranjang.' });
       return;
