@@ -1,6 +1,4 @@
 
-'use client';
-
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/lib/server/firebase-admin';
 import type { OrderPayload, Table } from '@/lib/types';
@@ -10,7 +8,7 @@ export async function POST(req: NextRequest) {
     const { db } = getFirebaseAdmin();
     try {
         const payload: OrderPayload = await req.json();
-        const { storeId, customer, cart, subtotal, totalAmount } = payload;
+        const { storeId, customer, cart, totalAmount } = payload;
 
         if (!storeId || !customer || !cart || cart.length === 0) {
             return NextResponse.json({ error: 'Data pesanan tidak lengkap.' }, { status: 400 });
@@ -26,6 +24,7 @@ export async function POST(req: NextRequest) {
             }
             
             const storeData = storeDoc.data();
+            // Use a specific counter for virtual tables to avoid conflicts
             const lastVirtualTableNumber = storeData?.virtualTableCounter || 0;
             const newVirtualTableNumber = lastVirtualTableNumber + 1;
 
@@ -52,7 +51,7 @@ export async function POST(req: NextRequest) {
             
             transaction.set(newTableRef, newTableData);
             
-            // Increment the counter on the store document
+            // Increment the specific counter on the store document
             transaction.update(storeRef, { virtualTableCounter: FieldValue.increment(1) });
         });
 
