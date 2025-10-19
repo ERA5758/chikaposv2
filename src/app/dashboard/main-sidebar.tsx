@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
@@ -51,7 +52,7 @@ export function MainSidebar({ pradanaTokenBalance }: MainSidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const defaultView = currentUser?.role === 'admin' ? 'overview' : 'pos';
+  const defaultView = currentUser?.role === 'kitchen' ? 'kitchen' : (currentUser?.role === 'admin' ? 'overview' : 'pos');
   const currentView = searchParams.get('view') || defaultView;
   
   const [isTopUpOpen, setIsTopUpOpen] = React.useState(false);
@@ -75,12 +76,12 @@ export function MainSidebar({ pradanaTokenBalance }: MainSidebarProps) {
     {
         group: 'Operasional',
         icon: <Store />,
-        roles: ['admin', 'cashier'],
+        roles: ['admin', 'cashier', 'kitchen'],
         items: [
             { view: 'overview', label: 'Overview', icon: <LayoutGrid />, roles: ['admin', 'cashier'] },
             { view: 'pos', label: 'Kasir POS', icon: <Armchair />, roles: ['admin', 'cashier'] },
-            { view: 'kitchen', label: 'Dapur', icon: <ChefHat />, roles: ['admin', 'cashier'] },
-            { view: 'transactions', label: 'Transaksi', icon: <History />, roles: ['admin', 'cashier'] },
+            { view: 'kitchen', label: 'Dapur', icon: <ChefHat />, roles: ['admin', 'cashier', 'kitchen'] },
+            { view: 'transactions', label: 'Transaksi', icon: <History />, roles: ['admin', 'cashier', 'kitchen'] },
         ]
     },
     {

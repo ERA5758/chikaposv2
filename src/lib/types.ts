@@ -58,7 +58,7 @@ export type Store = {
   description?: string;
 };
 
-export type UserRole = 'admin' | 'cashier' | 'superadmin';
+export type UserRole = 'admin' | 'cashier' | 'superadmin' | 'kitchen';
 
 export type User = {
   id: string;

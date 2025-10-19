@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -72,7 +73,7 @@ function DashboardContent() {
   const [transactionToPrint, setTransactionToPrint] = React.useState<Transaction | null>(null);
 
   const isAdmin = currentUser?.role === 'admin';
-  const defaultView = isAdmin ? 'overview' : 'pos';
+  const defaultView = currentUser?.role === 'kitchen' ? 'kitchen' : (isAdmin ? 'overview' : 'pos');
   const view = searchParams.get('view') || defaultView;
   
   if (isLoading || !dashboardData) {
@@ -82,9 +83,17 @@ function DashboardContent() {
   const { users } = dashboardData;
 
   const renderView = () => {
-    const unauthorizedCashierViews = ['employees', 'challenges', 'receipt-settings', 'customer-analytics', 'ai-business-plan', 'catalog'];
-    if (currentUser?.role === 'cashier' && unauthorizedCashierViews.includes(view)) {
-        return <Tables />;
+    const cashierViews = ['overview', 'pos', 'transactions', 'products', 'customers', 'promotions'];
+    const kitchenViews = ['kitchen', 'transactions'];
+
+    if (currentUser?.role === 'cashier' && !cashierViews.includes(view)) {
+        return <Tables />; // Default view for cashier if they access restricted page
+    }
+    if (currentUser?.role === 'kitchen' && !kitchenViews.includes(view)) {
+        return <Kitchen />; // Default for kitchen role
+    }
+    if (currentUser?.role === 'admin' && view === 'kitchen') {
+        return <Kitchen />; // Admin can also see kitchen
     }
 
     switch (view) {

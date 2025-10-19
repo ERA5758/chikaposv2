@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -97,10 +98,11 @@ function TransactionDetailsDialog({ transaction, open, onOpenChange, users }: { 
                    <div className="space-y-2">
                         <p className="font-medium">Item Dibeli</p>
                         {transaction.items.map(item => (
-                            <div key={item.productId} className="flex justify-between items-center text-sm">
+                            <div key={item.productId} className="flex justify-between items-start text-sm">
                                 <div>
                                     <p>{item.productName}</p>
                                     <p className="text-muted-foreground">{item.quantity} x Rp {item.price.toLocaleString('id-ID')}</p>
+                                    {item.notes && <p className="text-xs italic text-blue-600 pl-2"> &#x21B3; {item.notes}</p>}
                                 </div>
                                 <p>Rp {(item.quantity * item.price).toLocaleString('id-ID')}</p>
                             </div>
@@ -116,6 +118,18 @@ function TransactionDetailsDialog({ transaction, open, onOpenChange, users }: { 
                             <p>Diskon</p>
                             <p>- Rp {transaction.discountAmount.toLocaleString('id-ID')}</p>
                         </div>
+                         {transaction.taxAmount > 0 && (
+                            <div className="flex justify-between">
+                                <p className="text-muted-foreground">Pajak</p>
+                                <p>Rp {transaction.taxAmount.toLocaleString('id-ID')}</p>
+                            </div>
+                        )}
+                        {transaction.serviceFeeAmount > 0 && (
+                            <div className="flex justify-between">
+                                <p className="text-muted-foreground">Biaya Layanan</p>
+                                <p>Rp {transaction.serviceFeeAmount.toLocaleString('id-ID')}</p>
+                            </div>
+                        )}
                         <div className="flex justify-between font-medium">
                             <p>Total</p>
                             <p>Rp {transaction.totalAmount.toLocaleString('id-ID')}</p>
@@ -218,19 +232,13 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
         if (!idToken) throw new Error("Authentication token not available.");
         if (!activeStore) throw new Error("Active store not found.");
 
-        const response = await fetch('/api/ai/order-ready-follow-up', {
+        const response = await fetch('/api/order-ready-notification', {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${idToken}`
             },
-            body: JSON.stringify({
-                customerName: transaction.customerName,
-                storeName: activeStore.name,
-                itemsOrdered: transaction.items.map(i => i.productName),
-                notificationStyle: 'fakta',
-                currentTime: format(new Date(), 'HH:mm'),
-            } as OrderReadyFollowUpInput)
+            body: JSON.stringify({ transaction, customer: getCustomerForTransaction(transaction), store: activeStore })
         });
 
         if (!response.ok) {
@@ -239,23 +247,17 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
         }
 
         const result: OrderReadyFollowUpOutput = await response.json();
-        const newText = result.followUpMessage;
-
-        const transactionRef = doc(db, 'stores', activeStore.id, 'transactions', transaction.id);
-        await updateDoc(transactionRef, {
-            generatedFollowUpText: newText
-        });
-
+        
         toast({
-            title: "Konten Dibuat!",
-            description: "Teks follow-up cerdas telah dibuat dan disimpan.",
+            title: "Notifikasi Terkirim!",
+            description: "Notifikasi WhatsApp telah dikirim ke pelanggan.",
         });
-        onDataChange(); // Refresh data to show the checkmark
+        handleWhatsappSent(transaction.id); // Mark as sent
     } catch (error) {
         console.error("Error generating follow-up text:", error);
         toast({
             variant: 'destructive',
-            title: 'Gagal Membuat Konten',
+            title: 'Gagal Mengirim Notifikasi',
             description: (error as Error).message,
         });
     } finally {
@@ -418,32 +420,24 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
                                 <>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
-                                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleGenerateFollowUp(transaction)} disabled={generatingTextId === transaction.id}>
-                                                {generatingTextId === transaction.id ? <Loader className="h-4 w-4 animate-spin"/> : (
-                                                    <div className="relative">
-                                                        <Sparkles className="h-4 w-4"/>
-                                                        {transaction.generatedFollowUpText && <CheckCircle className="h-3 w-3 absolute -top-1 -right-1 text-green-500 bg-background rounded-full"/>}
-                                                    </div>
-                                                )}
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent><p>Buat konten follow-up cerdas</p></TooltipContent>
-                                    </Tooltip>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
                                              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleActionClick(transaction, 'call')}>
                                                 <Volume2 className="h-4 w-4"/>
                                             </Button>
                                         </TooltipTrigger>
-                                        <TooltipContent><p>Panggil Pelanggan</p></TooltipContent>
+                                        <TooltipContent><p>Panggil Pelanggan (TTS)</p></TooltipContent>
                                     </Tooltip>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
-                                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleActionClick(transaction, 'whatsapp')}>
-                                                <Send className="h-4 w-4"/>
+                                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleGenerateFollowUp(transaction)} disabled={generatingTextId === transaction.id}>
+                                                {generatingTextId === transaction.id ? <Loader className="h-4 w-4 animate-spin"/> : (
+                                                    <div className="relative">
+                                                        <Send className="h-4 w-4"/>
+                                                        {sentWhatsappIds.has(transaction.id) && <CheckCircle className="h-3 w-3 absolute -top-1 -right-1 text-green-500 bg-background rounded-full"/>}
+                                                    </div>
+                                                )}
                                             </Button>
                                         </TooltipTrigger>
-                                        <TooltipContent><p>Kirim via WhatsApp</p></TooltipContent>
+                                        <TooltipContent><p>Kirim Notifikasi WhatsApp Cerdas</p></TooltipContent>
                                     </Tooltip>
                                      <Tooltip>
                                         <TooltipTrigger asChild>
