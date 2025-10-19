@@ -50,7 +50,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { AddCustomerForm } from '@/components/dashboard/add-customer-form';
 import { Combobox } from '@/components/ui/combobox';
@@ -66,7 +65,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useDashboard } from '@/contexts/dashboard-context';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Switch } from '@/components/ui/switch';
-import type { PointEarningSettings } from '@/lib/server/point-earning-settings';
+import type { PointEarningSettings } from '@/lib/types';
 
 type POSProps = {
   onPrintRequest: (transaction: Transaction) => void;
