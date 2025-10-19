@@ -2,13 +2,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/lib/server/firebase-admin';
 import type { OrderPayload } from '@/lib/types';
-import { getPointEarningSettings } from '@/lib/point-earning-settings';
+import { getPointEarningSettings } from '@/lib/server/point-earning-settings';
 
 export async function POST(req: NextRequest) {
     const { db } = getFirebaseAdmin();
     try {
         const payload: OrderPayload = await req.json();
-        const { storeId, customer, cart, subtotal, totalAmount, pointsEarned } = payload;
+        const { storeId, customer, cart, subtotal, totalAmount } = payload;
 
         if (!storeId || !customer || !cart || cart.length === 0) {
             return NextResponse.json({ error: 'Data pesanan tidak lengkap.' }, { status: 400 });

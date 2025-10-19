@@ -27,7 +27,7 @@ import Autoplay from "embla-carousel-autoplay"
 import { cn } from '@/lib/utils';
 import { CustomerAuthDialog } from '@/components/catalog/customer-auth-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { getPointEarningSettings, PointEarningSettings } from '@/lib/point-earning-settings';
+import type { PointEarningSettings } from '@/lib/server/point-earning-settings';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 
@@ -269,8 +269,11 @@ export default function CatalogPage() {
                 setPromotions(data.promotions);
                 
                 if (data.store?.id) {
-                    const settings = await getPointEarningSettings(data.store.id);
-                    setPointSettings(settings);
+                    const settingsRes = await fetch(`/api/point-settings?storeId=${data.store.id}`);
+                    if (settingsRes.ok) {
+                        const settings = await settingsRes.json();
+                        setPointSettings(settings);
+                    }
                 }
 
             } catch (e) {
@@ -347,8 +350,7 @@ export default function CatalogPage() {
                 customer: loggedInCustomer,
                 cart: cart,
                 subtotal: cartSubtotal,
-                totalAmount: cartSubtotal,
-                pointsEarned: pointsEarned,
+                totalAmount: cartSubtotal, // No discount from catalog
             };
             const response = await fetch('/api/catalog/order', {
                 method: 'POST',

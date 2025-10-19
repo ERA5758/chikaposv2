@@ -1,7 +1,5 @@
-'use client';
-
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from './firebase';
+import { getFirebaseAdmin } from './firebase-admin';
 
 export type PointEarningSettings = {
     rpPerPoint: number;
@@ -14,11 +12,13 @@ export const defaultPointEarningSettings: PointEarningSettings = {
 
 /**
  * Fetches point earning settings for a specific store from Firestore.
+ * This is a server-side function.
  * @param storeId The ID of the store.
  * @returns The store's specific point earning settings, or default settings if not found.
  */
 export async function getPointEarningSettings(storeId: string): Promise<PointEarningSettings> {
-    const storeDocRef = doc(db, 'stores', storeId);
+    const { db: adminDb } = getFirebaseAdmin();
+    const storeDocRef = doc(adminDb, 'stores', storeId);
     try {
         const docSnap = await getDoc(storeDocRef);
 
@@ -38,11 +38,13 @@ export async function getPointEarningSettings(storeId: string): Promise<PointEar
 
 /**
  * Updates or creates point earning settings for a specific store in Firestore.
+ * This is a server-side function.
  * @param storeId The ID of the store to update.
  * @param newSettings An object containing the settings to update.
  */
 export async function updatePointEarningSettings(storeId: string, newSettings: Partial<PointEarningSettings>) {
-    const storeDocRef = doc(db, 'stores', storeId);
+    const { db: adminDb } = getFirebaseAdmin();
+    const storeDocRef = doc(adminDb, 'stores', storeId);
     try {
         // Use setDoc with merge: true to update the nested pointEarningSettings object
         await setDoc(storeDocRef, {

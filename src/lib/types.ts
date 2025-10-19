@@ -1,5 +1,6 @@
 
 'use client';
+import type { PointEarningSettings } from './server/point-earning-settings';
 
 // Untuk menambah kategori produk baru, tambahkan nama kategori di dalam daftar di bawah ini.
 // Pastikan untuk mengapitnya dengan tanda kutip tunggal (') dan menambahkan koma di akhir.
@@ -14,9 +15,7 @@ export const productCategories = [
 
 export type ProductCategory = (typeof productCategories)[number];
 
-export type PointEarningSettings = {
-    rpPerPoint: number;
-};
+export type { PointEarningSettings };
 
 export type ReceiptSettings = {
     headerText: string;
@@ -130,7 +129,6 @@ export type OrderPayload = {
     cart: CartItem[];
     subtotal: number;
     totalAmount: number;
-    pointsEarned: number;
 };
 
 export type PendingOrder = {
