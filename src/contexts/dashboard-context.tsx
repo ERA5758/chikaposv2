@@ -1,3 +1,4 @@
+
 'use client';
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { db } from '@/lib/firebase';
@@ -17,6 +18,9 @@ const defaultFeeSettings: TransactionFeeSettings = {
   aiBusinessPlanFee: 25,
   aiSessionFee: 5,
   aiSessionDurationMinutes: 30,
+  catalogMonthlyFee: 250,
+  catalogSixMonthFee: 1400,
+  catalogYearlyFee: 2500,
 };
 
 interface DashboardContextType {
@@ -136,12 +140,36 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   }, [currentUser, activeStore, toast, refreshPradanaTokenBalance]);
 
   useEffect(() => {
-    if (isAuthLoading || !currentUser) {
+    if (isAuthLoading) {
+      setIsLoading(true);
+      return;
+    }
+    
+    if (!currentUser) {
         setIsLoading(false);
+        // Clear all data if user logs out
+        setStores([]);
+        setProducts([]);
+        setCustomers([]);
+        setTransactions([]);
+        setPendingOrders([]);
+        setUsers([]);
+        setRedemptionOptions([]);
+        setTables([]);
+        setChallengePeriods([]);
+        setFeeSettings(defaultFeeSettings);
         return;
     }
 
-    refreshData();
+    // Only refresh static data if there's a user and an active store (for non-superadmins)
+    if (currentUser && (currentUser.role === 'superadmin' || activeStore)) {
+        refreshData();
+    } else if (currentUser && currentUser.role !== 'superadmin' && !activeStore) {
+        // This case might happen briefly while activeStore is loading.
+        // We should wait.
+        setIsLoading(true);
+        return;
+    }
 
     let transactionsUnsubscribe: Unsubscribe | undefined;
     let pendingOrdersUnsubscribe: Unsubscribe | undefined;
@@ -167,6 +195,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         });
 
     } else if (currentUser.role === 'superadmin') {
+        // Superadmin doesn't need these real-time listeners
         setTransactions([]);
         setPendingOrders([]);
     }
