@@ -33,7 +33,6 @@ import { useToast } from '@/hooks/use-toast';
 import { startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { getPointEarningSettings, updatePointEarningSettings } from '@/lib/point-earning-settings';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,7 +43,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { doc, updateDoc, deleteDoc, collection, addDoc } from 'firebase/firestore';
 import {
   Dialog,
@@ -88,15 +87,31 @@ export default function Promotions() {
 
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
   const [pointSettings, setPointSettings] = React.useState({ rpPerPoint: 10000 });
+  const [isSavingSettings, setIsSavingSettings] = React.useState(false);
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [promotionToDelete, setPromotionToDelete] = React.useState<RedemptionOption | null>(null);
 
   React.useEffect(() => {
-    if (activeStore) {
-        getPointEarningSettings(activeStore.id).then(setPointSettings);
+    async function fetchSettings() {
+      if (activeStore?.id) {
+        try {
+          const response = await fetch(`/api/point-settings?storeId=${activeStore.id}`);
+          if (response.ok) {
+            const data = await response.json();
+            setPointSettings(data);
+          } else {
+            console.error("Failed to fetch point settings.");
+          }
+        } catch (error) {
+          console.error("Error fetching point settings:", error);
+        }
+      }
     }
-  }, [activeStore]);
+    if (isAdmin) {
+      fetchSettings();
+    }
+  }, [activeStore, isAdmin]);
 
 
   const handleDeleteClick = (option: RedemptionOption) => {
@@ -130,14 +145,33 @@ export default function Promotions() {
 
   const handleSavePointEarning = async () => {
     if (!activeStore) return;
+    setIsSavingSettings(true);
     try {
-        await updatePointEarningSettings(activeStore.id, pointSettings);
-        toast({
-            title: 'Pengaturan Disimpan!',
-            description: `Sekarang, pelanggan akan mendapatkan 1 poin untuk setiap pembelanjaan Rp ${pointSettings.rpPerPoint.toLocaleString('id-ID')}.`,
-        });
-    } catch {
-        toast({ variant: 'destructive', title: 'Gagal Menyimpan' });
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) throw new Error("Authentication failed.");
+
+      const response = await fetch('/api/point-settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ storeId: activeStore.id, settings: pointSettings }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save settings.');
+      }
+
+      toast({
+          title: 'Pengaturan Disimpan!',
+          description: `Sekarang, pelanggan akan mendapatkan 1 poin untuk setiap pembelanjaan Rp ${pointSettings.rpPerPoint.toLocaleString('id-ID')}.`,
+      });
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Gagal Menyimpan', description: (error as Error).message });
+    } finally {
+      setIsSavingSettings(false);
     }
   };
 
@@ -270,7 +304,7 @@ export default function Promotions() {
                   step="1000"
                 />
               </div>
-              <Button onClick={handleSavePointEarning}>
+              <Button onClick={handleSavePointEarning} disabled={isSavingSettings}>
                 <Save className="mr-2 h-4 w-4" />
                 Simpan Pengaturan
               </Button>
