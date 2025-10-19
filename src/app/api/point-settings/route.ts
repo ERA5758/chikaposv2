@@ -1,4 +1,3 @@
-'use client';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getPointEarningSettings, updatePointEarningSettings } from '@/lib/server/point-earning-settings';
