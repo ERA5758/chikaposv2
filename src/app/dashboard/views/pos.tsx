@@ -112,6 +112,9 @@ export default function POS({ onPrintRequest }: POSProps) {
             description: `Pesanan dari meja ${table.name} telah dimuat ke keranjang.`
         });
       }
+    } else {
+      setCart([]);
+      setSelectedCustomer(undefined);
     }
   }, [tableId, tables, customers, toast]);
 
