@@ -20,6 +20,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   refreshPradanaTokenBalance: () => void;
   refreshActiveStore: () => void;
+  updateActiveStore: (newStoreData: Partial<Store>) => void;
 }
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
@@ -60,6 +61,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("Error refreshing token balance:", error);
     }
   }, [activeStore]);
+
+  const updateActiveStore = (newStoreData: Partial<Store>) => {
+    setActiveStore(prevStore => {
+      if (!prevStore) return null;
+      return { ...prevStore, ...newStoreData };
+    });
+  };
 
   const handleLogout = React.useCallback(async () => {
     await signOut(auth);
@@ -167,7 +175,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const value = { currentUser, activeStore, pradanaTokenBalance, isLoading, login, logout, refreshPradanaTokenBalance, refreshActiveStore };
+  const value = { currentUser, activeStore, pradanaTokenBalance, isLoading, login, logout, refreshPradanaTokenBalance, refreshActiveStore, updateActiveStore };
 
   return (
     <AuthContext.Provider value={value}>

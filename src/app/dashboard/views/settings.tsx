@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -107,8 +108,8 @@ function ProfileCardSkeleton() {
 }
 
 export default function Settings() {
-  const { currentUser, activeStore, isLoading: isAuthLoading } = useAuth();
-  const { dashboardData, refreshData } = useDashboard();
+  const { currentUser, activeStore, isLoading: isAuthLoading, updateActiveStore } = useAuth();
+  const { dashboardData } = useDashboard();
   const { products, feeSettings } = dashboardData;
   
   const [isPasswordChangeLoading, setIsPasswordChangeLoading] = React.useState(false);
@@ -198,11 +199,12 @@ export default function Settings() {
     setIsGeneralSettingLoading(true);
     try {
         const storeRef = doc(db, 'stores', activeStore.id);
-        await setDoc(storeRef, {
+        const updates = {
             businessDescription: businessDescription,
             notificationSettings: notificationSettings,
             financialSettings: financialSettings,
-        }, { merge: true });
+        };
+        await setDoc(storeRef, updates, { merge: true });
   
       await updateReceiptSettings(activeStore.id, {
         voiceGender: generalSettings.voiceGender,
@@ -210,7 +212,9 @@ export default function Settings() {
       });
   
       toast({ title: 'Pengaturan Umum Disimpan!' });
-      refreshData();
+      // Update the context immediately
+      updateActiveStore(updates);
+
     } catch (error) {
       console.error("Error saving general settings:", error);
       toast({ variant: 'destructive', title: 'Gagal Menyimpan', description: (error as Error).message });
