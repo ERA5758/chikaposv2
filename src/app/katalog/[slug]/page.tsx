@@ -3,7 +3,7 @@
 'use client';
 
 import * as React from 'react';
-import type { Store, Product, ProductCategory, RedemptionOption, Customer, OrderPayload } from '@/lib/types';
+import type { Store, Product, ProductCategory, RedemptionOption, Customer, OrderPayload, CartItem, TableOrder } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Image from 'next/image';
@@ -32,14 +32,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 
-
-type CartItem = {
-    productId: string;
-    name: string;
-    price: number;
-    quantity: number;
-    notes?: string;
-};
 
 function NoteDialog({ open, onOpenChange, note, onSave }: { open: boolean, onOpenChange: (open: boolean) => void, note: string, onSave: (newNote: string) => void }) {
     const [currentNote, setCurrentNote] = React.useState(note);
@@ -264,17 +256,33 @@ function PromotionSection({ promotions }: { promotions: RedemptionOption[] }) {
     );
 }
 
-function OrderStatusCard({ orderId, onComplete }: { orderId: string, onComplete: () => void }) {
+function OrderStatusCard({ order, onComplete }: { order: TableOrder, onComplete: () => void }) {
     return (
         <Card className="mb-8 bg-amber-500/10 border-amber-500/30">
             <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-amber-700">
                     <Loader className="animate-spin"/> Pesanan Anda Sedang Diproses
                 </CardTitle>
+                <CardDescription>Pesanan Anda telah diterima oleh dapur. Mohon tunggu panggilan dari kasir untuk pengambilan.</CardDescription>
             </CardHeader>
             <CardContent>
-                <p>Pesanan Anda telah diterima oleh dapur dan sedang disiapkan. Mohon tunggu panggilan dari kasir untuk pengambilan.</p>
-                <p className="text-xs text-muted-foreground mt-2">ID Pesanan Virtual: {orderId.substring(0, 8)}...</p>
+                <div className="space-y-2">
+                    <h4 className="font-semibold">Rincian Pesanan:</h4>
+                     {order.items.map(item => (
+                        <div key={item.productId} className="flex justify-between items-start text-sm">
+                            <div>
+                                <p>{item.quantity}x {item.productName}</p>
+                                {item.notes && <p className="text-xs italic text-gray-600 pl-2"> &#x21B3; {item.notes}</p>}
+                            </div>
+                            <p className="font-mono">Rp {(item.quantity * item.price).toLocaleString('id-ID')}</p>
+                        </div>
+                    ))}
+                    <Separator className="my-2"/>
+                    <div className="flex justify-between font-bold">
+                        <span>Total</span>
+                        <span>Rp {order.totalAmount.toLocaleString('id-ID')}</span>
+                    </div>
+                </div>
             </CardContent>
             <CardFooter>
                 <Button variant="ghost" className="text-muted-foreground" onClick={onComplete}>
@@ -306,10 +314,10 @@ export default function CatalogPage() {
     const [isAuthDialogOpen, setIsAuthDialogOpen] = React.useState(false);
     const [loggedInCustomer, setLoggedInCustomer] = React.useState<Customer | null>(null);
     const sessionKey = `chika-customer-session-${slug}`;
-    const activeOrderKey = `chika-active-order-${slug}`;
     
     // --- Order Status State ---
-    const [activeOrderId, setActiveOrderId] = React.useState<string | null>(null);
+    const [activeOrder, setActiveOrder] = React.useState<TableOrder | null>(null);
+    const activeOrderKey = `chika-active-order-${slug}`;
 
     React.useEffect(() => {
         // This effect runs only on the client
@@ -317,9 +325,9 @@ export default function CatalogPage() {
         if (savedSession) {
             setLoggedInCustomer(JSON.parse(savedSession));
         }
-        const savedOrderId = localStorage.getItem(activeOrderKey);
-        if (savedOrderId) {
-            setActiveOrderId(savedOrderId);
+        const savedOrder = localStorage.getItem(activeOrderKey);
+        if (savedOrder) {
+            setActiveOrder(JSON.parse(savedOrder));
         }
     }, [sessionKey, activeOrderKey]);
 
@@ -456,9 +464,10 @@ export default function CatalogPage() {
             }
             const result = await response.json();
             
-            if (result.success && result.table?.id) {
-                setActiveOrderId(result.table.id);
-                localStorage.setItem(activeOrderKey, result.table.id);
+            if (result.success && result.table?.currentOrder) {
+                const newOrder = result.table.currentOrder as TableOrder;
+                setActiveOrder(newOrder);
+                localStorage.setItem(activeOrderKey, JSON.stringify(newOrder));
             }
             
             toast({
@@ -478,7 +487,7 @@ export default function CatalogPage() {
     };
 
     const handleCompleteOrder = () => {
-        setActiveOrderId(null);
+        setActiveOrder(null);
         localStorage.removeItem(activeOrderKey);
         toast({
             title: "Status Dihapus",
@@ -568,8 +577,8 @@ export default function CatalogPage() {
             </header>
             
             <main className="container mx-auto max-w-4xl p-4 md:p-8">
-                 {activeOrderId ? (
-                    <OrderStatusCard orderId={activeOrderId} onComplete={handleCompleteOrder} />
+                 {activeOrder ? (
+                    <OrderStatusCard order={activeOrder} onComplete={handleCompleteOrder} />
                  ) : (
                     <PromotionSection promotions={promotions} />
                  )}
@@ -640,7 +649,7 @@ export default function CatalogPage() {
                                                             <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setNoteProduct(itemInCart)}><MessageSquare className="h-4 w-4" /></Button>
                                                         </div>
                                                     ) : (
-                                                        <Button variant="outline" className="w-full" onClick={() => addToCart(product)} disabled={!!activeOrderId}>Tambah</Button>
+                                                        <Button variant="outline" className="w-full" onClick={() => addToCart(product)} disabled={!!activeOrder}>Tambah</Button>
                                                     )
                                                 ) : (
                                                     <Button variant="outline" className="w-full" disabled>Stok Habis</Button>
