@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -67,6 +66,7 @@ import { useDashboard } from '@/contexts/dashboard-context';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Switch } from '@/components/ui/switch';
 import type { PointEarningSettings } from '@/lib/types';
+import { pointEarningSettings } from '@/lib/point-earning-settings';
 
 type POSProps = {
   onPrintRequest: (transaction: Transaction) => void;
@@ -81,8 +81,6 @@ export default function POS({ onPrintRequest }: POSProps) {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   
-  const [pointSettings, setPointSettings] = React.useState<PointEarningSettings | null>(null);
-
   const [isProcessingCheckout, setIsProcessingCheckout] = React.useState(false);
   const [cart, setCart] = React.useState<CartItem[]>([]);
   const [selectedCustomer, setSelectedCustomer] = React.useState<Customer | undefined>(undefined);
@@ -127,47 +125,6 @@ export default function POS({ onPrintRequest }: POSProps) {
         setSelectedCustomer(undefined);
     }
   }, [tableId, tables, products, customers, toast]);
-
-
-  React.useEffect(() => {
-    async function fetchSettings() {
-      if (activeStore?.id) {
-        try {
-          const idToken = await auth.currentUser?.getIdToken();
-          if (!idToken) {
-            toast({ variant: 'destructive', title: 'Autentikasi Gagal', description: 'Tidak dapat memuat token pengguna.' });
-            return;
-          }
-          const response = await fetch(`/api/point-settings?storeId=${activeStore.id}`, {
-            headers: { 'Authorization': `Bearer ${idToken}` }
-          });
-          
-          if (response.ok) {
-              const data = await response.json();
-              setPointSettings(data);
-          } else {
-            const errorData = await response.json();
-            console.error("Failed to fetch point settings:", errorData.error);
-            toast({
-                variant: 'destructive',
-                title: 'Gagal Memuat Pengaturan Poin',
-                description: errorData.error || "Silakan coba muat ulang halaman.",
-            });
-            setPointSettings(null); 
-          }
-        } catch (error) {
-           console.error("Error fetching point settings:", error);
-           toast({
-                variant: 'destructive',
-                title: 'Error Koneksi',
-                description: "Tidak dapat terhubung ke server untuk mengambil pengaturan poin.",
-           });
-           setPointSettings(null);
-        }
-      }
-    }
-    fetchSettings();
-  }, [activeStore, toast]);
 
 
   const customerOptions = (customers || []).map((c) => ({
@@ -287,7 +244,7 @@ export default function POS({ onPrintRequest }: POSProps) {
 
   const totalAmount = Math.max(0, subtotal - discountAmount);
 
-  const pointsEarned = (selectedCustomer && pointSettings) ? Math.floor(totalAmount / pointSettings.rpPerPoint) : 0;
+  const pointsEarned = selectedCustomer ? Math.floor(totalAmount / pointEarningSettings.rpPerPoint) : 0;
 
   const transactionFee = React.useMemo(() => {
     if (!feeSettings) return 0;
@@ -395,8 +352,8 @@ export default function POS({ onPrintRequest }: POSProps) {
           transaction.update(productDoc.ref, { stock: increment(-item.quantity) });
         }
 
-        if (selectedCustomer && customerDoc?.exists() && pointSettings) {
-          const earnedPoints = Math.floor(totalAmount / pointSettings.rpPerPoint);
+        if (selectedCustomer && customerDoc?.exists()) {
+          const earnedPoints = Math.floor(totalAmount / pointEarningSettings.rpPerPoint);
           const customerPoints = customerDoc.data()?.loyaltyPoints || 0;
           const newPoints = customerPoints + earnedPoints - pointsToRedeem;
           transaction.update(customerDoc.ref, { loyaltyPoints: newPoints });
@@ -742,7 +699,7 @@ export default function POS({ onPrintRequest }: POSProps) {
                 </div>
               </div>
 
-              {selectedCustomer && cart.length > 0 && feeSettings && pointSettings && (
+              {selectedCustomer && cart.length > 0 && feeSettings && (
                 <LoyaltyRecommendation customer={selectedCustomer} totalPurchaseAmount={totalAmount} feeSettings={feeSettings} />
               )}
               

@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -21,7 +20,7 @@ import {
 import type { RedemptionOption, Transaction } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, PlusCircle, CheckCircle, XCircle, Sparkles, Target, Save } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, CheckCircle, XCircle, Sparkles, Target } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,8 +30,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,7 +40,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { db, auth } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { doc, updateDoc, deleteDoc, collection, addDoc } from 'firebase/firestore';
 import {
   Dialog,
@@ -86,32 +83,9 @@ export default function Promotions() {
   const { toast } = useToast();
 
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
-  const [pointSettings, setPointSettings] = React.useState({ rpPerPoint: 10000 });
-  const [isSavingSettings, setIsSavingSettings] = React.useState(false);
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [promotionToDelete, setPromotionToDelete] = React.useState<RedemptionOption | null>(null);
-
-  React.useEffect(() => {
-    async function fetchSettings() {
-      if (activeStore?.id) {
-        try {
-          const response = await fetch(`/api/point-settings?storeId=${activeStore.id}`);
-          if (response.ok) {
-            const data = await response.json();
-            setPointSettings(data);
-          } else {
-            console.error("Failed to fetch point settings.");
-          }
-        } catch (error) {
-          console.error("Error fetching point settings:", error);
-        }
-      }
-    }
-    if (isAdmin) {
-      fetchSettings();
-    }
-  }, [activeStore, isAdmin]);
 
 
   const handleDeleteClick = (option: RedemptionOption) => {
@@ -140,39 +114,6 @@ export default function Promotions() {
 
     setIsDeleteDialogOpen(false);
     setPromotionToDelete(null);
-  };
-
-
-  const handleSavePointEarning = async () => {
-    if (!activeStore) return;
-    setIsSavingSettings(true);
-    try {
-      const idToken = await auth.currentUser?.getIdToken();
-      if (!idToken) throw new Error("Authentication failed.");
-
-      const response = await fetch('/api/point-settings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`,
-        },
-        body: JSON.stringify({ storeId: activeStore.id, settings: pointSettings }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save settings.');
-      }
-
-      toast({
-          title: 'Pengaturan Disimpan!',
-          description: `Sekarang, pelanggan akan mendapatkan 1 poin untuk setiap pembelanjaan Rp ${pointSettings.rpPerPoint.toLocaleString('id-ID')}.`,
-      });
-    } catch (error) {
-        toast({ variant: 'destructive', title: 'Gagal Menyimpan', description: (error as Error).message });
-    } finally {
-      setIsSavingSettings(false);
-    }
   };
 
   const toggleStatus = async (id: string) => {
@@ -287,30 +228,6 @@ export default function Promotions() {
   return (
     <>
       <div className="grid gap-6">
-        {isAdmin && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-headline tracking-wider">Pengaturan Perolehan Poin</CardTitle>
-              <CardDescription>Atur berapa total belanja (dalam Rupiah) yang diperlukan untuk mendapatkan 1 poin loyalitas.</CardDescription>
-            </CardHeader>
-            <CardContent className="max-w-sm space-y-4">
-              <div className="grid gap-2">
-                <Label htmlFor="rp-per-point">Belanja (Rp) untuk 1 Poin</Label>
-                <Input
-                  id="rp-per-point"
-                  type="number"
-                  value={pointSettings.rpPerPoint}
-                  onChange={(e) => setPointSettings(prev => ({...prev, rpPerPoint: Number(e.target.value)}))}
-                  step="1000"
-                />
-              </div>
-              <Button onClick={handleSavePointEarning} disabled={isSavingSettings}>
-                <Save className="mr-2 h-4 w-4" />
-                Simpan Pengaturan
-              </Button>
-            </CardContent>
-          </Card>
-        )}
         {isAdmin && feeSettings && (
           <Card>
             <CardHeader>
