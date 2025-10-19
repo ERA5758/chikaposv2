@@ -734,7 +734,7 @@ export default function POS({ onPrintRequest }: POSProps) {
               </div>
 
               <Button size="lg" className="w-full font-headline text-lg tracking-wider" onClick={handleCheckout} disabled={isProcessingCheckout || isLoading}>
-                Bayar & Selesaikan
+                Proses Pembayaran & Selesaikan
               </Button>
             </CardContent>
           </Card>
