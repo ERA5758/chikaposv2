@@ -42,6 +42,7 @@ export type Store = {
   createdAt: string;
   firstTransactionDate?: string | null;
   transactionCounter?: number;
+  virtualTableCounter?: number;
   referralCode?: string;
   catalogSlug?: string;
   catalogSubscriptionExpiry?: string;
@@ -170,10 +171,13 @@ export type ChallengePeriod = {
 
 export type TableStatus = 'Tersedia' | 'Terisi' | 'Dipesan' | 'Menunggu Dibersihkan';
 
+export type TableOrderCustomer = Pick<Customer, 'id' | 'name' | 'phone' | 'avatarUrl'>;
+
 export type TableOrder = {
   items: CartItem[];
   totalAmount: number;
   orderTime: string; // ISO 8601
+  customer?: TableOrderCustomer;
 };
 
 export type Table = {
@@ -181,6 +185,7 @@ export type Table = {
   name: string;
   status: TableStatus;
   capacity: number;
+  isVirtual?: boolean;
   currentOrder?: TableOrder | null;
 };
 

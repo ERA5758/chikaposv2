@@ -1,8 +1,10 @@
 
+'use client';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/lib/server/firebase-admin';
-import type { OrderPayload } from '@/lib/types';
-import { getPointEarningSettings } from '@/lib/server/point-earning-settings';
+import type { OrderPayload, Table } from '@/lib/types';
+import { FieldValue } from 'firebase-admin/firestore';
 
 export async function POST(req: NextRequest) {
     const { db } = getFirebaseAdmin();
@@ -14,61 +16,50 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Data pesanan tidak lengkap.' }, { status: 400 });
         }
         
-        const pointSettings = await getPointEarningSettings(storeId);
-
+        // --- NEW LOGIC: Create a Virtual Table Order ---
         await db.runTransaction(async (transaction) => {
             const storeRef = db.collection('stores').doc(storeId);
-            const customerRef = db.collection('stores').doc(storeId).collection('customers').doc(customer.id);
-            
             const storeDoc = await transaction.get(storeRef);
-            const customerDoc = await transaction.get(customerRef);
-            
-            if (!storeDoc.exists) throw new Error("Toko tidak ditemukan.");
-            if (!customerDoc.exists) throw new Error("Pelanggan tidak ditemukan.");
-            
-            const productRefs = cart.map(item => db.collection('stores').doc(storeId).collection('products').doc(item.productId));
-            const productDocs = await transaction.getAll(...productRefs);
-            
-            // 1. Verify stock and prepare updates
-            for (let i = 0; i < productDocs.length; i++) {
-                const productDoc = productDocs[i];
-                if (!productDoc.exists) throw new Error(`Produk ${cart[i].productName} tidak ditemukan.`);
-                
-                const currentStock = productDoc.data()?.stock || 0;
-                if (currentStock < cart[i].quantity) {
-                    throw new Error(`Stok untuk ${cart[i].productName} tidak mencukupi (sisa ${currentStock}).`);
-                }
-                transaction.update(productDoc.ref, { stock: currentStock - cart[i].quantity });
+
+            if (!storeDoc.exists) {
+                throw new Error("Toko tidak ditemukan.");
             }
+            
+            const storeData = storeDoc.data();
+            const lastVirtualTableNumber = storeData?.virtualTableCounter || 0;
+            const newVirtualTableNumber = lastVirtualTableNumber + 1;
 
-            // 2. Update customer points
-            const currentPoints = customerDoc.data()?.loyaltyPoints || 0;
-            const finalPointsEarned = Math.floor(totalAmount / pointSettings.rpPerPoint);
-            transaction.update(customerRef, { loyaltyPoints: currentPoints + finalPointsEarned });
+            const newTableRef = db.collection('stores').doc(storeId).collection('tables').doc();
 
-            // 3. Create transaction record
-            const newTransactionRef = db.collection('stores').doc(storeId).collection('transactions').doc();
-            transaction.set(newTransactionRef, {
-                storeId: storeId,
-                customerId: customer.id,
-                customerName: customer.name,
-                staffId: 'self-service', // Special ID for catalog orders
-                createdAt: new Date().toISOString(),
-                subtotal: subtotal,
-                discountAmount: 0,
-                totalAmount: totalAmount,
-                paymentMethod: 'QRIS', // Default, to be confirmed by cashier
-                pointsEarned: finalPointsEarned,
-                pointsRedeemed: 0,
-                items: cart,
-                status: 'Diproses', // Automatically 'Processed'
-            });
+            // Create a new "virtual table" for this self-service order
+            const newTableData: Partial<Table> = {
+                name: `Virtual ${newVirtualTableNumber}`,
+                capacity: 1, // Represents a single customer/order
+                status: 'Terisi', // The order is placed and waiting for cashier processing
+                isVirtual: true, // Flag to identify this as a catalog order
+                currentOrder: {
+                    items: cart,
+                    totalAmount: totalAmount,
+                    orderTime: new Date().toISOString(),
+                    customer: { // Embed customer info in the order
+                        id: customer.id,
+                        name: customer.name,
+                        phone: customer.phone,
+                        avatarUrl: customer.avatarUrl,
+                    }
+                }
+            };
+            
+            transaction.set(newTableRef, newTableData);
+            
+            // Increment the counter on the store document
+            transaction.update(storeRef, { virtualTableCounter: FieldValue.increment(1) });
         });
 
-        return NextResponse.json({ success: true, message: 'Pesanan berhasil dibuat.' });
+        return NextResponse.json({ success: true, message: 'Pesanan berhasil dikirim ke kasir.' });
 
     } catch (error) {
-        console.error('Error creating order from catalog:', error);
+        console.error('Error creating virtual table order from catalog:', error);
         return NextResponse.json({ error: (error as Error).message }, { status: 500 });
     }
 }
