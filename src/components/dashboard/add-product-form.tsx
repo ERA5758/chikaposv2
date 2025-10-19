@@ -28,7 +28,7 @@ import * as React from 'react';
 import { Loader, ScanBarcode, Upload } from 'lucide-react';
 import { BarcodeScanner } from './barcode-scanner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
-import { db, storage } from '@/lib/firebase';
+import { auth, db, storage } from '@/lib/firebase';
 import { addDoc, collection } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import Image from 'next/image';
@@ -104,9 +104,15 @@ export function AddProductForm({ setDialogOpen, userRole, onProductAdded, active
     }
     setIsLoading(true);
 
-    const costPrice = !isAdmin ? data.price : data.costPrice;
-    
     try {
+        // Force refresh the auth token before making a protected request
+        const idToken = await auth.currentUser?.getIdToken(true);
+        if (!idToken) {
+            throw new Error("Sesi autentikasi tidak valid. Silakan login ulang.");
+        }
+
+        const costPrice = !isAdmin ? data.price : data.costPrice;
+    
         // Create a safe, unique filename
         const fileExtension = imageFile.name.split('.').pop();
         const safeFileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExtension}`;
@@ -145,7 +151,7 @@ export function AddProductForm({ setDialogOpen, userRole, onProductAdded, active
         toast({
             variant: 'destructive',
             title: 'Gagal Menambahkan Produk',
-            description: 'Terjadi kesalahan saat menyimpan produk. Silakan coba lagi.',
+            description: (error as Error).message || 'Terjadi kesalahan saat menyimpan produk. Silakan coba lagi.',
         });
     } finally {
         setIsLoading(false);
