@@ -64,7 +64,7 @@ export default function POS({ onPrintRequest }: POSProps) {
   const { currentUser, activeStore, pradanaTokenBalance, refreshPradanaTokenBalance } = useAuth();
   const { dashboardData, isLoading, refreshData } = useDashboard();
   const { products, customers, tables, feeSettings } = dashboardData;
-
+  const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -139,7 +139,6 @@ export default function POS({ onPrintRequest }: POSProps) {
   const [discountValue, setDiscountValue] = React.useState(0);
   const [pointsToRedeem, setPointsToRedeem] = React.useState(0);
   const [isDineIn, setIsDineIn] = React.useState(true);
-  const { toast } = useToast();
 
   const customerOptions = (customers || []).map((c) => ({
     value: c.id,
