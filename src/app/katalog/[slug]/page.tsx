@@ -6,7 +6,7 @@ import type { Store, Product, ProductCategory, RedemptionOption, Customer, Order
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Image from 'next/image';
-import { UtensilsCrossed, PackageX, MessageCircle, Sparkles, Send, Loader, Gift, ShoppingCart, PlusCircle, MinusCircle, XCircle, LogIn, UserCircle, LogOut, Crown, Coins } from 'lucide-react';
+import { UtensilsCrossed, PackageX, MessageCircle, Sparkles, Send, Loader, Gift, ShoppingCart, PlusCircle, MinusCircle, XCircle, LogIn, UserCircle, LogOut, Crown, Coins, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetTrigger } from '@/components/ui/sheet';
@@ -226,6 +226,27 @@ function PromotionSection({ promotions }: { promotions: RedemptionOption[] }) {
     );
 }
 
+function OrderStatusCard({ orderId, onComplete }: { orderId: string, onComplete: () => void }) {
+    return (
+        <Card className="mb-8 bg-amber-500/10 border-amber-500/30">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-amber-700">
+                    <Loader className="animate-spin"/> Pesanan Anda Sedang Diproses
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p>Pesanan Anda telah diterima oleh dapur dan sedang disiapkan. Mohon tunggu panggilan dari kasir untuk pengambilan.</p>
+                <p className="text-xs text-muted-foreground mt-2">ID Pesanan Virtual: {orderId.substring(0, 8)}...</p>
+            </CardContent>
+            <CardFooter>
+                <Button variant="ghost" className="text-muted-foreground" onClick={onComplete}>
+                    Pesanan Sudah Diterima? Hapus Status
+                </Button>
+            </CardFooter>
+        </Card>
+    )
+}
+
 export default function CatalogPage() {
     const params = useParams();
     const slug = params?.slug as string;
@@ -241,18 +262,32 @@ export default function CatalogPage() {
     const [cart, setCart] = React.useState<CartItem[]>([]);
     const [isSubmittingOrder, setIsSubmittingOrder] = React.useState(false);
     
-    // --- Start Customer Auth State ---
+    // --- Customer Auth State ---
     const [isAuthDialogOpen, setIsAuthDialogOpen] = React.useState(false);
     const [loggedInCustomer, setLoggedInCustomer] = React.useState<Customer | null>(null);
     const sessionKey = `chika-customer-session-${slug}`;
-    // --- End Customer Auth State ---
+    const activeOrderKey = `chika-active-order-${slug}`;
+    
+    // --- Order Status State ---
+    const [activeOrderId, setActiveOrderId] = React.useState<string | null>(null);
 
+    React.useEffect(() => {
+        // This effect runs only on the client
+        const savedSession = localStorage.getItem(sessionKey);
+        if (savedSession) {
+            setLoggedInCustomer(JSON.parse(savedSession));
+        }
+        const savedOrderId = localStorage.getItem(activeOrderKey);
+        if (savedOrderId) {
+            setActiveOrderId(savedOrderId);
+        }
+    }, [sessionKey, activeOrderKey]);
 
     React.useEffect(() => {
         if (!slug) return;
         async function fetchData() {
             setIsLoading(true);
-            setError(undefined); // Reset error state on new fetch
+            setError(undefined);
             try {
                 const response = await fetch(`/api/catalog-data?slug=${slug}`);
                 if (!response.ok) {
@@ -270,7 +305,10 @@ export default function CatalogPage() {
                 
                 if (data.store?.id) {
                     try {
-                        const settingsRes = await fetch(`/api/point-settings?storeId=${data.store.id}`);
+                        const idToken = 'dummy-token'; // The API is now public
+                        const settingsRes = await fetch(`/api/point-settings?storeId=${data.store.id}`, {
+                            headers: { 'Authorization': `Bearer ${idToken}` }
+                        });
                         if (settingsRes.ok) {
                             const settings = await settingsRes.json();
                             setPointSettings(settings);
@@ -291,12 +329,7 @@ export default function CatalogPage() {
         }
         fetchData();
         
-        const savedSession = localStorage.getItem(sessionKey);
-        if (savedSession) {
-            setLoggedInCustomer(JSON.parse(savedSession));
-        }
-
-    }, [slug, sessionKey]);
+    }, [slug]);
     
     const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
     const cartSubtotal = cart.reduce((total, item) => total + item.price * item.quantity, 0);
@@ -353,7 +386,7 @@ export default function CatalogPage() {
                 customer: loggedInCustomer,
                 cart: cart,
                 subtotal: cartSubtotal,
-                totalAmount: cartSubtotal, // No discount from catalog
+                totalAmount: cartSubtotal,
             };
             const response = await fetch('/api/catalog/order', {
                 method: 'POST',
@@ -365,12 +398,18 @@ export default function CatalogPage() {
                 const errorData = await response.json();
                 throw new Error(errorData.error || 'Gagal membuat pesanan.');
             }
+            const result = await response.json();
+            
+            if (result.success && result.table?.id) {
+                setActiveOrderId(result.table.id);
+                localStorage.setItem(activeOrderKey, result.table.id);
+            }
+            
             toast({
                 title: 'Pesanan Berhasil Dibuat!',
                 description: 'Pesanan Anda sedang diproses oleh dapur. Silakan tunggu notifikasi selanjutnya.',
             });
             setCart([]);
-            // Close the sheet - this requires more state management or a ref, so we'll skip for now
         } catch (error) {
             toast({
                 variant: 'destructive',
@@ -382,6 +421,14 @@ export default function CatalogPage() {
         }
     };
 
+    const handleCompleteOrder = () => {
+        setActiveOrderId(null);
+        localStorage.removeItem(activeOrderKey);
+        toast({
+            title: "Status Dihapus",
+            description: "Terima kasih atas kunjungan Anda!",
+        });
+    }
 
     const categories = React.useMemo(() => {
         const uniqueCategories = new Set(products.map(p => p.category));
@@ -465,7 +512,11 @@ export default function CatalogPage() {
             </header>
             
             <main className="container mx-auto max-w-4xl p-4 md:p-8">
-                 <PromotionSection promotions={promotions} />
+                 {activeOrderId ? (
+                    <OrderStatusCard orderId={activeOrderId} onComplete={handleCompleteOrder} />
+                 ) : (
+                    <PromotionSection promotions={promotions} />
+                 )}
                  
                 {products.length > 0 && (
                     <div className="mb-8">
@@ -527,7 +578,7 @@ export default function CatalogPage() {
                                                             <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => updateQuantity(product.id, itemInCart.quantity + 1)}><PlusCircle className="h-4 w-4" /></Button>
                                                         </div>
                                                     ) : (
-                                                        <Button variant="outline" className="w-full" onClick={() => addToCart(product)}>Tambah</Button>
+                                                        <Button variant="outline" className="w-full" onClick={() => addToCart(product)} disabled={!!activeOrderId}>Tambah</Button>
                                                     )
                                                 ) : (
                                                     <Button variant="outline" className="w-full" disabled>Stok Habis</Button>
@@ -603,7 +654,8 @@ export default function CatalogPage() {
                     </div>
                     {loggedInCustomer ? (
                          <Button className="w-full" onClick={handleCreateOrder} disabled={isSubmittingOrder}>
-                           {isSubmittingOrder ? <Loader className="animate-spin" /> : 'Konfirmasi & Buat Pesanan'}
+                           {isSubmittingOrder ? <Loader className="animate-spin" /> : <Receipt className="mr-2 h-4 w-4"/>}
+                           Konfirmasi & Buat Pesanan
                          </Button>
                     ) : (
                          <Alert>
