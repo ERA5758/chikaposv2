@@ -415,7 +415,7 @@ export default function CatalogPage() {
                     item.productId === product.id ? { ...item, quantity: item.quantity + 1 } : item
                 );
             }
-            return [...currentCart, { productId: product.id, name: product.name, price: product.price, quantity: 1, notes: '' }];
+            return [...currentCart, { productId: product.id, productName: product.name, price: product.price, quantity: 1, notes: '' }];
         });
     };
 
@@ -446,7 +446,13 @@ export default function CatalogPage() {
             const payload: OrderPayload = {
                 storeId: store.id,
                 customer: loggedInCustomer,
-                cart: cart,
+                cart: cart.map(item => ({
+                    productId: item.productId,
+                    productName: item.productName,
+                    price: item.price,
+                    quantity: item.quantity,
+                    notes: item.notes,
+                })),
                 subtotal: cartSubtotal,
                 taxAmount: taxAmount,
                 serviceFeeAmount: serviceFeeAmount,
@@ -704,7 +710,7 @@ export default function CatalogPage() {
                         {cart.map(item => (
                             <div key={item.productId} className="flex items-start gap-4">
                                 <div className="flex-1">
-                                    <p className="font-semibold">{item.name}</p>
+                                    <p className="font-semibold">{item.productName}</p>
                                     {item.notes && (
                                         <p className="text-xs text-muted-foreground italic pl-2 border-l-2 ml-2 my-1">
                                             &quot;{item.notes}&quot;
@@ -793,3 +799,4 @@ export default function CatalogPage() {
     );
 }
 
+    
