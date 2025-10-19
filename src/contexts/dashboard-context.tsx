@@ -1,8 +1,8 @@
 
 'use client';
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query, orderBy, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, onSnapshot, Unsubscribe, where } from 'firebase/firestore';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import type { User, RedemptionOption, Product, Store, Customer, Transaction, PendingOrder, Table, ChallengePeriod, TransactionFeeSettings } from '@/lib/types';
@@ -21,6 +21,8 @@ const defaultFeeSettings: TransactionFeeSettings = {
   catalogMonthlyFee: 250,
   catalogSixMonthFee: 1400,
   catalogYearlyFee: 2500,
+  taxPercentage: 0,
+  serviceFeePercentage: 0,
 };
 
 interface DashboardContextType {
@@ -38,6 +40,7 @@ interface DashboardContextType {
   };
   isLoading: boolean;
   refreshData: () => void;
+  playNotificationSound: () => void;
 }
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
@@ -51,7 +54,8 @@ async function fetchTransactionFeeSettings(): Promise<TransactionFeeSettings> {
             return defaultFeeSettings;
         }
         const data = await response.json();
-        return data;
+        // Merge with defaults to ensure all properties are present
+        return { ...defaultFeeSettings, ...data };
     } catch (error) {
         console.error("Error fetching app settings:", error);
         return defaultFeeSettings;
@@ -62,6 +66,7 @@ async function fetchTransactionFeeSettings(): Promise<TransactionFeeSettings> {
 export function DashboardProvider({ children }: { children: ReactNode }) {
   const { currentUser, activeStore, isLoading: isAuthLoading, refreshPradanaTokenBalance } = useAuth();
   const { toast } = useToast();
+  const notificationAudioRef = useRef<HTMLAudioElement>(null);
 
   const [stores, setStores] = useState<Store[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -74,6 +79,10 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const [challengePeriods, setChallengePeriods] = useState<ChallengePeriod[]>([]);
   const [feeSettings, setFeeSettings] = useState<TransactionFeeSettings>(defaultFeeSettings);
   const [isLoading, setIsLoading] = useState(true);
+  
+  const playNotificationSound = () => {
+    notificationAudioRef.current?.play().catch(e => console.error("Audio playback failed:", e));
+  };
 
   const refreshData = useCallback(async () => {
     if (!currentUser) return;
@@ -84,12 +93,11 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     try {
         const storeId = activeStore?.id;
         
-        let productCollectionRef, customerCollectionRef, tableCollectionRef, redemptionOptionsCollectionRef, challengePeriodsCollectionRef;
+        let productCollectionRef, customerCollectionRef, redemptionOptionsCollectionRef, challengePeriodsCollectionRef;
 
         if (storeId) {
              productCollectionRef = collection(db, 'stores', storeId, 'products');
              customerCollectionRef = collection(db, 'stores', storeId, 'customers');
-             tableCollectionRef = collection(db, 'stores', storeId, 'tables');
              redemptionOptionsCollectionRef = collection(db, 'stores', storeId, 'redemptionOptions');
              challengePeriodsCollectionRef = collection(db, 'stores', storeId, 'challengePeriods');
         }
@@ -101,7 +109,6 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
             usersSnapshot,
             redemptionOptionsSnapshot,
             feeSettingsData,
-            tablesSnapshot,
             challengePeriodsSnapshot,
         ] = await Promise.all([
             getDocs(collection(db, 'stores')),
@@ -110,7 +117,6 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
             getDocs(query(collection(db, 'users'))),
             storeId ? getDocs(query(redemptionOptionsCollectionRef)) : Promise.resolve({ docs: [] }),
             fetchTransactionFeeSettings(),
-            storeId ? getDocs(query(tableCollectionRef, orderBy('name'))) : Promise.resolve({ docs: [] }),
             storeId ? getDocs(query(challengePeriodsCollectionRef, orderBy('createdAt', 'desc'))) : Promise.resolve({ docs: [] }),
         ]);
 
@@ -118,7 +124,6 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         setProducts(productsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)));
         setUsers(usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User)));
         setCustomers(customersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer)));
-        setTables(tablesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Table)));
         setRedemptionOptions(redemptionOptionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RedemptionOption)));
         setChallengePeriods(challengePeriodsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChallengePeriod)));
         setFeeSettings(feeSettingsData);
@@ -161,48 +166,60 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         return;
     }
 
-    // Only refresh static data if there's a user and an active store (for non-superadmins)
     if (currentUser && (currentUser.role === 'superadmin' || activeStore)) {
         refreshData();
     } else if (currentUser && currentUser.role !== 'superadmin' && !activeStore) {
-        // This case might happen briefly while activeStore is loading.
-        // We should wait.
         setIsLoading(true);
         return;
     }
 
-    let transactionsUnsubscribe: Unsubscribe | undefined;
-    let pendingOrdersUnsubscribe: Unsubscribe | undefined;
+    let unsubscribes: Unsubscribe[] = [];
 
     if (currentUser.role !== 'superadmin' && activeStore?.id) {
         const storeId = activeStore.id;
-        const transactionCollectionRef = collection(db, 'stores', storeId, 'transactions');
-        const transactionsQuery = query(transactionCollectionRef, orderBy('createdAt', 'desc'));
         
-        transactionsUnsubscribe = onSnapshot(transactionsQuery, (snapshot) => {
-            setTransactions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction)));
-        }, (error) => {
-            console.error("Error listening to transactions: ", error);
-            toast({ variant: 'destructive', title: 'Error Real-time Transaksi', description: 'Gagal memperbarui data transaksi.'});
-        });
-
+        const transactionsQuery = query(collection(db, 'stores', storeId, 'transactions'), orderBy('createdAt', 'desc'));
+        const tablesQuery = query(collection(db, 'stores', storeId, 'tables'), orderBy('name'));
         const pendingOrdersQuery = query(collection(db, 'pendingOrders'));
-        pendingOrdersUnsubscribe = onSnapshot(pendingOrdersQuery, (snapshot) => {
-            setPendingOrders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PendingOrder)));
-        }, (error) => {
-            console.error("Error listening to pending orders: ", error);
-            toast({ variant: 'destructive', title: 'Error Real-time Pesanan', description: 'Gagal memperbarui data pesanan.'});
-        });
 
-    } else if (currentUser.role === 'superadmin') {
-        // Superadmin doesn't need these real-time listeners
-        setTransactions([]);
-        setPendingOrders([]);
+        const unsubTransactions = onSnapshot(transactionsQuery, (snapshot) => {
+            setTransactions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction)));
+        }, (error) => console.error("Error listening to transactions: ", error));
+
+        const unsubTables = onSnapshot(tablesQuery, (snapshot) => {
+            const newTables = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Table));
+            
+            setTables(prevTables => {
+                // Only notify if there are previous tables to compare against
+                if (prevTables.length > 0) {
+                    const prevTableIds = new Set(prevTables.map(t => t.id));
+                    const newVirtualOrders = newTables.filter(t => 
+                        !prevTableIds.has(t.id) && t.isVirtual && t.currentOrder
+                    );
+
+                    if (newVirtualOrders.length > 0) {
+                        playNotificationSound();
+                        newVirtualOrders.forEach(table => {
+                             toast({
+                                title: "🔔 Pesanan Baru Masuk!",
+                                description: `Ada pesanan baru di ${table.name}.`,
+                            });
+                        });
+                    }
+                }
+                return newTables;
+            });
+        }, (error) => console.error("Error listening to tables: ", error));
+        
+        const unsubPendingOrders = onSnapshot(pendingOrdersQuery, (snapshot) => {
+            setPendingOrders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PendingOrder)));
+        }, (error) => console.error("Error listening to pending orders: ", error));
+
+        unsubscribes = [unsubTransactions, unsubTables, unsubPendingOrders];
     }
 
     return () => {
-        if (transactionsUnsubscribe) transactionsUnsubscribe();
-        if (pendingOrdersUnsubscribe) pendingOrdersUnsubscribe();
+        unsubscribes.forEach(unsub => unsub());
     };
   }, [isAuthLoading, currentUser, activeStore, refreshData, toast]);
 
@@ -221,9 +238,15 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     },
     isLoading,
     refreshData,
+    playNotificationSound,
   };
 
-  return <DashboardContext.Provider value={value}>{children}</DashboardContext.Provider>;
+  return (
+    <DashboardContext.Provider value={value}>
+        {children}
+        <audio ref={notificationAudioRef} src="https://cdn.freesound.org/previews/242/242857_4284968-lq.mp3" preload="auto" />
+    </DashboardContext.Provider>
+  );
 }
 
 export function useDashboard() {

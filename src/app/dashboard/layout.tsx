@@ -9,6 +9,7 @@ import { DashboardProvider } from "@/contexts/dashboard-context";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { UtensilsCrossed } from "lucide-react";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { currentUser, isLoading } = useAuth();
@@ -39,11 +40,13 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   return (
     <DashboardProvider>
       <SidebarProvider>
-        <div className="flex min-h-screen w-full bg-background">
-          {children}
-          {currentUser.role === 'cashier' && <FloatingStoreIndicator />}
-          <ChikaChatButton />
-        </div>
+         <TooltipProvider>
+            <div className="flex min-h-screen w-full bg-background">
+              {children}
+              {currentUser.role === 'cashier' && <FloatingStoreIndicator />}
+              <ChikaChatButton />
+            </div>
+         </TooltipProvider>
       </SidebarProvider>
     </DashboardProvider>
   );

@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -28,6 +29,7 @@ import {
   CreditCard,
   ClipboardCheck,
   HandCoins,
+  MessageSquare,
 } from 'lucide-react';
 import Image from 'next/image';
 import { Separator } from '@/components/ui/separator';
@@ -68,11 +70,46 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Switch } from '@/components/ui/switch';
 import type { PointEarningSettings } from '@/lib/types';
 import { pointEarningSettings } from '@/lib/point-earning-settings';
+import { Textarea } from '@/components/ui/textarea';
+
 
 type POSProps = {
   onPrintRequest: (transaction: Transaction) => void;
 };
 
+function NoteDialog({ open, onOpenChange, note, onSave }: { open: boolean, onOpenChange: (open: boolean) => void, note: string, onSave: (newNote: string) => void }) {
+    const [currentNote, setCurrentNote] = React.useState(note);
+
+    React.useEffect(() => {
+        if(open) {
+            setCurrentNote(note);
+        }
+    }, [open, note]);
+
+    const handleSave = () => {
+        onSave(currentNote);
+        onOpenChange(false);
+    }
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Tambah Catatan</DialogTitle>
+                </DialogHeader>
+                <Textarea 
+                    value={currentNote}
+                    onChange={(e) => setCurrentNote(e.target.value)}
+                    placeholder="Contoh: ekstra pedas, tanpa gula, dll."
+                    rows={4}
+                />
+                <DialogFooter>
+                    <Button onClick={handleSave}>Simpan Catatan</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
 
 export default function POS({ onPrintRequest }: POSProps) {
   const { currentUser, activeStore, pradanaTokenBalance, refreshPradanaTokenBalance } = useAuth();
@@ -93,12 +130,13 @@ export default function POS({ onPrintRequest }: POSProps) {
   const [discountValue, setDiscountValue] = React.useState(0);
   const [pointsToRedeem, setPointsToRedeem] = React.useState(0);
   const [confirmationAction, setConfirmationAction] = React.useState<{isPaid: boolean} | null>(null);
+  const [noteProduct, setNoteProduct] = React.useState<CartItem | null>(null);
 
   const tableId = searchParams.get('tableId');
   
   // Effect to load order from table if it exists
   React.useEffect(() => {
-    if (tableId && tables.length > 0 && products.length > 0) {
+    if (tableId && tables.length > 0) {
         const table = tables.find(t => t.id === tableId);
         if (table?.currentOrder) {
             // Reconstruct cart items ensuring productName is included
@@ -108,6 +146,7 @@ export default function POS({ onPrintRequest }: POSProps) {
                     ...orderItem,
                     productName: product?.name || orderItem.productName || 'Unknown Product',
                     price: product?.price || orderItem.price || 0,
+                    notes: orderItem.notes || '',
                 };
             });
             setCart(reconstructedCart);
@@ -171,6 +210,7 @@ export default function POS({ onPrintRequest }: POSProps) {
           productName: product.name,
           quantity: 1,
           price: product.price,
+          notes: '',
         },
       ];
     });
@@ -229,6 +269,14 @@ export default function POS({ onPrintRequest }: POSProps) {
         description: `Tidak ada produk dengan barcode: ${barcode}`,
       });
     }
+  };
+  
+  const handleNoteSave = (productId: string, newNote: string) => {
+    setCart(currentCart =>
+        currentCart.map(item =>
+            item.productId === productId ? { ...item, notes: newNote } : item
+        )
+    );
   };
 
   const { subtotal, discountAmount, taxAmount, serviceFeeAmount, totalAmount } = React.useMemo(() => {
@@ -586,12 +634,17 @@ export default function POS({ onPrintRequest }: POSProps) {
                 <div className="space-y-4 pr-4">
                   {cart.length > 0 ? (
                     cart.map((item) => (
-                      <div key={item.productId} className="flex items-center gap-4">
+                      <div key={item.productId} className="flex items-start gap-4">
                         <div className="flex-1">
                           <p className="font-medium">{item.productName}</p>
                           <p className="text-sm text-muted-foreground">
                             Rp {item.price.toLocaleString('id-ID')}
                           </p>
+                          {item.notes && (
+                            <p className="text-xs text-muted-foreground italic pl-2 border-l-2 ml-2 my-1">
+                                &quot;{item.notes}&quot;
+                            </p>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
                           <Button
@@ -630,6 +683,7 @@ export default function POS({ onPrintRequest }: POSProps) {
                         >
                           <XCircle className="h-4 w-4" />
                         </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={() => setNoteProduct(item)}><MessageSquare className="h-4 w-4" /></Button>
                       </div>
                     ))
                   ) : (
@@ -798,6 +852,15 @@ export default function POS({ onPrintRequest }: POSProps) {
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+       {noteProduct && (
+            <NoteDialog
+                open={!!noteProduct}
+                onOpenChange={() => setNoteProduct(null)}
+                note={noteProduct.notes || ''}
+                onSave={(newNote) => handleNoteSave(noteProduct.productId, newNote)}
+            />
+        )}
     </>
   );
 }
