@@ -65,7 +65,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const updateActiveStore = (newStoreData: Partial<Store>) => {
     setActiveStore(prevStore => {
       if (!prevStore) return null;
-      return { ...prevStore, ...newStoreData };
+      const updatedStore = { ...prevStore, ...newStoreData };
+      
+      // Also update token balance if it's part of the update
+      if (newStoreData.pradanaTokenBalance !== undefined) {
+        setPradanaTokenBalance(newStoreData.pradanaTokenBalance);
+      }
+      
+      return updatedStore;
     });
   };
 
@@ -97,7 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         let storeIdToLoad: string | undefined;
 
-        if (userData.role === 'cashier' && userData.storeId) {
+        if ((userData.role === 'cashier' || userData.role === 'kitchen') && userData.storeId) {
             storeIdToLoad = userData.storeId;
         } else if (userData.role === 'admin') {
             const storesQuery = query(collection(db, 'stores'), where('adminUids', 'array-contains', user.uid));
