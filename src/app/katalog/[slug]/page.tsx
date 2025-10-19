@@ -6,13 +6,13 @@ import type { Store, Product, ProductCategory, RedemptionOption, Customer, Order
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Image from 'next/image';
-import { UtensilsCrossed, PackageX, MessageCircle, Sparkles, Send, Loader, Gift, ShoppingCart, PlusCircle, MinusCircle, XCircle, LogIn, UserCircle, LogOut } from 'lucide-react';
+import { UtensilsCrossed, PackageX, MessageCircle, Sparkles, Send, Loader, Gift, ShoppingCart, PlusCircle, MinusCircle, XCircle, LogIn, UserCircle, LogOut, Crown, Coins } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetTrigger } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import ReactMarkdown from 'react-markdown';
 import { CatalogAssistantInput, CatalogAssistantOutput } from '@/lib/types';
 import { useParams } from 'next/navigation';
@@ -28,6 +28,7 @@ import { cn } from '@/lib/utils';
 import { CustomerAuthDialog } from '@/components/catalog/customer-auth-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { getPointEarningSettings, PointEarningSettings } from '@/lib/point-earning-settings';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 
 type CartItem = {
@@ -267,8 +268,7 @@ export default function CatalogPage() {
                 setProducts(data.products);
                 setPromotions(data.promotions);
                 
-                // Safely get settings only if store data is available
-                if (data.store && data.store.id) {
+                if (data.store?.id) {
                     const settings = await getPointEarningSettings(data.store.id);
                     setPointSettings(settings);
                 }
@@ -284,7 +284,6 @@ export default function CatalogPage() {
         }
         fetchData();
         
-        // Check for existing session on page load
         const savedSession = localStorage.getItem(sessionKey);
         if (savedSession) {
             setLoggedInCustomer(JSON.parse(savedSession));
@@ -433,10 +432,23 @@ export default function CatalogPage() {
                     </div>
                      <div className="w-24 text-right">
                         {loggedInCustomer ? (
-                            <div className='text-sm font-semibold flex items-center justify-end gap-2'>
-                                <UserCircle className="h-5 w-5" />
-                                <span className='truncate'>{loggedInCustomer.name.split(' ')[0]}</span>
-                            </div>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <div className='text-sm font-semibold flex items-center justify-end gap-2 cursor-pointer' role="button">
+                                        <UserCircle className="h-5 w-5" />
+                                        <span className='truncate'>{loggedInCustomer.name.split(' ')[0]}</span>
+                                    </div>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-4 mr-4 space-y-2">
+                                    <h4 className="font-medium leading-none">{loggedInCustomer.name}</h4>
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                        <Coins className="h-4 w-4 text-primary" /> Poin Anda: <span className="font-bold text-primary">{loggedInCustomer.loyaltyPoints}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                        <Crown className="h-4 w-4 text-amber-500" /> Tier: <span className="font-bold text-foreground">{loggedInCustomer.memberTier}</span>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
                         ) : (
                             <Button variant="outline" size="sm" onClick={() => setIsAuthDialogOpen(true)}>
                                 <LogIn className="mr-2 h-4 w-4" />
