@@ -1,21 +1,37 @@
+'use client';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getPointEarningSettings, updatePointEarningSettings } from '@/lib/server/point-earning-settings';
 import { getFirebaseAdmin } from '@/lib/server/firebase-admin';
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const storeId = searchParams.get('storeId');
-
-  if (!storeId) {
-    return NextResponse.json({ error: 'Parameter storeId diperlukan.' }, { status: 400 });
-  }
-
   try {
+    const { auth } = getFirebaseAdmin();
+    const authorization = req.headers.get('Authorization');
+    if (!authorization?.startsWith('Bearer ')) {
+        return NextResponse.json({ error: 'Unauthorized: Missing token' }, { status: 401 });
+    }
+    const idToken = authorization.split('Bearer ')[1];
+    await auth.verifyIdToken(idToken);
+    
+    const { searchParams } = new URL(req.url);
+    const storeId = searchParams.get('storeId');
+
+    if (!storeId) {
+        return NextResponse.json({ error: 'Parameter storeId diperlukan.' }, { status: 400 });
+    }
+
     const settings = await getPointEarningSettings(storeId);
     return NextResponse.json(settings);
+    
   } catch (error) {
     console.error('Error fetching point earning settings via API:', error);
-    return NextResponse.json({ error: 'Terjadi kesalahan internal saat memuat pengaturan poin.' }, { status: 500 });
+    const errorMessage = (error instanceof Error && (error as any).code === 'auth/id-token-expired') 
+        ? 'Sesi Anda telah berakhir, silakan login kembali.'
+        : 'Terjadi kesalahan internal.';
+    const statusCode = (error instanceof Error && (error as any).code === 'auth/id-token-expired') ? 401 : 500;
+    
+    return NextResponse.json({ error: errorMessage }, { status: statusCode });
   }
 }
 

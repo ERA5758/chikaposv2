@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import type { Product, Customer, CartItem, Transaction, Table } from '@/lib/types';
+import type { Product, Customer, CartItem, Transaction } from '@/lib/types';
 import {
   Search,
   PlusCircle,
@@ -48,7 +48,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { collection, doc, runTransaction, increment, serverTimestamp, getDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context';
@@ -66,32 +66,11 @@ export default function POS({ onPrintRequest }: POSProps) {
   const { currentUser, activeStore, pradanaTokenBalance, refreshPradanaTokenBalance } = useAuth();
   const { dashboardData, isLoading, refreshData } = useDashboard();
   const { products, customers, tables, feeSettings } = dashboardData;
-  const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { toast } = useToast();
   
   const [pointSettings, setPointSettings] = React.useState<PointEarningSettings | null>(null);
-
-  React.useEffect(() => {
-    async function fetchSettings() {
-      if (activeStore?.id) {
-        try {
-          const response = await fetch(`/api/point-settings?storeId=${activeStore.id}`);
-          if (response.ok) {
-              const data = await response.json();
-              setPointSettings(data);
-          } else {
-            console.error("Failed to fetch point settings.");
-            setPointSettings(null); // or set to default
-          }
-        } catch (error) {
-           console.error("Error fetching point settings:", error);
-           setPointSettings(null);
-        }
-      }
-    }
-    fetchSettings();
-  }, [activeStore]);
 
   const [isProcessingCheckout, setIsProcessingCheckout] = React.useState(false);
   const [cart, setCart] = React.useState<CartItem[]>([]);
@@ -103,6 +82,36 @@ export default function POS({ onPrintRequest }: POSProps) {
   const [discountType, setDiscountType] = React.useState<'percent' | 'nominal'>('percent');
   const [discountValue, setDiscountValue] = React.useState(0);
   const [pointsToRedeem, setPointsToRedeem] = React.useState(0);
+  
+
+  React.useEffect(() => {
+    async function fetchSettings() {
+      if (activeStore?.id) {
+        try {
+          const idToken = await auth.currentUser?.getIdToken();
+          if (!idToken) {
+            // Silently fail if not authenticated, as auth state will handle redirects
+            return;
+          }
+          const response = await fetch(`/api/point-settings?storeId=${activeStore.id}`, {
+            headers: { 'Authorization': `Bearer ${idToken}` }
+          });
+          if (response.ok) {
+              const data = await response.json();
+              setPointSettings(data);
+          } else {
+            console.error("Failed to fetch point settings.");
+            setPointSettings(null); 
+          }
+        } catch (error) {
+           console.error("Error fetching point settings:", error);
+           setPointSettings(null);
+        }
+      }
+    }
+    fetchSettings();
+  }, [activeStore]);
+
 
   const customerOptions = (customers || []).map((c) => ({
     value: c.id,
@@ -682,7 +691,7 @@ export default function POS({ onPrintRequest }: POSProps) {
                 </div>
                 <Button size="lg" className="w-full font-headline text-lg tracking-wider" variant="outline" onClick={() => handleCheckout(true)} disabled={isProcessingCheckout || isLoading}>
                     <CreditCard className="mr-2 h-5 w-5"/>
-                    Buat Pesanan & Bayar
+                    Proses Pembayaran & Selesaikan
                 </Button>
               </div>
 
