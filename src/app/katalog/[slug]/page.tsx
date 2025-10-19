@@ -7,7 +7,7 @@ import type { Store, Product, ProductCategory, RedemptionOption, Customer, Order
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Image from 'next/image';
-import { UtensilsCrossed, PackageX, MessageCircle, Sparkles, Send, Loader, Gift, ShoppingCart, PlusCircle, MinusCircle, XCircle, LogIn, UserCircle, LogOut, Crown, Coins, Receipt, Percent, HandCoins } from 'lucide-react';
+import { UtensilsCrossed, PackageX, MessageCircle, Sparkles, Send, Loader, Gift, ShoppingCart, PlusCircle, MinusCircle, XCircle, LogIn, UserCircle, LogOut, Crown, Coins, Receipt, Percent, HandCoins, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetTrigger } from '@/components/ui/sheet';
@@ -30,6 +30,7 @@ import { CustomerAuthDialog } from '@/components/catalog/customer-auth-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
 
 
 type CartItem = {
@@ -37,7 +38,43 @@ type CartItem = {
     name: string;
     price: number;
     quantity: number;
+    notes?: string;
 };
+
+function NoteDialog({ open, onOpenChange, note, onSave }: { open: boolean, onOpenChange: (open: boolean) => void, note: string, onSave: (newNote: string) => void }) {
+    const [currentNote, setCurrentNote] = React.useState(note);
+
+    React.useEffect(() => {
+        if(open) {
+            setCurrentNote(note);
+        }
+    }, [open, note]);
+
+    const handleSave = () => {
+        onSave(currentNote);
+        onOpenChange(false);
+    }
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Tambah Catatan</DialogTitle>
+                </DialogHeader>
+                <Textarea 
+                    value={currentNote}
+                    onChange={(e) => setCurrentNote(e.target.value)}
+                    placeholder="Contoh: ekstra pedas, tanpa gula, dll."
+                    rows={4}
+                />
+                <DialogFooter>
+                    <Button onClick={handleSave}>Simpan Catatan</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 
 function groupProducts(products: Product[]): Record<string, Product[]> {
     return products.reduce((acc, product) => {
@@ -262,6 +299,9 @@ export default function CatalogPage() {
     const [cart, setCart] = React.useState<CartItem[]>([]);
     const [isSubmittingOrder, setIsSubmittingOrder] = React.useState(false);
     
+    // --- Note Dialog State ---
+    const [noteProduct, setNoteProduct] = React.useState<CartItem | null>(null);
+    
     // --- Customer Auth State ---
     const [isAuthDialogOpen, setIsAuthDialogOpen] = React.useState(false);
     const [loggedInCustomer, setLoggedInCustomer] = React.useState<Customer | null>(null);
@@ -367,7 +407,7 @@ export default function CatalogPage() {
                     item.productId === product.id ? { ...item, quantity: item.quantity + 1 } : item
                 );
             }
-            return [...currentCart, { productId: product.id, name: product.name, price: product.price, quantity: 1 }];
+            return [...currentCart, { productId: product.id, name: product.name, price: product.price, quantity: 1, notes: '' }];
         });
     };
 
@@ -383,6 +423,14 @@ export default function CatalogPage() {
         }
     };
     
+     const handleNoteSave = (productId: string, newNote: string) => {
+        setCart(currentCart =>
+            currentCart.map(item =>
+                item.productId === productId ? { ...item, notes: newNote } : item
+            )
+        );
+    };
+
     const handleCreateOrder = async () => {
         if (!loggedInCustomer || !store || cart.length === 0) return;
         setIsSubmittingOrder(true);
@@ -577,13 +625,19 @@ export default function CatalogPage() {
                                                     <p className="text-sm text-muted-foreground">{product.description}</p>
                                                 </CardContent>
                                             )}
-                                            <CardFooter>
+                                             <CardFooter className="flex-col items-stretch gap-2">
+                                                {itemInCart?.notes && (
+                                                    <Button variant="outline" size="sm" className="w-full text-xs text-muted-foreground truncate" onClick={() => setNoteProduct(itemInCart)}>
+                                                        Catatan: {itemInCart.notes}
+                                                    </Button>
+                                                )}
                                                 {product.stock > 0 ? (
                                                     itemInCart ? (
                                                         <div className="flex items-center gap-2 w-full">
                                                             <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => updateQuantity(product.id, itemInCart.quantity - 1)}><MinusCircle className="h-4 w-4" /></Button>
                                                             <span className="font-bold text-center flex-grow">{itemInCart.quantity}</span>
                                                             <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => updateQuantity(product.id, itemInCart.quantity + 1)}><PlusCircle className="h-4 w-4" /></Button>
+                                                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setNoteProduct(itemInCart)}><MessageSquare className="h-4 w-4" /></Button>
                                                         </div>
                                                     ) : (
                                                         <Button variant="outline" className="w-full" onClick={() => addToCart(product)} disabled={!!activeOrderId}>Tambah</Button>
@@ -639,9 +693,14 @@ export default function CatalogPage() {
                 <ScrollArea className="flex-grow my-4 pr-4 -mr-6">
                     <div className="space-y-4">
                         {cart.map(item => (
-                            <div key={item.productId} className="flex items-center gap-4">
+                            <div key={item.productId} className="flex items-start gap-4">
                                 <div className="flex-1">
                                     <p className="font-semibold">{item.name}</p>
+                                    {item.notes && (
+                                        <p className="text-xs text-muted-foreground italic pl-2 border-l-2 ml-2 my-1">
+                                            &quot;{item.notes}&quot;
+                                        </p>
+                                    )}
                                     <p className="text-sm text-muted-foreground">Rp {item.price.toLocaleString('id-ID')}</p>
                                 </div>
                                  <div className="flex items-center gap-2">
@@ -650,7 +709,7 @@ export default function CatalogPage() {
                                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateQuantity(item.productId, item.quantity + 1)}><PlusCircle className="h-4 w-4" /></Button>
                                 </div>
                                 <p className="font-mono text-sm w-20 text-right">Rp {(item.price * item.quantity).toLocaleString('id-ID')}</p>
-                                 <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive/70" onClick={() => updateQuantity(item.productId, 0)}><XCircle className="h-5 w-5" /></Button>
+                                 <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={() => setNoteProduct(item)}><MessageSquare className="h-5 w-5" /></Button>
                             </div>
                         ))}
                     </div>
@@ -712,6 +771,16 @@ export default function CatalogPage() {
             storeId={store.id}
             onLoginSuccess={handleLoginSuccess}
         />}
+
+        {noteProduct && (
+            <NoteDialog
+                open={!!noteProduct}
+                onOpenChange={() => setNoteProduct(null)}
+                note={noteProduct.notes || ''}
+                onSave={(newNote) => handleNoteSave(noteProduct.productId, newNote)}
+            />
+        )}
         </>
     );
 }
+
