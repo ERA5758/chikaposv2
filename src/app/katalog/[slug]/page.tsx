@@ -1,15 +1,14 @@
-
 'use client';
 
 import * as React from 'react';
-import type { Store, Product, ProductCategory, RedemptionOption } from '@/lib/types';
+import type { Store, Product, ProductCategory, RedemptionOption, Customer } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Image from 'next/image';
-import { UtensilsCrossed, PackageX, MessageCircle, Sparkles, Send, Loader, Gift, ShoppingCart, PlusCircle, MinusCircle, XCircle, LogIn } from 'lucide-react';
+import { UtensilsCrossed, PackageX, MessageCircle, Sparkles, Send, Loader, Gift, ShoppingCart, PlusCircle, MinusCircle, XCircle, LogIn, UserCircle, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetTrigger, SheetClose } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetTrigger } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -25,6 +24,8 @@ import {
 } from "@/components/ui/carousel"
 import Autoplay from "embla-carousel-autoplay"
 import { cn } from '@/lib/utils';
+import { CustomerAuthDialog } from '@/components/catalog/customer-auth-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 type CartItem = {
     productId: string;
@@ -224,6 +225,7 @@ function PromotionSection({ promotions }: { promotions: RedemptionOption[] }) {
 export default function CatalogPage() {
     const params = useParams();
     const slug = params?.slug as string;
+    const { toast } = useToast();
     const [store, setStore] = React.useState<Store | null>(null);
     const [products, setProducts] = React.useState<Product[]>([]);
     const [promotions, setPromotions] = React.useState<RedemptionOption[]>([]);
@@ -233,9 +235,11 @@ export default function CatalogPage() {
     const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null);
     const [cart, setCart] = React.useState<CartItem[]>([]);
     
-    // **NEW**: State to track if user is logged in. For now, it's a mock.
-    const [isLoggedIn, setIsLoggedIn] = React.useState(false);
-    const [customerName, setCustomerName] = React.useState("Tamu");
+    // --- Start Customer Auth State ---
+    const [isAuthDialogOpen, setIsAuthDialogOpen] = React.useState(false);
+    const [loggedInCustomer, setLoggedInCustomer] = React.useState<Customer | null>(null);
+    const sessionKey = `chika-customer-session-${slug}`;
+    // --- End Customer Auth State ---
 
 
     React.useEffect(() => {
@@ -266,10 +270,36 @@ export default function CatalogPage() {
             }
         }
         fetchData();
-    }, [slug]);
+        
+        // Check for existing session on page load
+        const savedSession = localStorage.getItem(sessionKey);
+        if (savedSession) {
+            setLoggedInCustomer(JSON.parse(savedSession));
+        }
+
+    }, [slug, sessionKey]);
     
     const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
     const cartSubtotal = cart.reduce((total, item) => total + item.price * item.quantity, 0);
+
+    const handleLoginSuccess = (customer: Customer) => {
+        setLoggedInCustomer(customer);
+        localStorage.setItem(sessionKey, JSON.stringify(customer));
+        setIsAuthDialogOpen(false);
+        toast({
+            title: `Selamat Datang, ${customer.name}!`,
+            description: "Anda berhasil masuk. Sekarang Anda bisa memesan langsung.",
+        });
+    };
+    
+    const handleLogout = () => {
+        setLoggedInCustomer(null);
+        localStorage.removeItem(sessionKey);
+        toast({
+            title: "Anda telah keluar.",
+        });
+    };
+
 
     const addToCart = (product: Product) => {
         setCart(currentCart => {
@@ -331,23 +361,36 @@ export default function CatalogPage() {
     }
 
     return (
+        <>
         <Sheet>
         <div className="min-h-screen bg-background">
             <header className="p-4 border-b text-center sticky top-0 bg-background/80 backdrop-blur-sm z-10">
                 <div className="flex justify-between items-center container mx-auto max-w-4xl">
-                    <div></div> {/* Empty div for spacing */}
+                     <div className="w-24 text-left">
+                        {loggedInCustomer && (
+                            <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground">
+                                <LogOut className="mr-2 h-4 w-4" />
+                                Keluar
+                            </Button>
+                        )}
+                    </div>
                     <div className='text-center'>
                          <h1 className="text-3xl font-headline tracking-wider font-bold">{store.name}</h1>
                          <p className="text-muted-foreground">{store.location}</p>
                     </div>
-                     {isLoggedIn ? (
-                        <div className='text-sm font-semibold'>{customerName}</div>
-                     ) : (
-                        <Button variant="outline" size="sm" onClick={() => alert("Fitur Login/Daftar akan segera hadir!")}>
-                            <LogIn className="mr-2 h-4 w-4" />
-                            Login
-                        </Button>
-                     )}
+                     <div className="w-24 text-right">
+                        {loggedInCustomer ? (
+                            <div className='text-sm font-semibold flex items-center justify-end gap-2'>
+                                <UserCircle className="h-5 w-5" />
+                                <span className='truncate'>{loggedInCustomer.name.split(' ')[0]}</span>
+                            </div>
+                        ) : (
+                            <Button variant="outline" size="sm" onClick={() => setIsAuthDialogOpen(true)}>
+                                <LogIn className="mr-2 h-4 w-4" />
+                                Login
+                            </Button>
+                        )}
+                    </div>
                 </div>
             </header>
             
@@ -488,14 +531,14 @@ export default function CatalogPage() {
                         <span>Total</span>
                         <span>Rp {cartSubtotal.toLocaleString('id-ID')}</span>
                     </div>
-                    {isLoggedIn ? (
-                        <Button className="w-full">Konfirmasi & Buat Pesanan</Button>
+                    {loggedInCustomer ? (
+                        <Button className="w-full" onClick={() => alert("Fitur pemesanan langsung akan diimplementasikan.")}>Konfirmasi & Buat Pesanan</Button>
                     ) : (
                          <Alert>
                             <UtensilsCrossed className="h-4 w-4" />
                             <AlertTitle>Langkah Berikutnya</AlertTitle>
                             <AlertDescription>
-                                Tunjukkan pesanan ini di kasir, atau <Button variant="link" className="p-0 h-auto" onClick={() => alert("Login akan diimplementasikan")}>masuk/daftar</Button> untuk memesan langsung.
+                                Tunjukkan pesanan ini di kasir, atau <Button variant="link" className="p-0 h-auto" onClick={() => setIsAuthDialogOpen(true)}>masuk/daftar</Button> untuk memesan langsung.
                             </AlertDescription>
                         </Alert>
                     )}
@@ -510,5 +553,13 @@ export default function CatalogPage() {
             )}
         </SheetContent>
         </Sheet>
+        
+        {store && <CustomerAuthDialog
+            open={isAuthDialogOpen}
+            onOpenChange={setIsAuthDialogOpen}
+            storeId={store.id}
+            onLoginSuccess={handleLoginSuccess}
+        />}
+        </>
     );
 }
