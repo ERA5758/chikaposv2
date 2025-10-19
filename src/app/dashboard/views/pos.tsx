@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import type { Product, Customer, CartItem, Transaction, Table, PointEarningSettings } from '@/lib/types';
+import type { Product, Customer, CartItem, Transaction, Table } from '@/lib/types';
 import {
   Search,
   PlusCircle,
@@ -54,6 +54,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useDashboard } from '@/contexts/dashboard-context';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Switch } from '@/components/ui/switch';
+import type { PointEarningSettings } from '@/lib/server/point-earning-settings';
 
 type POSProps = {
   onPrintRequest: (transaction: Transaction) => void;
@@ -67,45 +68,8 @@ export default function POS({ onPrintRequest }: POSProps) {
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
-
-  const [selectedTableId, setSelectedTableId] = React.useState<string | null>(null);
-  const [selectedTable, setSelectedTable] = React.useState<Table | null>(null);
   
   const [pointSettings, setPointSettings] = React.useState<PointEarningSettings | null>(null);
-
-  // Effect to sync state with URL parameters
-  React.useEffect(() => {
-    const tableIdFromParams = searchParams.get('tableId');
-    setSelectedTableId(tableIdFromParams);
-  }, [searchParams]);
-
-  // Effect to load table data and populate cart/customer when tableId changes
-  React.useEffect(() => {
-    if (selectedTableId && tables.length > 0) {
-      const foundTable = tables.find(t => t.id === selectedTableId);
-      if (foundTable) {
-        setSelectedTable(foundTable);
-        if (foundTable.currentOrder) {
-          setCart(foundTable.currentOrder.items || []);
-          if (foundTable.currentOrder.customer) {
-            // Find full customer object from the main customers list
-            const fullCustomer = customers.find(c => c.id === foundTable.currentOrder?.customer?.id);
-            setSelectedCustomer(fullCustomer);
-          } else {
-            setSelectedCustomer(undefined);
-          }
-        }
-      } else {
-        // If table not found (e.g., deleted), clear the state and redirect
-        toast({ variant: 'destructive', title: 'Meja tidak ditemukan.'});
-        router.push('/dashboard?view=pos');
-      }
-    } else {
-      setSelectedTable(null);
-      setCart([]);
-      setSelectedCustomer(undefined);
-    }
-  }, [selectedTableId, tables, customers, router, toast]);
 
   React.useEffect(() => {
     async function fetchSettings() {
@@ -138,7 +102,6 @@ export default function POS({ onPrintRequest }: POSProps) {
   const [discountType, setDiscountType] = React.useState<'percent' | 'nominal'>('percent');
   const [discountValue, setDiscountValue] = React.useState(0);
   const [pointsToRedeem, setPointsToRedeem] = React.useState(0);
-  const [isDineIn, setIsDineIn] = React.useState(true);
 
   const customerOptions = (customers || []).map((c) => ({
     value: c.id,
@@ -291,8 +254,8 @@ export default function POS({ onPrintRequest }: POSProps) {
       toast({ variant: 'destructive', title: 'Keranjang Kosong', description: 'Silakan tambahkan produk ke keranjang.' });
       return;
     }
-    if (!currentUser || !activeStore || !selectedTable) {
-      toast({ variant: 'destructive', title: 'Sesi atau Meja Tidak Valid', description: 'Data staff, toko, atau meja tidak ditemukan. Silakan pilih meja dari halaman utama.' });
+    if (!currentUser || !activeStore) {
+      toast({ variant: 'destructive', title: 'Sesi atau Meja Tidak Valid', description: 'Data staff, toko, atau meja tidak ditemukan.' });
       return;
     }
 
@@ -375,7 +338,7 @@ export default function POS({ onPrintRequest }: POSProps) {
           receiptNumber: newReceiptNumber,
           storeId: activeStore.id,
           customerId: selectedCustomer?.id || 'N/A',
-          customerName: selectedCustomer?.name || (selectedTable ? selectedTable.name : 'Guest'),
+          customerName: selectedCustomer?.name || 'Guest',
           staffId: currentUser.id,
           createdAt: new Date().toISOString(),
           subtotal: subtotal,
@@ -386,15 +349,8 @@ export default function POS({ onPrintRequest }: POSProps) {
           pointsRedeemed: pointsToRedeem,
           items: cart,
           status: 'Selesai Dibayar',
-          tableId: selectedTableId,
         };
         transaction.set(newTransactionRef, transactionData);
-
-        const tableRef = doc(db, 'stores', storeId, 'tables', selectedTable.id);
-        transaction.update(tableRef, {
-            status: 'Menunggu Dibersihkan',
-            currentOrder: null
-        });
 
         finalTransactionData = transactionData;
       });
@@ -412,9 +368,7 @@ export default function POS({ onPrintRequest }: POSProps) {
       setSelectedCustomer(undefined);
       refreshData();
       
-      const params = new URLSearchParams();
-      params.set('view', 'pos');
-      router.push(`/dashboard?${params.toString()}`);
+      router.push('/dashboard?view=pos');
 
     } catch (error) {
       console.error("Checkout failed:", error);
@@ -504,7 +458,7 @@ export default function POS({ onPrintRequest }: POSProps) {
           <Card>
             <CardHeader>
               <CardTitle className="font-headline tracking-wider">
-                {selectedTable ? `Pesanan untuk ${selectedTable.name}` : 'Pesanan Saat Ini'}
+                Pesanan Baru
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
@@ -541,13 +495,6 @@ export default function POS({ onPrintRequest }: POSProps) {
                   </Dialog>
                 </div>
               </div>
-
-              {selectedTable && !selectedCustomer && (
-                <div className="flex items-center gap-2 rounded-md border border-dashed p-3">
-                  <Armchair className="h-5 w-5 text-muted-foreground" />
-                  <p className="font-medium text-muted-foreground">Mode Pesanan Meja</p>
-                </div>
-              )}
 
               {selectedCustomer && (
                 <div className="flex items-center justify-between rounded-lg border bg-card p-3">
@@ -719,14 +666,6 @@ export default function POS({ onPrintRequest }: POSProps) {
                 <LoyaltyRecommendation customer={selectedCustomer} totalPurchaseAmount={totalAmount} feeSettings={feeSettings} />
               )}
 
-              <div className="flex items-center justify-between rounded-md border p-3">
-                <Label htmlFor="dine-in-switch" className="flex items-center gap-2">
-                  <Bell className="h-4 w-4" />
-                  <span>Sajikan di Sini (Dine-in)</span>
-                </Label>
-                <Switch id="dine-in-switch" checked={isDineIn} onCheckedChange={setIsDineIn} disabled={!!selectedTableId} />
-              </div>
-
               <div className="grid grid-cols-3 gap-2">
                 <Button variant={paymentMethod === 'Cash' ? 'default' : 'secondary'} onClick={() => setPaymentMethod('Cash')}>Tunai</Button>
                 <Button variant={paymentMethod === 'Card' ? 'default' : 'secondary'} onClick={() => setPaymentMethod('Card')}>Kartu</Button>
@@ -734,7 +673,7 @@ export default function POS({ onPrintRequest }: POSProps) {
               </div>
 
               <Button size="lg" className="w-full font-headline text-lg tracking-wider" onClick={handleCheckout} disabled={isProcessingCheckout || isLoading}>
-                Proses Pembayaran & Selesaikan
+                Buat Transaksi
               </Button>
             </CardContent>
           </Card>
