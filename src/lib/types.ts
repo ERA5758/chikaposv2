@@ -1,4 +1,3 @@
-
 'use client';
 import type { PointEarningSettings } from './server/point-earning-settings';
 
@@ -93,7 +92,7 @@ export type Customer = {
   avatarUrl: string;
 };
 
-export type TransactionStatus = 'Diproses' | 'Selesai' | 'Selesai Dibayar';
+export type TransactionStatus = 'Diproses' | 'Selesai' | 'Selesai Dibayar' | 'Dibatalkan';
 
 export type Transaction = {
   id: string;
@@ -106,7 +105,7 @@ export type Transaction = {
   subtotal: number;
   discountAmount: number;
   totalAmount: number; // subtotal - discountAmount
-  paymentMethod: 'Cash' | 'Card' | 'QRIS';
+  paymentMethod: 'Cash' | 'Card' | 'QRIS' | 'Belum Dibayar';
   pointsEarned: number;
   pointsRedeemed: number;
   items: TransactionItem[];

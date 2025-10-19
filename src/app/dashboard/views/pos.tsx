@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -26,6 +25,8 @@ import {
   Armchair,
   Bell,
   PackageX,
+  CreditCard,
+  ClipboardCheck,
 } from 'lucide-react';
 import Image from 'next/image';
 import { Separator } from '@/components/ui/separator';
@@ -96,7 +97,7 @@ export default function POS({ onPrintRequest }: POSProps) {
   const [cart, setCart] = React.useState<CartItem[]>([]);
   const [selectedCustomer, setSelectedCustomer] = React.useState<Customer | undefined>(undefined);
   const [searchTerm, setSearchTerm] = React.useState('');
-  const [paymentMethod, setPaymentMethod] = React.useState<'Cash' | 'Card' | 'QRIS'>('Cash');
+  const [paymentMethod, setPaymentMethod] = React.useState<'Cash' | 'Card' | 'QRIS' | 'Belum Dibayar'>('Cash');
   const [isMemberDialogOpen, setIsMemberDialogOpen] = React.useState(false);
   const [isScannerOpen, setIsScannerOpen] = React.useState(false);
   const [discountType, setDiscountType] = React.useState<'percent' | 'nominal'>('percent');
@@ -249,7 +250,7 @@ export default function POS({ onPrintRequest }: POSProps) {
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleCheckout = async () => {
+  const handleCheckout = async (isPaid: boolean) => {
     if (cart.length === 0) {
       toast({ variant: 'destructive', title: 'Keranjang Kosong', description: 'Silakan tambahkan produk ke keranjang.' });
       return;
@@ -271,6 +272,8 @@ export default function POS({ onPrintRequest }: POSProps) {
     setIsProcessingCheckout(true);
 
     const storeId = activeStore.id;
+    const finalPaymentMethod = isPaid ? paymentMethod : 'Belum Dibayar';
+    const finalStatus = isPaid ? 'Selesai Dibayar' : 'Diproses';
 
     try {
       let finalTransactionData: Transaction | null = null;
@@ -344,11 +347,11 @@ export default function POS({ onPrintRequest }: POSProps) {
           subtotal: subtotal,
           discountAmount: discountAmount,
           totalAmount: totalAmount,
-          paymentMethod: paymentMethod,
+          paymentMethod: finalPaymentMethod,
           pointsEarned: pointsEarned,
           pointsRedeemed: pointsToRedeem,
           items: cart,
-          status: 'Selesai Dibayar',
+          status: finalStatus,
         };
         transaction.set(newTransactionRef, transactionData);
 
@@ -357,7 +360,7 @@ export default function POS({ onPrintRequest }: POSProps) {
 
       toast({ title: "Transaksi Berhasil!", description: "Transaksi telah disimpan dan stok produk diperbarui." });
 
-      if (finalTransactionData) {
+      if (finalTransactionData && isPaid) {
         onPrintRequest(finalTransactionData);
       }
 
@@ -368,7 +371,7 @@ export default function POS({ onPrintRequest }: POSProps) {
       setSelectedCustomer(undefined);
       refreshData();
       
-      router.push('/dashboard?view=pos');
+      router.push('/dashboard?view=transactions');
 
     } catch (error) {
       console.error("Checkout failed:", error);
@@ -665,16 +668,24 @@ export default function POS({ onPrintRequest }: POSProps) {
               {selectedCustomer && cart.length > 0 && feeSettings && (
                 <LoyaltyRecommendation customer={selectedCustomer} totalPurchaseAmount={totalAmount} feeSettings={feeSettings} />
               )}
-
-              <div className="grid grid-cols-3 gap-2">
-                <Button variant={paymentMethod === 'Cash' ? 'default' : 'secondary'} onClick={() => setPaymentMethod('Cash')}>Tunai</Button>
-                <Button variant={paymentMethod === 'Card' ? 'default' : 'secondary'} onClick={() => setPaymentMethod('Card')}>Kartu</Button>
-                <Button variant={paymentMethod === 'QRIS' ? 'default' : 'secondary'} onClick={() => setPaymentMethod('QRIS')}>QRIS</Button>
+              
+              <div className="space-y-2 pt-4">
+                <Button size="lg" className="w-full font-headline text-lg tracking-wider" onClick={() => handleCheckout(false)} disabled={isProcessingCheckout || isLoading}>
+                    <ClipboardCheck className="mr-2 h-5 w-5"/>
+                    Buat Transaksi (Bayar Nanti)
+                </Button>
+                
+                <div className="grid grid-cols-3 gap-2">
+                    <Button variant={paymentMethod === 'Cash' ? 'default' : 'secondary'} onClick={() => setPaymentMethod('Cash')}>Tunai</Button>
+                    <Button variant={paymentMethod === 'Card' ? 'default' : 'secondary'} onClick={() => setPaymentMethod('Card')}>Kartu</Button>
+                    <Button variant={paymentMethod === 'QRIS' ? 'default' : 'secondary'} onClick={() => setPaymentMethod('QRIS')}>QRIS</Button>
+                </div>
+                <Button size="lg" className="w-full font-headline text-lg tracking-wider" variant="outline" onClick={() => handleCheckout(true)} disabled={isProcessingCheckout || isLoading}>
+                    <CreditCard className="mr-2 h-5 w-5"/>
+                    Buat Pesanan & Bayar
+                </Button>
               </div>
 
-              <Button size="lg" className="w-full font-headline text-lg tracking-wider" onClick={handleCheckout} disabled={isProcessingCheckout || isLoading}>
-                Buat Transaksi
-              </Button>
             </CardContent>
           </Card>
         </div>
