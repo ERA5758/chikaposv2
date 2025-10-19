@@ -46,7 +46,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { getPointEarningSettings, type PointEarningSettings } from '@/lib/point-earning-settings';
+import type { PointEarningSettings } from '@/lib/server/point-earning-settings';
 import { db } from '@/lib/firebase';
 import { collection, doc, runTransaction, increment, serverTimestamp } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -74,9 +74,24 @@ export default function POS({ onPrintRequest }: POSProps) {
   const [pointSettings, setPointSettings] = React.useState<PointEarningSettings | null>(null);
 
   React.useEffect(() => {
-    if (activeStore?.id) {
-      getPointEarningSettings(activeStore.id).then(setPointSettings);
+    async function fetchSettings() {
+      if (activeStore?.id) {
+        try {
+          const response = await fetch(`/api/point-settings?storeId=${activeStore.id}`);
+          if (response.ok) {
+              const data = await response.json();
+              setPointSettings(data);
+          } else {
+            console.error("Failed to fetch point settings.");
+            setPointSettings(null); // or set to default
+          }
+        } catch (error) {
+           console.error("Error fetching point settings:", error);
+           setPointSettings(null);
+        }
+      }
     }
+    fetchSettings();
   }, [activeStore]);
 
   React.useEffect(() => {
