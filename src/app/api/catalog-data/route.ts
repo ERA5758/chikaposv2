@@ -52,6 +52,7 @@ export async function GET(req: NextRequest) {
 
     const catalogData = {
       store: {
+        id: storeId,
         name: storeData?.name,
         description: storeData?.description,
         logoUrl: storeData?.logoUrl,

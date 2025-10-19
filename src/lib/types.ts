@@ -46,6 +46,10 @@ export type Store = {
   referralCode?: string;
   catalogSlug?: string;
   catalogSubscriptionExpiry?: string;
+  theme?: any;
+  socialLinks?: any;
+  logoUrl?: string;
+  description?: string;
 };
 
 export type UserRole = 'admin' | 'cashier' | 'superadmin';
