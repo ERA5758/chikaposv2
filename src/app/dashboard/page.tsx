@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -20,6 +19,7 @@ import ReceiptSettings from '@/app/dashboard/views/receipt-settings';
 import AIBusinessPlan from '@/app/dashboard/views/ai-business-plan';
 import CatalogSettings from '@/app/dashboard/views/catalog-settings';
 import Tables from '@/app/dashboard/views/tables';
+import Kitchen from '@/app/dashboard/views/kitchen';
 import { Suspense } from 'react';
 import type { User, Transaction } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-context';
@@ -111,6 +111,8 @@ function DashboardContent() {
         return <Employees />;
       case 'transactions':
         return <Transactions onPrintRequest={setTransactionToPrint} />;
+      case 'kitchen':
+        return <Kitchen />;
       case 'settings':
         return <Settings />;
       case 'challenges':
@@ -138,6 +140,7 @@ function DashboardContent() {
     const baseTitle = {
       'overview': 'Dashboard Overview',
       'pos': 'Kasir POS',
+      'kitchen': 'Monitor Dapur',
       'products': 'Inventaris Produk',
       'customers': 'Manajemen Pelanggan',
       'customer-analytics': 'Analisis Pelanggan',

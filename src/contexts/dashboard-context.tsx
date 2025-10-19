@@ -1,4 +1,3 @@
-
 'use client';
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { db } from '@/lib/firebase';
@@ -80,9 +79,9 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const [feeSettings, setFeeSettings] = useState<TransactionFeeSettings>(defaultFeeSettings);
   const [isLoading, setIsLoading] = useState(true);
   
-  const playNotificationSound = () => {
+  const playNotificationSound = useCallback(() => {
     notificationAudioRef.current?.play().catch(e => console.error("Audio playback failed:", e));
-  };
+  }, []);
 
   const refreshData = useCallback(async () => {
     if (!currentUser) return;
@@ -183,7 +182,23 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         const pendingOrdersQuery = query(collection(db, 'pendingOrders'));
 
         const unsubTransactions = onSnapshot(transactionsQuery, (snapshot) => {
-            setTransactions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction)));
+            setTransactions(prevTransactions => {
+              const newTransactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
+              
+              if (prevTransactions.length > 0) {
+                  const prevTxIds = new Set(prevTransactions.map(t => t.id));
+                  const justAdded = newTransactions.filter(t => !prevTxIds.has(t.id));
+                  
+                  if (justAdded.some(t => t.status === 'Diproses')) {
+                    playNotificationSound();
+                    toast({
+                        title: "🔔 Pesanan Baru untuk Dapur!",
+                        description: `Ada pesanan baru yang perlu disiapkan.`,
+                    });
+                  }
+              }
+              return newTransactions;
+            });
         }, (error) => console.error("Error listening to transactions: ", error));
 
         const unsubTables = onSnapshot(tablesQuery, (snapshot) => {
@@ -221,7 +236,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     return () => {
         unsubscribes.forEach(unsub => unsub());
     };
-  }, [isAuthLoading, currentUser, activeStore, refreshData, toast]);
+  }, [isAuthLoading, currentUser, activeStore, refreshData, toast, playNotificationSound]);
 
   const value = {
     dashboardData: {

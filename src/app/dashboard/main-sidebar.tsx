@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
@@ -34,6 +33,7 @@ import {
   TrendingUp,
   Map,
   Newspaper,
+  ChefHat,
 } from 'lucide-react';
 import * as React from 'react';
 import { Separator } from '@/components/ui/separator';
@@ -79,6 +79,7 @@ export function MainSidebar({ pradanaTokenBalance }: MainSidebarProps) {
         items: [
             { view: 'overview', label: 'Overview', icon: <LayoutGrid />, roles: ['admin', 'cashier'] },
             { view: 'pos', label: 'Kasir POS', icon: <Armchair />, roles: ['admin', 'cashier'] },
+            { view: 'kitchen', label: 'Dapur', icon: <ChefHat />, roles: ['admin', 'cashier'] },
             { view: 'transactions', label: 'Transaksi', icon: <History />, roles: ['admin', 'cashier'] },
         ]
     },
