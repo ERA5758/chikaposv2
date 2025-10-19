@@ -1,16 +1,20 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getPointEarningSettings, updatePointEarningSettings } from '@/lib/server/point-earning-settings';
+import { getPointEarningSettings, defaultPointEarningSettings } from '@/lib/server/point-earning-settings';
 import { getFirebaseAdmin } from '@/lib/server/firebase-admin';
 
 export async function GET(req: NextRequest) {
   try {
     const { auth } = getFirebaseAdmin();
     const authorization = req.headers.get('Authorization');
+    
     if (!authorization?.startsWith('Bearer ')) {
-        return NextResponse.json({ error: 'Unauthorized: Missing token' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized: Missing token' }, { status: 401 });
     }
     const idToken = authorization.split('Bearer ')[1];
+    
+    // Although we might not need the user's UID for this specific action,
+    // verifying the token is crucial for securing the endpoint.
     await auth.verifyIdToken(idToken);
     
     const { searchParams } = new URL(req.url);
@@ -21,7 +25,9 @@ export async function GET(req: NextRequest) {
     }
 
     const settings = await getPointEarningSettings(storeId);
-    return NextResponse.json(settings);
+    // Ensure that even if getPointEarningSettings returns a partial object or fails,
+    // we return a complete, valid object.
+    return NextResponse.json({ ...defaultPointEarningSettings, ...settings });
     
   } catch (error) {
     console.error('Error fetching point earning settings via API:', error);

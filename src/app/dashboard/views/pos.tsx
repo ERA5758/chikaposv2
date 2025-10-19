@@ -94,7 +94,27 @@ export default function POS({ onPrintRequest }: POSProps) {
   const [discountValue, setDiscountValue] = React.useState(0);
   const [pointsToRedeem, setPointsToRedeem] = React.useState(0);
   const [confirmationAction, setConfirmationAction] = React.useState<{isPaid: boolean} | null>(null);
+
+  const tableId = searchParams.get('tableId');
   
+  // Effect to load order from table if it exists
+  React.useEffect(() => {
+    if (tableId && tables.length > 0) {
+      const table = tables.find(t => t.id === tableId);
+      if (table?.currentOrder) {
+        setCart(table.currentOrder.items || []);
+        if (table.currentOrder.customer) {
+            const customer = customers.find(c => c.id === table.currentOrder.customer?.id);
+            setSelectedCustomer(customer);
+        }
+        toast({
+            title: 'Pesanan Dimuat',
+            description: `Pesanan dari meja ${table.name} telah dimuat ke keranjang.`
+        });
+      }
+    }
+  }, [tableId, tables, customers, toast]);
+
 
   React.useEffect(() => {
     async function fetchSettings() {
@@ -102,11 +122,13 @@ export default function POS({ onPrintRequest }: POSProps) {
         try {
           const idToken = await auth.currentUser?.getIdToken();
           if (!idToken) {
+            toast({ variant: 'destructive', title: 'Autentikasi Gagal', description: 'Tidak dapat memuat token pengguna.' });
             return;
           }
           const response = await fetch(`/api/point-settings?storeId=${activeStore.id}`, {
             headers: { 'Authorization': `Bearer ${idToken}` }
           });
+          
           if (response.ok) {
               const data = await response.json();
               setPointSettings(data);
@@ -384,8 +406,18 @@ export default function POS({ onPrintRequest }: POSProps) {
           pointsRedeemed: pointsToRedeem,
           items: cart,
           status: finalStatus,
+          tableId: tableId ?? undefined,
         };
         transaction.set(newTransactionRef, transactionData);
+        
+        // If it's from a table, clear the table order
+        if (tableId) {
+            const tableRef = doc(db, 'stores', storeId, 'tables', tableId);
+            transaction.update(tableRef, {
+                status: 'Menunggu Dibersihkan',
+                currentOrder: null
+            });
+        }
 
         finalTransactionData = transactionData;
       });
@@ -720,7 +752,6 @@ export default function POS({ onPrintRequest }: POSProps) {
                 <Button 
                     size="lg" 
                     className="w-full font-headline text-lg tracking-wider" 
-                    variant="outline" 
                     onClick={() => setConfirmationAction({ isPaid: true })}
                     disabled={isProcessingCheckout || isLoading || cart.length === 0}
                 >
