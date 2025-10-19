@@ -13,30 +13,50 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Data pesanan tidak lengkap.' }, { status: 400 });
         }
         
-        const newTransactionRef = db.collection('stores').doc(storeId).collection('transactions').doc();
-        const transactionData = {
-            id: newTransactionRef.id,
-            receiptNumber: 0, // Will be assigned by a counter later
-            storeId: storeId,
-            customerId: customer.id,
-            customerName: customer.name,
-            staffId: 'system-catalog',
-            createdAt: new Date().toISOString(),
-            subtotal: totalAmount,
-            discountAmount: 0,
-            totalAmount: totalAmount,
-            paymentMethod: 'Cash',
-            pointsEarned: 0,
-            pointsRedeemed: 0,
-            items: cart,
-            status: 'Diproses' as const,
-        };
-        await newTransactionRef.set(transactionData);
+        const storeRef = db.collection('stores').doc(storeId);
+        
+        // Use a transaction to atomically get the next virtual table number and create the table
+        const newTable = await db.runTransaction(async (transaction) => {
+            const storeDoc = await transaction.get(storeRef);
+            if (!storeDoc.exists) {
+                throw new Error("Toko tidak ditemukan.");
+            }
+            
+            const currentCounter = storeDoc.data()?.virtualTableCounter || 0;
+            const newTableNumber = currentCounter + 1;
+            
+            // Update the counter
+            transaction.update(storeRef, { virtualTableCounter: newTableNumber });
+            
+            // Create the new virtual table document
+            const newTableRef = db.collection('stores').doc(storeId).collection('tables').doc();
+            const newTableData: Omit<Table, 'id'> = {
+                name: `Virtual #${newTableNumber}`,
+                capacity: customer.name.length, // Arbitrary capacity, can be adjusted
+                status: 'Terisi',
+                isVirtual: true,
+                currentOrder: {
+                    items: cart,
+                    totalAmount: totalAmount,
+                    orderTime: new Date().toISOString(),
+                    customer: {
+                        id: customer.id,
+                        name: customer.name,
+                        phone: customer.phone,
+                        avatarUrl: customer.avatarUrl,
+                    }
+                }
+            };
+            
+            transaction.set(newTableRef, newTableData);
+            
+            return { id: newTableRef.id, ...newTableData };
+        });
 
-        return NextResponse.json({ success: true, message: 'Pesanan berhasil dikirim ke kasir.', transactionId: newTransactionRef.id });
+        return NextResponse.json({ success: true, message: 'Pesanan berhasil dikirim ke kasir.', table: newTable });
 
     } catch (error) {
-        console.error('Error creating virtual order:', error);
+        console.error('Error creating virtual table order:', error);
         return NextResponse.json({ error: (error as Error).message }, { status: 500 });
     }
 }
