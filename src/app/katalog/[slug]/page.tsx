@@ -441,13 +441,13 @@ export default function CatalogPage() {
             />
         )}
         
-        <SheetContent>
+        <SheetContent className="flex flex-col">
             <SheetHeader>
                 <SheetTitle className="font-headline tracking-wider text-2xl">Pesanan Anda</SheetTitle>
             </SheetHeader>
             {cart.length > 0 ? (
                 <>
-                <ScrollArea className="h-[calc(100vh-200px)] my-4 pr-4 -mr-6">
+                <ScrollArea className="flex-grow my-4 pr-4 -mr-6">
                     <div className="space-y-4">
                         {cart.map(item => (
                             <div key={item.productId} className="flex items-center gap-4">
