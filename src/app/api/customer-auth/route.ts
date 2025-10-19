@@ -16,7 +16,7 @@ function formatPhoneNumber(phone: string): string {
 export async function POST(req: NextRequest) {
     const { db } = getFirebaseAdmin();
     try {
-        const { phone, name, storeId } = await req.json();
+        const { phone, name, storeId, birthDate } = await req.json();
 
         if (!phone || !storeId) {
             return NextResponse.json({ error: 'Nomor HP dan ID Toko diperlukan.' }, { status: 400 });
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
                     name,
                     phone: formattedPhone,
                     joinDate: new Date().toISOString(),
-                    birthDate: new Date(0).toISOString().split('T')[0], // Default date
+                    birthDate: birthDate || new Date(0).toISOString().split('T')[0], // Use provided or default date
                     loyaltyPoints: 0,
                     memberTier: 'Bronze' as const,
                     avatarUrl,

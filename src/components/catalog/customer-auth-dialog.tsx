@@ -9,6 +9,7 @@ import { Loader, LogIn, UserPlus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Customer } from '@/lib/types';
 import { formatWhatsappNumber } from '@/lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 type CustomerAuthDialogProps = {
     open: boolean;
@@ -19,10 +20,22 @@ type CustomerAuthDialogProps = {
 
 type AuthStep = 'PHONE_INPUT' | 'NAME_INPUT';
 
+const currentYear = new Date().getFullYear();
+const years = Array.from({ length: 100 }, (_, i) => (currentYear - 17 - i).toString());
+const months = Array.from({ length: 12 }, (_, i) => ({
+  value: (i + 1).toString().padStart(2, '0'),
+  label: new Date(0, i).toLocaleString('id-ID', { month: 'long' }),
+}));
+const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString().padStart(2, '0'));
+
+
 export function CustomerAuthDialog({ open, onOpenChange, storeId, onLoginSuccess }: CustomerAuthDialogProps) {
     const [step, setStep] = React.useState<AuthStep>('PHONE_INPUT');
     const [phone, setPhone] = React.useState('');
     const [name, setName] = React.useState('');
+    const [birthDay, setBirthDay] = React.useState('');
+    const [birthMonth, setBirthMonth] = React.useState('');
+    const [birthYear, setBirthYear] = React.useState('');
     const [isLoading, setIsLoading] = React.useState(false);
     const { toast } = useToast();
 
@@ -31,6 +44,9 @@ export function CustomerAuthDialog({ open, onOpenChange, storeId, onLoginSuccess
             setStep('PHONE_INPUT');
             setPhone('');
             setName('');
+            setBirthDay('');
+            setBirthMonth('');
+            setBirthYear('');
             setIsLoading(false);
         }
     }, [open]);
@@ -73,11 +89,15 @@ export function CustomerAuthDialog({ open, onOpenChange, storeId, onLoginSuccess
         }
         setIsLoading(true);
 
+        const birthDate = (birthYear && birthMonth && birthDay)
+            ? `${birthYear}-${birthMonth}-${birthDay}`
+            : undefined;
+
         try {
             const response = await fetch('/api/customer-auth', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone: formatWhatsappNumber(phone), name, storeId }),
+                body: JSON.stringify({ phone: formatWhatsappNumber(phone), name, storeId, birthDate }),
             });
             const data = await response.json();
             
@@ -112,6 +132,29 @@ export function CustomerAuthDialog({ open, onOpenChange, storeId, onLoginSuccess
                                 placeholder="Nama Lengkap Anda"
                                 autoFocus
                             />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Tanggal Lahir (Opsional)</Label>
+                             <div className="grid grid-cols-3 gap-2">
+                                <Select onValueChange={setBirthDay} value={birthDay}>
+                                    <SelectTrigger><SelectValue placeholder="Tgl" /></SelectTrigger>
+                                    <SelectContent>
+                                        {days.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                                <Select onValueChange={setBirthMonth} value={birthMonth}>
+                                    <SelectTrigger><SelectValue placeholder="Bulan" /></SelectTrigger>
+                                    <SelectContent>
+                                        {months.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                                <Select onValueChange={setBirthYear} value={birthYear}>
+                                    <SelectTrigger><SelectValue placeholder="Tahun" /></SelectTrigger>
+                                    <SelectContent>
+                                         {years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                             </div>
                         </div>
                         <DialogFooter>
                             <Button variant="ghost" onClick={() => setStep('PHONE_INPUT')}>Kembali</Button>
