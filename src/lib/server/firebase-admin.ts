@@ -46,6 +46,5 @@ export function getFirebaseAdmin() {
     return {
         auth: admin.auth(),
         db: admin.firestore(),
-        admin,
     };
 }
