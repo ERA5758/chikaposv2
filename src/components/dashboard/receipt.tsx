@@ -66,6 +66,9 @@ export function Receipt({ transaction, users }: ReceiptProps) {
         {transaction.items.map((item) => (
           <div key={item.productId}>
             <p>{item.productName}</p>
+            {item.notes && (
+              <p className="text-xs italic text-gray-600 pl-2"> &#x21B3; {item.notes}</p>
+            )}
             <div className="flex justify-between">
               <span>{item.quantity} x {item.price.toLocaleString('id-ID')}</span>
               <span>{(item.quantity * item.price).toLocaleString('id-ID')}</span>
@@ -83,6 +86,18 @@ export function Receipt({ transaction, users }: ReceiptProps) {
             <span>Diskon</span>
             <span>-Rp {transaction.discountAmount.toLocaleString('id-ID')}</span>
           </div>
+          {transaction.taxAmount > 0 && (
+            <div className="flex justify-between">
+              <span>Pajak</span>
+              <span>Rp {transaction.taxAmount.toLocaleString('id-ID')}</span>
+            </div>
+          )}
+          {transaction.serviceFeeAmount > 0 && (
+            <div className="flex justify-between">
+              <span>Biaya Layanan</span>
+              <span>Rp {transaction.serviceFeeAmount.toLocaleString('id-ID')}</span>
+            </div>
+          )}
        </div>
        <div className="border-t border-dashed border-black" />
        <div className="my-2 space-y-1 font-semibold">

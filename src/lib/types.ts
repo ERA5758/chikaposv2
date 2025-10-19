@@ -128,6 +128,7 @@ export type TransactionItem = {
     productName: string;
     quantity: number;
     price: number;
+    notes?: string;
 }
 
 export type CartItem = TransactionItem;
