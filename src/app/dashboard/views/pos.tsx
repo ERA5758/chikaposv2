@@ -27,6 +27,7 @@ import {
   PackageX,
   CreditCard,
   ClipboardCheck,
+  HandCoins,
 } from 'lucide-react';
 import Image from 'next/image';
 import { Separator } from '@/components/ui/separator';
@@ -230,19 +231,35 @@ export default function POS({ onPrintRequest }: POSProps) {
     }
   };
 
-  const subtotal = cart.reduce(
-    (total, item) => total + item.price * item.quantity,
-    0
-  );
+  const { subtotal, discountAmount, taxAmount, serviceFeeAmount, totalAmount } = React.useMemo(() => {
+    const currentSubtotal = cart.reduce(
+      (total, item) => total + item.price * item.quantity,
+      0
+    );
 
-  const discountAmount = React.useMemo(() => {
-    if (discountType === 'percent') {
-      return (subtotal * discountValue) / 100;
-    }
-    return discountValue;
-  }, [subtotal, discountType, discountValue]);
+    const currentDiscountAmount =
+      discountType === 'percent'
+        ? (currentSubtotal * discountValue) / 100
+        : discountValue;
 
-  const totalAmount = Math.max(0, subtotal - discountAmount);
+    const subtotalAfterDiscount = currentSubtotal - currentDiscountAmount;
+
+    const taxRate = activeStore?.financialSettings?.taxPercentage ?? 0;
+    const serviceRate = activeStore?.financialSettings?.serviceFeePercentage ?? 0;
+        
+    const currentTaxAmount = subtotalAfterDiscount * (taxRate / 100);
+    const currentServiceFeeAmount = subtotalAfterDiscount * (serviceRate / 100);
+
+    const currentTotalAmount = Math.max(0, subtotalAfterDiscount + currentTaxAmount + currentServiceFeeAmount);
+
+    return {
+      subtotal: currentSubtotal,
+      discountAmount: currentDiscountAmount,
+      taxAmount: currentTaxAmount,
+      serviceFeeAmount: currentServiceFeeAmount,
+      totalAmount: currentTotalAmount,
+    };
+  }, [cart, discountType, discountValue, activeStore?.financialSettings]);
 
   const pointsEarned = selectedCustomer ? Math.floor(totalAmount / pointEarningSettings.rpPerPoint) : 0;
 
@@ -370,6 +387,8 @@ export default function POS({ onPrintRequest }: POSProps) {
           createdAt: new Date().toISOString(),
           subtotal: subtotal,
           discountAmount: discountAmount,
+          taxAmount: taxAmount,
+          serviceFeeAmount: serviceFeeAmount,
           totalAmount: totalAmount,
           paymentMethod: finalPaymentMethod,
           pointsEarned: pointsEarned,
@@ -673,11 +692,22 @@ export default function POS({ onPrintRequest }: POSProps) {
                     disabled={!selectedCustomer || selectedCustomer.loyaltyPoints === 0}
                   />
                 </div>
-
                 <div className="flex justify-between text-muted-foreground">
-                  <span>Total Diskon</span>
+                  <span>Diskon</span>
                   <span className="text-destructive">- Rp {discountAmount.toLocaleString('id-ID')}</span>
                 </div>
+                {taxAmount > 0 && (
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Pajak ({activeStore?.financialSettings?.taxPercentage}%)</span>
+                    <span>+ Rp {taxAmount.toLocaleString('id-ID')}</span>
+                  </div>
+                )}
+                {serviceFeeAmount > 0 && (
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Biaya Layanan ({activeStore?.financialSettings?.serviceFeePercentage}%)</span>
+                    <span>+ Rp {serviceFeeAmount.toLocaleString('id-ID')}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-muted-foreground">
                   <span className="flex items-center gap-1"><Sparkles className="h-3 w-3" /> Poin Didapat</span>
                   <span>+ {pointsEarned.toLocaleString('id-ID')} pts</span>
