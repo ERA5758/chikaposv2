@@ -269,10 +269,14 @@ export default function CatalogPage() {
                 setPromotions(data.promotions);
                 
                 if (data.store?.id) {
-                    const settingsRes = await fetch(`/api/point-settings?storeId=${data.store.id}`);
-                    if (settingsRes.ok) {
-                        const settings = await settingsRes.json();
-                        setPointSettings(settings);
+                    try {
+                        const settingsRes = await fetch(`/api/point-settings?storeId=${data.store.id}`);
+                        if (settingsRes.ok) {
+                            const settings = await settingsRes.json();
+                            setPointSettings(settings);
+                        }
+                    } catch (settingsError) {
+                        console.error("Could not fetch point settings, proceeding without it.");
                     }
                 }
 
@@ -296,7 +300,6 @@ export default function CatalogPage() {
     
     const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
     const cartSubtotal = cart.reduce((total, item) => total + item.price * item.quantity, 0);
-    const pointsEarned = pointSettings ? Math.floor(cartSubtotal / pointSettings.rpPerPoint) : 0;
 
     const handleLoginSuccess = (customer: Customer) => {
         setLoggedInCustomer(customer);
