@@ -262,12 +262,16 @@ export default function CatalogPage() {
                 if (data.error) {
                     throw new Error(data.error);
                 }
+
                 setStore(data.store);
                 setProducts(data.products);
                 setPromotions(data.promotions);
                 
-                const settings = await getPointEarningSettings(data.store.id);
-                setPointSettings(settings);
+                // Safely get settings only if store data is available
+                if (data.store && data.store.id) {
+                    const settings = await getPointEarningSettings(data.store.id);
+                    setPointSettings(settings);
+                }
 
             } catch (e) {
                 setError((e as Error).message);
