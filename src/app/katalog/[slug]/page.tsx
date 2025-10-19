@@ -6,7 +6,7 @@ import type { Store, Product, ProductCategory, RedemptionOption } from '@/lib/ty
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Image from 'next/image';
-import { UtensilsCrossed, PackageX, MessageCircle, Sparkles, Send, Loader, Gift, ShoppingCart, PlusCircle, MinusCircle, XCircle } from 'lucide-react';
+import { UtensilsCrossed, PackageX, MessageCircle, Sparkles, Send, Loader, Gift, ShoppingCart, PlusCircle, MinusCircle, XCircle, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetTrigger, SheetClose } from '@/components/ui/sheet';
@@ -25,7 +25,6 @@ import {
 } from "@/components/ui/carousel"
 import Autoplay from "embla-carousel-autoplay"
 import { cn } from '@/lib/utils';
-import { Separator } from '@/components/ui/separator';
 
 type CartItem = {
     productId: string;
@@ -233,6 +232,11 @@ export default function CatalogPage() {
     const [isChatOpen, setIsChatOpen] = React.useState(false);
     const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null);
     const [cart, setCart] = React.useState<CartItem[]>([]);
+    
+    // **NEW**: State to track if user is logged in. For now, it's a mock.
+    const [isLoggedIn, setIsLoggedIn] = React.useState(false);
+    const [customerName, setCustomerName] = React.useState("Tamu");
+
 
     React.useEffect(() => {
         if (!slug) return;
@@ -330,8 +334,21 @@ export default function CatalogPage() {
         <Sheet>
         <div className="min-h-screen bg-background">
             <header className="p-4 border-b text-center sticky top-0 bg-background/80 backdrop-blur-sm z-10">
-                <h1 className="text-3xl font-headline tracking-wider font-bold">{store.name}</h1>
-                <p className="text-muted-foreground">{store.location}</p>
+                <div className="flex justify-between items-center container mx-auto max-w-4xl">
+                    <div></div> {/* Empty div for spacing */}
+                    <div className='text-center'>
+                         <h1 className="text-3xl font-headline tracking-wider font-bold">{store.name}</h1>
+                         <p className="text-muted-foreground">{store.location}</p>
+                    </div>
+                     {isLoggedIn ? (
+                        <div className='text-sm font-semibold'>{customerName}</div>
+                     ) : (
+                        <Button variant="outline" size="sm" onClick={() => alert("Fitur Login/Daftar akan segera hadir!")}>
+                            <LogIn className="mr-2 h-4 w-4" />
+                            Login
+                        </Button>
+                     )}
+                </div>
             </header>
             
             <main className="container mx-auto max-w-4xl p-4 md:p-8">
@@ -471,13 +488,17 @@ export default function CatalogPage() {
                         <span>Total</span>
                         <span>Rp {cartSubtotal.toLocaleString('id-ID')}</span>
                     </div>
-                    <Alert>
-                        <UtensilsCrossed className="h-4 w-4" />
-                        <AlertTitle>Langkah Berikutnya</AlertTitle>
-                        <AlertDescription>
-                            Tunjukkan halaman ini ke kasir untuk melanjutkan pembayaran.
-                        </AlertDescription>
-                    </Alert>
+                    {isLoggedIn ? (
+                        <Button className="w-full">Konfirmasi & Buat Pesanan</Button>
+                    ) : (
+                         <Alert>
+                            <UtensilsCrossed className="h-4 w-4" />
+                            <AlertTitle>Langkah Berikutnya</AlertTitle>
+                            <AlertDescription>
+                                Tunjukkan pesanan ini di kasir, atau <Button variant="link" className="p-0 h-auto" onClick={() => alert("Login akan diimplementasikan")}>masuk/daftar</Button> untuk memesan langsung.
+                            </AlertDescription>
+                        </Alert>
+                    )}
                 </SheetFooter>
                 </>
             ) : (
