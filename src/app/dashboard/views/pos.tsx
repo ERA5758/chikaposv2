@@ -43,6 +43,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -69,7 +70,6 @@ import { useDashboard } from '@/contexts/dashboard-context';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Switch } from '@/components/ui/switch';
 import type { PointEarningSettings } from '@/lib/types';
-import { pointEarningSettings } from '@/lib/point-earning-settings';
 import { Textarea } from '@/components/ui/textarea';
 
 
@@ -119,6 +119,7 @@ export default function POS({ onPrintRequest }: POSProps) {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   
+  const [pointSettings, setPointSettings] = React.useState<PointEarningSettings | null>(null);
   const [isProcessingCheckout, setIsProcessingCheckout] = React.useState(false);
   const [cart, setCart] = React.useState<CartItem[]>([]);
   const [selectedCustomer, setSelectedCustomer] = React.useState<Customer | undefined>(undefined);
@@ -309,7 +310,7 @@ export default function POS({ onPrintRequest }: POSProps) {
     };
   }, [cart, discountType, discountValue, activeStore?.financialSettings]);
 
-  const pointsEarned = selectedCustomer ? Math.floor(totalAmount / pointEarningSettings.rpPerPoint) : 0;
+  const pointsEarned = (selectedCustomer && pointSettings) ? Math.floor(totalAmount / pointSettings.rpPerPoint) : 0;
 
   const transactionFee = React.useMemo(() => {
     if (!feeSettings) return 0;
@@ -417,8 +418,8 @@ export default function POS({ onPrintRequest }: POSProps) {
           transaction.update(productDoc.ref, { stock: increment(-item.quantity) });
         }
 
-        if (selectedCustomer && customerDoc?.exists()) {
-          const earnedPoints = Math.floor(totalAmount / pointEarningSettings.rpPerPoint);
+        if (selectedCustomer && customerDoc?.exists() && pointSettings) {
+          const earnedPoints = Math.floor(totalAmount / pointSettings.rpPerPoint);
           const customerPoints = customerDoc.data()?.loyaltyPoints || 0;
           const newPoints = customerPoints + earnedPoints - pointsToRedeem;
           transaction.update(customerDoc.ref, { loyaltyPoints: newPoints });
@@ -864,3 +865,5 @@ export default function POS({ onPrintRequest }: POSProps) {
     </>
   );
 }
+
+    
