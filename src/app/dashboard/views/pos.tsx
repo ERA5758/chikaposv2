@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import type { Product, Customer, CartItem, Transaction, Table } from '@/lib/types';
+import type { Product, Customer, CartItem, Transaction, Table, PointEarningSettings } from '@/lib/types';
 import {
   Search,
   PlusCircle,
@@ -47,7 +47,6 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import type { PointEarningSettings } from '@/lib/server/point-earning-settings';
 import { db } from '@/lib/firebase';
 import { collection, doc, runTransaction, increment, serverTimestamp, getDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -359,7 +358,7 @@ export default function POS({ onPrintRequest }: POSProps) {
           if (!productDoc.exists()) throw new Error(`Produk ${item.productName} tidak ditemukan.`);
 
           const currentStock = productDoc.data().stock || 0;
-          if (currentStock < item.quantity) throw new Error(`Stok tidak cukup untuk ${item.productName}.`);
+          if (currentStock < item.quantity) throw new Error(`Stok tidak cukup untuk ${item.productName}. Sisa ${currentStock}.`);
 
           transaction.update(productDoc.ref, { stock: increment(-item.quantity) });
         }
