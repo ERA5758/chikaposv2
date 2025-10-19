@@ -41,6 +41,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { AddCustomerForm } from '@/components/dashboard/add-customer-form';
 import { Combobox } from '@/components/ui/combobox';
 import { BarcodeScanner } from '@/components/dashboard/barcode-scanner';
@@ -82,6 +93,7 @@ export default function POS({ onPrintRequest }: POSProps) {
   const [discountType, setDiscountType] = React.useState<'percent' | 'nominal'>('percent');
   const [discountValue, setDiscountValue] = React.useState(0);
   const [pointsToRedeem, setPointsToRedeem] = React.useState(0);
+  const [confirmationAction, setConfirmationAction] = React.useState<{isPaid: boolean} | null>(null);
   
 
   React.useEffect(() => {
@@ -260,6 +272,7 @@ export default function POS({ onPrintRequest }: POSProps) {
   );
 
   const handleCheckout = async (isPaid: boolean) => {
+    setConfirmationAction(null); // Close confirmation dialog
     if (cart.length === 0) {
       toast({ variant: 'destructive', title: 'Keranjang Kosong', description: 'Silakan tambahkan produk ke keranjang.' });
       return;
@@ -674,12 +687,17 @@ export default function POS({ onPrintRequest }: POSProps) {
                 </div>
               </div>
 
-              {selectedCustomer && cart.length > 0 && feeSettings && (
+              {selectedCustomer && cart.length > 0 && feeSettings && pointSettings && (
                 <LoyaltyRecommendation customer={selectedCustomer} totalPurchaseAmount={totalAmount} feeSettings={feeSettings} />
               )}
               
               <div className="space-y-2 pt-4">
-                <Button size="lg" className="w-full font-headline text-lg tracking-wider" onClick={() => handleCheckout(false)} disabled={isProcessingCheckout || isLoading}>
+                <Button 
+                    size="lg" 
+                    className="w-full font-headline text-lg tracking-wider" 
+                    onClick={() => setConfirmationAction({ isPaid: false })} 
+                    disabled={isProcessingCheckout || isLoading || cart.length === 0}
+                >
                     <ClipboardCheck className="mr-2 h-5 w-5"/>
                     Buat Transaksi (Bayar Nanti)
                 </Button>
@@ -689,7 +707,13 @@ export default function POS({ onPrintRequest }: POSProps) {
                     <Button variant={paymentMethod === 'Card' ? 'default' : 'secondary'} onClick={() => setPaymentMethod('Card')}>Kartu</Button>
                     <Button variant={paymentMethod === 'QRIS' ? 'default' : 'secondary'} onClick={() => setPaymentMethod('QRIS')}>QRIS</Button>
                 </div>
-                <Button size="lg" className="w-full font-headline text-lg tracking-wider" variant="outline" onClick={() => handleCheckout(true)} disabled={isProcessingCheckout || isLoading}>
+                <Button 
+                    size="lg" 
+                    className="w-full font-headline text-lg tracking-wider" 
+                    variant="outline" 
+                    onClick={() => setConfirmationAction({ isPaid: true })}
+                    disabled={isProcessingCheckout || isLoading || cart.length === 0}
+                >
                     <CreditCard className="mr-2 h-5 w-5"/>
                     Proses Pembayaran & Selesaikan
                 </Button>
@@ -711,6 +735,28 @@ export default function POS({ onPrintRequest }: POSProps) {
           <BarcodeScanner onScan={handleBarcodeScanned} />
         </DialogContent>
       </Dialog>
+      
+      <AlertDialog open={!!confirmationAction} onOpenChange={() => setConfirmationAction(null)}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Konfirmasi Transaksi</AlertDialogTitle>
+                <AlertDialogDescription>
+                    {confirmationAction?.isPaid 
+                        ? `Anda akan menyelesaikan transaksi dengan total Rp ${totalAmount.toLocaleString('id-ID')} menggunakan metode pembayaran ${paymentMethod}.`
+                        : `Anda akan membuat transaksi 'Bayar Nanti' dengan total Rp ${totalAmount.toLocaleString('id-ID')}.`
+                    }
+                    <br/><br/>
+                    Pastikan detail pesanan sudah benar. Lanjutkan?
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Batal</AlertDialogCancel>
+                <AlertDialogAction onClick={() => handleCheckout(confirmationAction?.isPaid ?? false)}>
+                    Ya, Lanjutkan
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
