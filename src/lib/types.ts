@@ -120,6 +120,15 @@ export type TransactionItem = {
 
 export type CartItem = TransactionItem;
 
+export type OrderPayload = {
+    storeId: string;
+    customer: Customer;
+    cart: CartItem[];
+    subtotal: number;
+    totalAmount: number;
+    pointsEarned: number;
+};
+
 export type PendingOrder = {
   id: string;
   storeId: string;

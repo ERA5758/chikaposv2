@@ -1,7 +1,8 @@
+
 'use client';
 
 import * as React from 'react';
-import type { Store, Product, ProductCategory, RedemptionOption, Customer } from '@/lib/types';
+import type { Store, Product, ProductCategory, RedemptionOption, Customer, OrderPayload } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Image from 'next/image';
@@ -26,6 +27,8 @@ import Autoplay from "embla-carousel-autoplay"
 import { cn } from '@/lib/utils';
 import { CustomerAuthDialog } from '@/components/catalog/customer-auth-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { getPointEarningSettings, PointEarningSettings } from '@/lib/point-earning-settings';
+
 
 type CartItem = {
     productId: string;
@@ -229,11 +232,13 @@ export default function CatalogPage() {
     const [store, setStore] = React.useState<Store | null>(null);
     const [products, setProducts] = React.useState<Product[]>([]);
     const [promotions, setPromotions] = React.useState<RedemptionOption[]>([]);
+    const [pointSettings, setPointSettings] = React.useState<PointEarningSettings | null>(null);
     const [error, setError] = React.useState<string | undefined>(undefined);
     const [isLoading, setIsLoading] = React.useState(true);
     const [isChatOpen, setIsChatOpen] = React.useState(false);
     const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null);
     const [cart, setCart] = React.useState<CartItem[]>([]);
+    const [isSubmittingOrder, setIsSubmittingOrder] = React.useState(false);
     
     // --- Start Customer Auth State ---
     const [isAuthDialogOpen, setIsAuthDialogOpen] = React.useState(false);
@@ -260,6 +265,10 @@ export default function CatalogPage() {
                 setStore(data.store);
                 setProducts(data.products);
                 setPromotions(data.promotions);
+                
+                const settings = await getPointEarningSettings(data.store.id);
+                setPointSettings(settings);
+
             } catch (e) {
                 setError((e as Error).message);
                 setStore(null);
@@ -281,6 +290,7 @@ export default function CatalogPage() {
     
     const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
     const cartSubtotal = cart.reduce((total, item) => total + item.price * item.quantity, 0);
+    const pointsEarned = pointSettings ? Math.floor(cartSubtotal / pointSettings.rpPerPoint) : 0;
 
     const handleLoginSuccess = (customer: Customer) => {
         setLoggedInCustomer(customer);
@@ -322,6 +332,45 @@ export default function CatalogPage() {
                     item.productId === productId ? { ...item, quantity: newQuantity } : item
                 )
             );
+        }
+    };
+    
+    const handleCreateOrder = async () => {
+        if (!loggedInCustomer || !store || cart.length === 0) return;
+        setIsSubmittingOrder(true);
+        try {
+            const payload: OrderPayload = {
+                storeId: store.id,
+                customer: loggedInCustomer,
+                cart: cart,
+                subtotal: cartSubtotal,
+                totalAmount: cartSubtotal,
+                pointsEarned: pointsEarned,
+            };
+            const response = await fetch('/api/catalog/order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Gagal membuat pesanan.');
+            }
+            toast({
+                title: 'Pesanan Berhasil Dibuat!',
+                description: 'Pesanan Anda sedang diproses oleh dapur. Silakan tunggu notifikasi selanjutnya.',
+            });
+            setCart([]);
+            // Close the sheet - this requires more state management or a ref, so we'll skip for now
+        } catch (error) {
+            toast({
+                variant: 'destructive',
+                title: 'Gagal Membuat Pesanan',
+                description: (error as Error).message,
+            });
+        } finally {
+            setIsSubmittingOrder(false);
         }
     };
 
@@ -532,7 +581,9 @@ export default function CatalogPage() {
                         <span>Rp {cartSubtotal.toLocaleString('id-ID')}</span>
                     </div>
                     {loggedInCustomer ? (
-                        <Button className="w-full" onClick={() => alert("Fitur pemesanan langsung akan diimplementasikan.")}>Konfirmasi & Buat Pesanan</Button>
+                         <Button className="w-full" onClick={handleCreateOrder} disabled={isSubmittingOrder}>
+                           {isSubmittingOrder ? <Loader className="animate-spin" /> : 'Konfirmasi & Buat Pesanan'}
+                         </Button>
                     ) : (
                          <Alert>
                             <UtensilsCrossed className="h-4 w-4" />
