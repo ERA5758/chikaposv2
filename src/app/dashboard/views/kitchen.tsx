@@ -76,7 +76,7 @@ export default function Kitchen() {
     return (
         <div className="h-[calc(100vh-8rem)] flex flex-col">
             <ScrollArea className="flex-grow">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 p-1">
+                <div className="grid grid-cols-1 gap-4 p-1">
                     {activeOrders.length > 0 ? (
                         activeOrders.map(order => (
                             <Card key={order.id} className="flex flex-col">
