@@ -79,7 +79,7 @@ function DashboardContent() {
   // State for shared dialogs
   const [transactionToPrint, setTransactionToPrint] = React.useState<Transaction | null>(null);
   const [transactionForDetail, setTransactionForDetail] = React.useState<Transaction | null>(null);
-  const [actionInProgress, setActionInProgress] = React.useState<{ transaction: Transaction; type: 'call' | 'whatsapp' } | null>(null);
+  const [transactionForFollowUp, setTransactionForFollowUp] = React.useState<Transaction | null>(null);
   
   const isAdmin = currentUser?.role === 'admin';
   const defaultView = currentUser?.role === 'kitchen' ? 'kitchen' : (isAdmin ? 'overview' : 'pos');
@@ -105,10 +105,10 @@ function DashboardContent() {
         return <Tables />; // Default view for cashier
     }
     if (currentUser?.role === 'kitchen' && !kitchenViews.includes(view)) {
-        return <Kitchen onFollowUpRequest={setTransactionForDetail}/>; // Default for kitchen
+        return <Kitchen onFollowUpRequest={setTransactionForFollowUp}/>; // Default for kitchen
     }
     if (currentUser?.role === 'admin' && view === 'kitchen') {
-        return <Kitchen onFollowUpRequest={setTransactionForDetail} />;
+        return <Kitchen onFollowUpRequest={setTransactionForFollowUp} />;
     }
 
     switch (view) {
@@ -119,7 +119,7 @@ function DashboardContent() {
       case 'customer-analytics': return <CustomerAnalytics />;
       case 'employees': return <Employees />;
       case 'transactions': return <Transactions onDetailRequest={setTransactionForDetail} onPrintRequest={setTransactionToPrint} />;
-      case 'kitchen': return <Kitchen onFollowUpRequest={setTransactionForDetail} />;
+      case 'kitchen': return <Kitchen onFollowUpRequest={setTransactionForFollowUp} />;
       case 'settings': return <Settings />;
       case 'challenges': return <Challenges />;
       case 'promotions': return <Promotions />;
@@ -169,18 +169,18 @@ function DashboardContent() {
                 users={users}
                 open={!!transactionForDetail}
                 onOpenChange={() => setTransactionForDetail(null)}
-                onFollowUpRequest={(transaction, type) => setActionInProgress({ transaction, type })}
+                onFollowUpRequest={(transaction) => setTransactionForFollowUp(transaction)}
                 onPrintRequest={setTransactionToPrint}
             />
         )}
         
-        {actionInProgress && activeStore && (
+        {transactionForFollowUp && activeStore && (
             <OrderReadyDialog
-                transaction={actionInProgress.transaction}
-                customer={getCustomerForTransaction(actionInProgress.transaction)}
+                transaction={transactionForFollowUp}
+                customer={getCustomerForTransaction(transactionForFollowUp)}
                 store={activeStore}
-                open={!!actionInProgress}
-                onOpenChange={() => setActionInProgress(null)}
+                open={!!transactionForFollowUp}
+                onOpenChange={() => setTransactionForFollowUp(null)}
             />
         )}
     </>
