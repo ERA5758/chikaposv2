@@ -412,6 +412,7 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
                   <TableHead>Tanggal</TableHead>
                   <TableHead>Pelanggan</TableHead>
                   <TableHead className="text-center">Status</TableHead>
+                  <TableHead>Metode Pembayaran</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                   <TableHead className="text-right w-[200px]">Aksi</TableHead>
                 </TableRow>
@@ -424,6 +425,7 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
                             <TableCell><Skeleton className="h-5 w-24"/></TableCell>
                             <TableCell><Skeleton className="h-5 w-32"/></TableCell>
                             <TableCell className="text-center"><Skeleton className="h-6 w-20 mx-auto"/></TableCell>
+                            <TableCell><Skeleton className="h-5 w-20"/></TableCell>
                             <TableCell className="text-right"><Skeleton className="h-5 w-20 ml-auto"/></TableCell>
                             <TableCell className="text-right"><Skeleton className="h-8 w-28 ml-auto"/></TableCell>
                         </TableRow>
@@ -452,6 +454,9 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
                           >
                               {transaction.status}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                            <Badge variant="outline">{transaction.paymentMethod}</Badge>
                         </TableCell>
                         <TableCell className="text-right font-mono">
                         Rp {transaction.totalAmount.toLocaleString('id-ID')}
