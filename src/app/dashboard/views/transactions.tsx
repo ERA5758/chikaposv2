@@ -68,7 +68,33 @@ type TransactionsProps = {
     onPrintRequest: (transaction: Transaction) => void;
 };
 
-function TransactionDetailsDialog({ transaction, open, onOpenChange, users }: { transaction: Transaction; open: boolean; onOpenChange: (open: boolean) => void; users: User[] }) {
+function TransactionDetailsDialog({ 
+    transaction, 
+    open, 
+    onOpenChange, 
+    users,
+    onActionClick,
+    onGenerateFollowUp,
+    onCompleteTransaction,
+    onProcessPayment,
+    onPrintRequest,
+    isActionLoading,
+    generatingTextId,
+    sentWhatsappIds,
+}: { 
+    transaction: Transaction; 
+    open: boolean; 
+    onOpenChange: (open: boolean) => void; 
+    users: User[];
+    onActionClick: (transaction: Transaction, type: 'call' | 'whatsapp') => void;
+    onGenerateFollowUp: (transaction: Transaction) => void;
+    onCompleteTransaction: (transaction: Transaction) => void;
+    onProcessPayment: (transaction: Transaction) => void;
+    onPrintRequest: (transaction: Transaction) => void;
+    isActionLoading: boolean;
+    generatingTextId: string | null;
+    sentWhatsappIds: Set<string>;
+}) {
     if (!transaction) return null;
     
     const staff = (users || []).find(u => u.id === transaction.staffId);
@@ -79,10 +105,10 @@ function TransactionDetailsDialog({ transaction, open, onOpenChange, users }: { 
                 <DialogHeader>
                     <DialogTitle className="font-headline tracking-wider">Detail Transaksi</DialogTitle>
                     <DialogDescription>
-                        ID: {transaction.id}
+                        Nota: {String(transaction.receiptNumber).padStart(6, '0')}
                     </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
+                <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-4 -mr-4">
                    <div>
                         <p className="text-sm text-muted-foreground">Pelanggan</p>
                         <p className="font-medium">{transaction.customerName}</p>
@@ -117,7 +143,7 @@ function TransactionDetailsDialog({ transaction, open, onOpenChange, users }: { 
                         </div>
                         <div className="flex justify-between text-destructive">
                             <p>Diskon</p>
-                            <p>- Rp {transaction.discountAmount.toLocaleString('id-ID')}</p>
+                            <p>-Rp {transaction.discountAmount.toLocaleString('id-ID')}</p>
                         </div>
                          {transaction.taxAmount > 0 && (
                             <div className="flex justify-between">
@@ -149,6 +175,40 @@ function TransactionDetailsDialog({ transaction, open, onOpenChange, users }: { 
                         </div>
                    </div>
                 </div>
+                 <DialogFooter className="pt-4 border-t">
+                    <div className="flex w-full items-center justify-between gap-1">
+                        <Button variant="outline" size="sm" className="gap-2" onClick={() => onPrintRequest(transaction)}>
+                            <Printer className="h-4 w-4"/> Cetak Struk
+                        </Button>
+                        <div className="flex items-center gap-1">
+                          {transaction.status === 'Belum Dibayar' && (
+                              <Button variant="default" size="sm" className="h-8 gap-2" onClick={() => onProcessPayment(transaction)} disabled={isActionLoading}>
+                                  {isActionLoading ? <Loader className="h-4 w-4 animate-spin"/> : <CreditCard className="h-4 w-4"/>}
+                                  Bayar
+                              </Button>
+                          )}
+                          {transaction.status === 'Diproses' && (
+                              <>
+                                  <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => onActionClick(transaction, 'call')} disabled={isActionLoading}>
+                                      <Volume2 className="h-4 w-4"/> Panggil
+                                  </Button>
+                                  <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => onGenerateFollowUp(transaction)} disabled={isActionLoading || generatingTextId === transaction.id}>
+                                      {generatingTextId === transaction.id ? <Loader className="h-4 w-4 animate-spin"/> : (
+                                          <div className="relative flex items-center gap-2">
+                                              <Send className="h-4 w-4"/> WhatsApp
+                                              {sentWhatsappIds.has(transaction.id) && <CheckCircle className="h-3 w-3 absolute -top-1 -right-2 text-green-500 bg-background rounded-full"/>}
+                                          </div>
+                                      )}
+                                  </Button>
+                                  <Button variant="default" size="sm" className="h-8 gap-2" onClick={() => onCompleteTransaction(transaction)} disabled={isActionLoading}>
+                                      {isActionLoading ? <Loader className="h-4 w-4 animate-spin"/> : <CheckCircle className="h-4 w-4"/>}
+                                      Selesaikan
+                                  </Button>
+                              </>
+                          )}
+                        </div>
+                    </div>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );
@@ -412,9 +472,7 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
                   <TableHead>Tanggal</TableHead>
                   <TableHead>Pelanggan</TableHead>
                   <TableHead className="text-center">Status</TableHead>
-                  <TableHead>Metode Pembayaran</TableHead>
                   <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="text-right w-[200px]">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -425,15 +483,13 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
                             <TableCell><Skeleton className="h-5 w-24"/></TableCell>
                             <TableCell><Skeleton className="h-5 w-32"/></TableCell>
                             <TableCell className="text-center"><Skeleton className="h-6 w-20 mx-auto"/></TableCell>
-                            <TableCell><Skeleton className="h-5 w-20"/></TableCell>
                             <TableCell className="text-right"><Skeleton className="h-5 w-20 ml-auto"/></TableCell>
-                            <TableCell className="text-right"><Skeleton className="h-8 w-28 ml-auto"/></TableCell>
                         </TableRow>
                     ))
                 ) : (
                     paginatedTransactions.map((transaction) => {
                     return (
-                    <TableRow key={transaction.id}>
+                    <TableRow key={transaction.id} onClick={() => setSelectedTransaction(transaction)} className="cursor-pointer">
                         <TableCell className="font-mono">{String(transaction.receiptNumber).padStart(6, '0')}</TableCell>
                         <TableCell>
                         {new Date(transaction.createdAt).toLocaleDateString('id-ID', {
@@ -455,79 +511,8 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
                               {transaction.status}
                           </Badge>
                         </TableCell>
-                        <TableCell>
-                            <Badge variant="outline">{transaction.paymentMethod}</Badge>
-                        </TableCell>
                         <TableCell className="text-right font-mono">
                         Rp {transaction.totalAmount.toLocaleString('id-ID')}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            {transaction.status === 'Belum Dibayar' && (
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button variant="default" size="sm" className="h-8 gap-2" onClick={() => setTransactionToPay(transaction)}>
-                                            <CreditCard className="h-4 w-4"/> Bayar
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent><p>Proses Pembayaran</p></TooltipContent>
-                                </Tooltip>
-                            )}
-                            {transaction.status === 'Diproses' && (
-                                <>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                             <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleActionClick(transaction, 'call')}>
-                                                <Volume2 className="h-4 w-4"/>
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent><p>Panggil Pelanggan (TTS)</p></TooltipContent>
-                                    </Tooltip>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleGenerateFollowUp(transaction)} disabled={generatingTextId === transaction.id}>
-                                                {generatingTextId === transaction.id ? <Loader className="h-4 w-4 animate-spin"/> : (
-                                                    <div className="relative">
-                                                        <Send className="h-4 w-4"/>
-                                                        {sentWhatsappIds.has(transaction.id) && <CheckCircle className="h-3 w-3 absolute -top-1 -right-1 text-green-500 bg-background rounded-full"/>}
-                                                    </div>
-                                                )}
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent><p>Kirim Notifikasi WhatsApp Cerdas</p></TooltipContent>
-                                    </Tooltip>
-                                     <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setTransactionToComplete(transaction)} disabled={completingTransactionId === transaction.id}>
-                                                {completingTransactionId === transaction.id ? <Loader className="h-4 w-4 animate-spin"/> : <CheckCircle className="h-4 w-4"/>}
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent><p>Selesaikan Pesanan</p></TooltipContent>
-                                     </Tooltip>
-                                </>
-                            )}
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                <Button aria-haspopup="true" size="icon" variant="ghost">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                    <span className="sr-only">Toggle menu</span>
-                                </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Aksi</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => setSelectedTransaction(transaction)}>
-                                    Lihat Detail
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => onPrintRequest(transaction)}>
-                                    <Printer className="mr-2 h-4 w-4"/> Cetak Struk
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem className="text-destructive">
-                                    Pengembalian
-                                </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
                         </TableCell>
                     </TableRow>
                     )})
@@ -567,6 +552,14 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
               open={!!selectedTransaction}
               onOpenChange={() => setSelectedTransaction(null)}
               users={users || []}
+              onActionClick={handleActionClick}
+              onGenerateFollowUp={handleGenerateFollowUp}
+              onCompleteTransaction={() => setTransactionToComplete(selectedTransaction)}
+              onProcessPayment={() => setTransactionToPay(selectedTransaction)}
+              onPrintRequest={onPrintRequest}
+              isActionLoading={completingTransactionId === selectedTransaction.id}
+              generatingTextId={generatingTextId}
+              sentWhatsappIds={sentWhatsappIds}
           />
       )}
       {actionInProgress && activeStore && (
