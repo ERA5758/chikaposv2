@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -61,7 +60,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { format, isWithinInterval, startOfMonth, endOfMonth } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { OrderReadyFollowUpInput, OrderReadyFollowUpOutput } from '@/ai/flows/order-ready-follow-up';
+import type { OrderReadyFollowUpOutput } from '@/ai/flows/order-ready-follow-up';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 type TransactionsProps = {
@@ -555,6 +554,7 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
                   <TableHead className="text-center">Status</TableHead>
                   <TableHead>Metode Pembayaran</TableHead>
                   <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="text-right w-[100px]">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -567,6 +567,7 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
                             <TableCell className="text-center"><Skeleton className="h-6 w-20 mx-auto"/></TableCell>
                             <TableCell><Skeleton className="h-5 w-20"/></TableCell>
                             <TableCell className="text-right"><Skeleton className="h-5 w-20 ml-auto"/></TableCell>
+                            <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto"/></TableCell>
                         </TableRow>
                     ))
                 ) : (
@@ -598,6 +599,16 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
                         <TableCell>{transaction.paymentMethod}</TableCell>
                         <TableCell className="text-right font-mono">
                         Rp {transaction.totalAmount.toLocaleString('id-ID')}
+                        </TableCell>
+                         <TableCell className="text-right">
+                           {transaction.status === 'Belum Dibayar' ? (
+                                <Button size="sm" onClick={(e) => { e.stopPropagation(); setTransactionToPay(transaction); }}>Bayar</Button>
+                           ) : (
+                             <Button aria-haspopup="true" size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); setSelectedTransaction(transaction); }}>
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Lihat Detail</span>
+                            </Button>
+                           )}
                         </TableCell>
                     </TableRow>
                     )})
@@ -680,7 +691,7 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
       <AlertDialog open={!!transactionToRefund} onOpenChange={() => setTransactionToRefund(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Batalkan & Kembalikan Dana?</AlertDialogTitle>
+            <AlertDialogTitle>Batalkan &amp; Kembalikan Dana?</AlertDialogTitle>
             <AlertDialogDescription>
               Transaksi ini akan dibatalkan. Stok, poin, dan biaya token akan dikembalikan. Tindakan ini tidak dapat diurungkan.
             </AlertDialogDescription>
@@ -732,3 +743,5 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
     </>
   );
 }
+
+    
