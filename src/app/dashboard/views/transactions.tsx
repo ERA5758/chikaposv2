@@ -20,7 +20,7 @@ import {
 import type { Transaction, User, Customer, TransactionStatus } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Volume2, Send, CheckCircle, Loader, Calendar as CalendarIcon, Printer, Sparkles } from 'lucide-react';
+import { MoreHorizontal, Volume2, Send, CheckCircle, Loader, Calendar as CalendarIcon, Printer, Sparkles, CreditCard } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,6 +35,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -153,7 +154,7 @@ function TransactionDetailsDialog({ transaction, open, onOpenChange, users }: { 
     );
 }
 
-type StatusFilter = 'Semua' | 'Diproses' | 'Selesai';
+type StatusFilter = 'Semua' | 'Diproses' | 'Selesai' | 'Belum Dibayar';
 
 export default function Transactions({ onPrintRequest }: TransactionsProps) {
   const { activeStore } = useAuth();
@@ -167,6 +168,11 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
   const [transactionToComplete, setTransactionToComplete] = React.useState<Transaction | null>(null);
   const [generatingTextId, setGeneratingTextId] = React.useState<string | null>(null);
   const [sentWhatsappIds, setSentWhatsappIds] = React.useState<Set<string>>(new Set());
+
+  // State for Payment Dialog
+  const [transactionToPay, setTransactionToPay] = React.useState<Transaction | null>(null);
+  const [paymentMethodForDialog, setPaymentMethodForDialog] = React.useState<'Cash' | 'Card' | 'QRIS'>('Cash');
+  const [isPaying, setIsPaying] = React.useState(false);
 
   const [date, setDate] = React.useState<DateRange | undefined>({
     from: startOfMonth(new Date()),
@@ -194,6 +200,9 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
         }
         if (statusFilter === 'Selesai') {
             return t.status === 'Selesai' || t.status === 'Selesai Dibayar';
+        }
+        if (statusFilter === 'Belum Dibayar') {
+            return t.status === 'Belum Dibayar';
         }
         return false;
     });
@@ -298,6 +307,37 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
     }
   }
 
+  const handleProcessPayment = async () => {
+    if (!transactionToPay || !activeStore) return;
+    setIsPaying(true);
+
+    try {
+        const transactionRef = doc(db, 'stores', activeStore.id, 'transactions', transactionToPay.id);
+        await updateDoc(transactionRef, {
+            status: 'Selesai Dibayar',
+            paymentMethod: paymentMethodForDialog,
+        });
+
+        toast({
+            title: "Pembayaran Berhasil",
+            description: `Pembayaran untuk nota ${String(transactionToPay.receiptNumber).padStart(6, '0')} telah diterima.`,
+        });
+        
+        onDataChange();
+        setTransactionToPay(null);
+
+    } catch (error) {
+        console.error("Error processing payment:", error);
+        toast({
+            variant: "destructive",
+            title: "Gagal Memproses Pembayaran",
+            description: (error as Error).message,
+        });
+    } finally {
+        setIsPaying(false);
+    }
+  };
+
   return (
     <>
       <div className="non-printable">
@@ -321,6 +361,7 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
                             <SelectItem value="Semua">Semua Status</SelectItem>
                             <SelectItem value="Diproses">Diproses</SelectItem>
                             <SelectItem value="Selesai">Selesai</SelectItem>
+                            <SelectItem value="Belum Dibayar">Belum Dibayar</SelectItem>
                         </SelectContent>
                     </Select>
                     <Popover>
@@ -406,6 +447,7 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
                             className={cn(
                                 transaction.status === 'Diproses' && 'bg-amber-500/20 text-amber-800 border-amber-500/50',
                                 (transaction.status === 'Selesai' || transaction.status === 'Selesai Dibayar') && 'bg-green-500/20 text-green-800 border-green-500/50',
+                                transaction.status === 'Belum Dibayar' && 'bg-red-500/20 text-red-800 border-red-500/50',
                             )}
                           >
                               {transaction.status}
@@ -416,6 +458,16 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
+                            {transaction.status === 'Belum Dibayar' && (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="default" size="sm" className="h-8 gap-2" onClick={() => setTransactionToPay(transaction)}>
+                                            <CreditCard className="h-4 w-4"/> Bayar
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Proses Pembayaran</p></TooltipContent>
+                                </Tooltip>
+                            )}
                             {transaction.status === 'Diproses' && (
                                 <>
                                     <Tooltip>
@@ -540,6 +592,41 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Payment Dialog */}
+      <Dialog open={!!transactionToPay} onOpenChange={() => setTransactionToPay(null)}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Proses Pembayaran</DialogTitle>
+                <DialogDescription>
+                    Pilih metode pembayaran untuk transaksi nota #{String(transactionToPay?.receiptNumber).padStart(6, '0')}.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-4">
+                <div className="text-center">
+                    <p className="text-muted-foreground">Total Tagihan</p>
+                    <p className="text-3xl font-bold">Rp {transactionToPay?.totalAmount.toLocaleString('id-ID')}</p>
+                </div>
+                <Select value={paymentMethodForDialog} onValueChange={(value: 'Cash' | 'Card' | 'QRIS') => setPaymentMethodForDialog(value)}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Pilih Metode Pembayaran"/>
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="Cash">Tunai</SelectItem>
+                        <SelectItem value="Card">Kartu</SelectItem>
+                        <SelectItem value="QRIS">QRIS</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+            <DialogFooter>
+                <Button variant="ghost" onClick={() => setTransactionToPay(null)}>Batal</Button>
+                <Button onClick={handleProcessPayment} disabled={isPaying}>
+                    {isPaying && <Loader className="mr-2 h-4 w-4 animate-spin"/>}
+                    Konfirmasi Pembayaran
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
