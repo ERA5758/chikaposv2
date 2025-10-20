@@ -98,7 +98,7 @@ function DashboardContent() {
   const { users, customers, transactions } = dashboardData;
 
   const getCustomerForTransaction = (transaction: Transaction): Customer | undefined => {
-    if (!transaction.customerId || transaction.customerId === 'N/A') return undefined;
+    if (!transaction || !transaction.customerId || transaction.customerId === 'N/A') return undefined;
     return customers.find(c => c.id === transaction.customerId);
   }
 
