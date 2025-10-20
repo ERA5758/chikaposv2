@@ -65,6 +65,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 type TransactionsProps = {
     onPrintRequest: (transaction: Transaction) => void;
+    initialTransaction?: Transaction | null;
+    onDialogClose?: () => void;
 };
 
 function TransactionDetailsDialog({ 
@@ -236,13 +238,13 @@ function TransactionDetailsDialog({
 
 type StatusFilter = 'Semua' | 'Diproses' | 'Selesai' | 'Belum Dibayar' | 'Dibatalkan';
 
-export default function Transactions({ onPrintRequest }: TransactionsProps) {
+export default function Transactions({ onPrintRequest, initialTransaction, onDialogClose }: TransactionsProps) {
   const { activeStore } = useAuth();
   const { dashboardData, isLoading, refreshData: onDataChange } = useDashboard();
   const { transactions, users, customers, feeSettings } = dashboardData || {};
   
   const { toast } = useToast();
-  const [selectedTransaction, setSelectedTransaction] = React.useState<Transaction | null>(null);
+  const [selectedTransaction, setSelectedTransaction] = React.useState<Transaction | null>(initialTransaction || null);
   const [actionInProgress, setActionInProgress] = React.useState<{ transaction: Transaction; type: 'call' | 'whatsapp' } | null>(null);
   const [completingTransactionId, setCompletingTransactionId] = React.useState<string | null>(null);
   const [transactionToComplete, setTransactionToComplete] = React.useState<Transaction | null>(null);
@@ -646,7 +648,10 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
           <TransactionDetailsDialog
               transaction={selectedTransaction}
               open={!!selectedTransaction}
-              onOpenChange={() => setSelectedTransaction(null)}
+              onOpenChange={() => {
+                  setSelectedTransaction(null)
+                  if(onDialogClose) onDialogClose();
+              }}
               users={users || []}
               onActionClick={handleActionClick}
               onGenerateFollowUp={handleGenerateFollowUp}
@@ -743,5 +748,3 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
     </>
   );
 }
-
-    

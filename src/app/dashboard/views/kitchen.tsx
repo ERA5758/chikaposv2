@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -9,13 +8,18 @@ import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, ChefHat, Loader } from 'lucide-react';
-import { doc, updateDoc, writeBatch, getDoc } from 'firebase/firestore';
+import { CheckCircle, ChefHat, Loader, MessageCircle } from 'lucide-react';
+import { doc, writeBatch, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/auth-context';
 import { Badge } from '@/components/ui/badge';
+import type { Transaction } from '@/lib/types';
 
-export default function Kitchen() {
+type KitchenProps = {
+    onFollowUpRequest: (transaction: Transaction) => void;
+};
+
+export default function Kitchen({ onFollowUpRequest }: KitchenProps) {
     const { dashboardData } = useDashboard();
     const { activeStore } = useAuth();
     const { transactions } = dashboardData;
@@ -103,7 +107,15 @@ export default function Kitchen() {
                                         </div>
                                     ))}
                                 </CardContent>
-                                <CardFooter>
+                                <CardFooter className="flex gap-2">
+                                     <Button 
+                                        variant="outline"
+                                        className="w-full" 
+                                        onClick={() => onFollowUpRequest(order)}
+                                    >
+                                        <MessageCircle className="mr-2 h-4 w-4" />
+                                        Follow Up
+                                    </Button>
                                     <Button 
                                         className="w-full" 
                                         onClick={() => handleCompleteOrder(order.id)}

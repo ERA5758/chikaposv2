@@ -71,6 +71,7 @@ function DashboardContent() {
   const { dashboardData, isLoading } = useDashboard();
   const searchParams = useSearchParams();
   const [transactionToPrint, setTransactionToPrint] = React.useState<Transaction | null>(null);
+  const [followUpTransaction, setFollowUpTransaction] = React.useState<Transaction | null>(null);
 
   const isAdmin = currentUser?.role === 'admin';
   const defaultView = currentUser?.role === 'kitchen' ? 'kitchen' : (isAdmin ? 'overview' : 'pos');
@@ -90,10 +91,10 @@ function DashboardContent() {
         return <Tables />; // Default view for cashier if they access restricted page
     }
     if (currentUser?.role === 'kitchen' && !kitchenViews.includes(view)) {
-        return <Kitchen />; // Default for kitchen role
+        return <Kitchen onFollowUpRequest={setFollowUpTransaction}/>; // Default for kitchen role
     }
     if (currentUser?.role === 'admin' && view === 'kitchen') {
-        return <Kitchen />; // Admin can also see kitchen
+        return <Kitchen onFollowUpRequest={setFollowUpTransaction} />; // Admin can also see kitchen
     }
 
     switch (view) {
@@ -121,7 +122,7 @@ function DashboardContent() {
       case 'transactions':
         return <Transactions onPrintRequest={setTransactionToPrint} />;
       case 'kitchen':
-        return <Kitchen />;
+        return <Kitchen onFollowUpRequest={setFollowUpTransaction} />;
       case 'settings':
         return <Settings />;
       case 'challenges':
@@ -186,6 +187,8 @@ function DashboardContent() {
             open={!!transactionToPrint}
             onOpenChange={() => setTransactionToPrint(null)}
         />
+        {/* Re-use Transactions' detail dialog for kitchen follow-up */}
+        <Transactions onPrintRequest={setTransactionToPrint} initialTransaction={followUpTransaction} onDialogClose={() => setFollowUpTransaction(null)} />
     </>
   );
 }
