@@ -81,7 +81,7 @@ export function MainSidebar({ pradanaTokenBalance }: MainSidebarProps) {
             { view: 'overview', label: 'Overview', icon: <LayoutGrid />, roles: ['admin', 'cashier'] },
             { view: 'pos', label: 'Kasir POS', icon: <Armchair />, roles: ['admin', 'cashier'] },
             { view: 'kitchen', label: 'Dapur', icon: <ChefHat />, roles: ['admin', 'kitchen'] },
-            { view: 'transactions', label: 'Transaksi', icon: <History />, roles: ['admin', 'cashier', 'kitchen'] },
+            { view: 'transactions', label: 'Transaksi', icon: <History />, roles: ['admin', 'cashier'] },
         ]
     },
     {
