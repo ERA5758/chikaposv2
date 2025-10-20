@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -22,7 +23,7 @@ import CatalogSettings from '@/app/dashboard/views/catalog-settings';
 import Tables from '@/app/dashboard/views/tables';
 import Kitchen from '@/app/dashboard/views/kitchen';
 import { Suspense } from 'react';
-import type { User, Transaction } from '@/lib/types';
+import type { User, Transaction, Customer } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-context';
 import { useDashboard } from '@/contexts/dashboard-context';
 import { UtensilsCrossed, Printer, Loader, Volume2, Send, CheckCircle } from 'lucide-react';
@@ -33,6 +34,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { db, auth } from '@/lib/firebase';
 import { doc, writeBatch, getDoc } from 'firebase/firestore';
+import { OrderReadyDialog } from '@/components/dashboard/order-ready-dialog';
 
 function CheckoutReceiptDialog({ transaction, users, open, onOpenChange }: { transaction: Transaction | null; users: User[]; open: boolean; onOpenChange: (open: boolean) => void }) {
     if (!transaction) return null;
@@ -95,6 +97,11 @@ function DashboardContent() {
 
   const { users, customers, transactions } = dashboardData;
 
+  const getCustomerForTransaction = (transaction: Transaction): Customer | undefined => {
+    if (!transaction.customerId || transaction.customerId === 'N/A') return undefined;
+    return customers.find(c => c.id === transaction.customerId);
+  }
+
   // --- Handlers for actions inside TransactionDetailsDialog ---
   const handleGenerateFollowUp = async (transaction: Transaction) => {
     setGeneratingTextId(transaction.id);
@@ -105,7 +112,7 @@ function DashboardContent() {
         const response = await fetch('/api/order-ready-notification', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}`},
-            body: JSON.stringify({ transaction, customer: customers.find(c => c.id === transaction.customerId), store: activeStore })
+            body: JSON.stringify({ transaction, customer: getCustomerForTransaction(transaction), store: activeStore })
         });
         if (!response.ok) {
             const err = await response.json();
@@ -227,6 +234,21 @@ function DashboardContent() {
                 isActionLoading={completingTransactionId === transactionForDetail.id}
                 generatingTextId={generatingTextId}
                 sentWhatsappIds={sentWhatsappIds}
+            />
+        )}
+        
+        {actionInProgress && activeStore && (
+            <OrderReadyDialog
+                transaction={actionInProgress.transaction}
+                customer={getCustomerForTransaction(actionInProgress.transaction)}
+                store={activeStore}
+                open={!!actionInProgress}
+                onOpenChange={() => setActionInProgress(null)}
+                onSuccess={() => {
+                    if (actionInProgress.type === 'whatsapp') {
+                        setSentWhatsappIds(prev => new Set(prev).add(actionInProgress!.transaction.id));
+                    }
+                }}
             />
         )}
     </>
