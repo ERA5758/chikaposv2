@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -12,6 +13,7 @@ import { CheckCircle, ChefHat, Loader } from 'lucide-react';
 import { doc, updateDoc, writeBatch, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/auth-context';
+import { Badge } from '@/components/ui/badge';
 
 export default function Kitchen() {
     const { dashboardData } = useDashboard();
