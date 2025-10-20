@@ -97,10 +97,10 @@ export function MainSidebar({ pradanaTokenBalance }: MainSidebarProps) {
     {
         group: 'Analisis & Pertumbuhan',
         icon: <TrendingUp />,
-        roles: ['admin', 'cashier'],
+        roles: ['admin'],
         items: [
             { view: 'customer-analytics', label: 'Analisis Pelanggan', icon: <BarChart4 />, roles: ['admin'] },
-            { view: 'promotions', label: 'Promosi', icon: <Gift />, roles: ['admin', 'cashier'] },
+            { view: 'promotions', label: 'Promosi', icon: <Gift />, roles: ['admin'] },
             { view: 'challenges', label: 'Tantangan', icon: <Trophy />, roles: ['admin'] },
             { view: 'ai-business-plan', label: 'AI Business Plan', icon: <Map />, roles: ['admin'] },
         ]
