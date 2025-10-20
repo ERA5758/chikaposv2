@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -65,11 +66,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 type TransactionsProps = {
     onPrintRequest: (transaction: Transaction) => void;
-    initialTransaction?: Transaction | null;
-    onDialogClose?: () => void;
+    onDetailRequest: (transaction: Transaction) => void;
 };
 
-function TransactionDetailsDialog({ 
+export function TransactionDetailsDialog({ 
     transaction, 
     open, 
     onOpenChange, 
@@ -238,25 +238,25 @@ function TransactionDetailsDialog({
 
 type StatusFilter = 'Semua' | 'Diproses' | 'Selesai' | 'Belum Dibayar' | 'Dibatalkan';
 
-export default function Transactions({ onPrintRequest, initialTransaction, onDialogClose }: TransactionsProps) {
+export default function Transactions({ onPrintRequest, onDetailRequest }: TransactionsProps) {
   const { activeStore } = useAuth();
-  const { dashboardData, isLoading, refreshData: onDataChange } = useDashboard();
+  const { dashboardData, isLoading, refreshData } = useDashboard();
   const { transactions, users, customers, feeSettings } = dashboardData || {};
   
   const { toast } = useToast();
-  const [selectedTransaction, setSelectedTransaction] = React.useState<Transaction | null>(initialTransaction || null);
-  const [actionInProgress, setActionInProgress] = React.useState<{ transaction: Transaction; type: 'call' | 'whatsapp' } | null>(null);
-  const [completingTransactionId, setCompletingTransactionId] = React.useState<string | null>(null);
+  
+  // States for confirmation dialogs
   const [transactionToComplete, setTransactionToComplete] = React.useState<Transaction | null>(null);
   const [transactionToRefund, setTransactionToRefund] = React.useState<Transaction | null>(null);
-  const [generatingTextId, setGeneratingTextId] = React.useState<string | null>(null);
-  const [sentWhatsappIds, setSentWhatsappIds] = React.useState<Set<string>>(new Set());
-
-  // State for Payment Dialog
   const [transactionToPay, setTransactionToPay] = React.useState<Transaction | null>(null);
-  const [paymentMethodForDialog, setPaymentMethodForDialog] = React.useState<'Cash' | 'Card' | 'QRIS'>('Cash');
-  const [isPaying, setIsPaying] = React.useState(false);
 
+  // Loading states
+  const [isActionLoading, setIsActionLoading] = React.useState(false);
+ 
+  // Payment Dialog state
+  const [paymentMethodForDialog, setPaymentMethodForDialog] = React.useState<'Cash' | 'Card' | 'QRIS'>('Cash');
+
+  // Filter and pagination states
   const [date, setDate] = React.useState<DateRange | undefined>({
     from: startOfMonth(new Date()),
     to: endOfMonth(new Date()),
@@ -273,23 +273,13 @@ export default function Transactions({ onPrintRequest, initialTransaction, onDia
         dateFiltered = dateFiltered.filter(t => isWithinInterval(new Date(t.createdAt), { start: fromDate, end: toDate }));
     }
 
-    if (statusFilter === 'Semua') {
-        return dateFiltered;
-    }
+    if (statusFilter === 'Semua') return dateFiltered;
     
     return dateFiltered.filter(t => {
-        if (statusFilter === 'Diproses') {
-            return t.status === 'Diproses';
-        }
-        if (statusFilter === 'Selesai') {
-            return t.status === 'Selesai' || t.status === 'Selesai Dibayar';
-        }
-        if (statusFilter === 'Belum Dibayar') {
-            return t.status === 'Belum Dibayar';
-        }
-        if (statusFilter === 'Dibatalkan') {
-            return t.status === 'Dibatalkan';
-        }
+        if (statusFilter === 'Diproses') return t.status === 'Diproses';
+        if (statusFilter === 'Selesai') return t.status === 'Selesai' || t.status === 'Selesai Dibayar';
+        if (statusFilter === 'Belum Dibayar') return t.status === 'Belum Dibayar';
+        if (statusFilter === 'Dibatalkan') return t.status === 'Dibatalkan';
         return false;
     });
 
@@ -307,95 +297,10 @@ export default function Transactions({ onPrintRequest, initialTransaction, onDia
       setCurrentPage(1);
   }, [date, statusFilter]);
 
-  const getCustomerForTransaction = (transaction: Transaction): Customer | undefined => {
-      if (!transaction.customerId || transaction.customerId === 'N/A') return undefined;
-      return (customers || []).find(c => c.id === transaction.customerId);
-  }
-
-  const handleActionClick = (transaction: Transaction, type: 'call' | 'whatsapp') => {
-    setActionInProgress({ transaction, type });
-  };
-
-  const handleWhatsappSent = (transactionId: string) => {
-    setSentWhatsappIds(prev => new Set(prev).add(transactionId));
-  }
-
-  const handleGenerateFollowUp = async (transaction: Transaction) => {
-    setGeneratingTextId(transaction.id);
-    try {
-        const idToken = await auth.currentUser?.getIdToken(true);
-        if (!idToken) throw new Error("Authentication token not available.");
-        if (!activeStore) throw new Error("Active store not found.");
-
-        const response = await fetch('/api/order-ready-notification', {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${idToken}`
-            },
-            body: JSON.stringify({ transaction, customer: getCustomerForTransaction(transaction), store: activeStore })
-        });
-
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.error || 'Failed to generate creative text.');
-        }
-
-        const result: OrderReadyFollowUpOutput = await response.json();
-        
-        toast({
-            title: "Notifikasi Terkirim!",
-            description: "Notifikasi WhatsApp telah dikirim ke pelanggan.",
-        });
-        handleWhatsappSent(transaction.id); // Mark as sent
-    } catch (error) {
-        console.error("Error generating follow-up text:", error);
-        toast({
-            variant: 'destructive',
-            title: 'Gagal Mengirim Notifikasi',
-            description: (error as Error).message,
-        });
-    } finally {
-        setGeneratingTextId(null);
-    }
-  };
-
-  const handleCompleteTransaction = async () => {
-    if (!transactionToComplete || !activeStore) return;
-    
-    setCompletingTransactionId(transactionToComplete.id);
-
-    try {
-        const batch = writeBatch(db);
-        
-        const transactionRef = doc(db, 'stores', activeStore.id, 'transactions', transactionToComplete.id);
-        batch.update(transactionRef, { status: 'Selesai' });
-
-        if (transactionToComplete.tableId) {
-            const tableRef = doc(db, 'stores', activeStore.id, 'tables', transactionToComplete.tableId);
-            const tableDoc = await getDoc(tableRef);
-            if (tableDoc.exists()) {
-                batch.update(tableRef, { status: 'Menunggu Dibersihkan' });
-            }
-        }
-        
-        await batch.commit();
-
-        toast({ title: 'Pesanan Selesai!', description: `Status pesanan untuk ${transactionToComplete.customerName} telah diperbarui.`});
-        onDataChange();
-
-    } catch (error) {
-        console.error("Error completing transaction:", error);
-        toast({ variant: 'destructive', title: 'Gagal Menyelesaikan Pesanan' });
-    } finally {
-        setCompletingTransactionId(null);
-        setTransactionToComplete(null);
-    }
-  }
 
   const handleProcessPayment = async () => {
     if (!transactionToPay || !activeStore) return;
-    setIsPaying(true);
+    setIsActionLoading(true);
 
     try {
         const transactionRef = doc(db, 'stores', activeStore.id, 'transactions', transactionToPay.id);
@@ -409,31 +314,25 @@ export default function Transactions({ onPrintRequest, initialTransaction, onDia
             description: `Pembayaran untuk nota ${String(transactionToPay.receiptNumber).padStart(6, '0')} telah diterima.`,
         });
         
-        onDataChange();
+        refreshData();
         setTransactionToPay(null);
 
     } catch (error) {
-        console.error("Error processing payment:", error);
-        toast({
-            variant: "destructive",
-            title: "Gagal Memproses Pembayaran",
-            description: (error as Error).message,
-        });
+        toast({ variant: "destructive", title: "Gagal Memproses Pembayaran", description: (error as Error).message });
     } finally {
-        setIsPaying(false);
+        setIsActionLoading(false);
     }
   };
   
   const handleRefund = async () => {
     if (!transactionToRefund || !activeStore || !feeSettings) return;
-    setIsPaying(true); // Reuse loading state
+    setIsActionLoading(true);
 
     try {
         await runTransaction(db, async (transaction) => {
             const storeRef = doc(db, 'stores', activeStore.id);
             const transRef = doc(db, 'stores', activeStore.id, 'transactions', transactionToRefund.id);
             
-            // 1. Revert stock
             for (const item of transactionToRefund.items) {
                  if (!item.productId.startsWith('manual-')) {
                     const productRef = doc(db, 'stores', activeStore.id, 'products', item.productId);
@@ -441,40 +340,27 @@ export default function Transactions({ onPrintRequest, initialTransaction, onDia
                  }
             }
             
-            // 2. Revert points
             if (transactionToRefund.customerId !== 'N/A') {
                 const customerRef = doc(db, 'stores', activeStore.id, 'customers', transactionToRefund.customerId);
                 const pointsToRevert = transactionToRefund.pointsRedeemed - transactionToRefund.pointsEarned;
                 transaction.update(customerRef, { loyaltyPoints: increment(pointsToRevert) });
             }
 
-            // 3. Refund transaction fee
             const feeFromPercentage = transactionToRefund.totalAmount * feeSettings.feePercentage;
             const feeCappedAtMin = Math.max(feeFromPercentage, feeSettings.minFeeRp);
             const feeToRefund = Math.min(feeCappedAtMin, feeSettings.maxFeeRp) / feeSettings.tokenValueRp;
             transaction.update(storeRef, { pradanaTokenBalance: increment(feeToRefund) });
 
-            // 4. Update transaction status
             transaction.update(transRef, { status: 'Dibatalkan' });
         });
         
-        toast({
-            title: "Transaksi Dibatalkan",
-            description: "Stok, poin, dan token telah dikembalikan.",
-        });
-
-        onDataChange();
+        toast({ title: "Transaksi Dibatalkan", description: "Stok, poin, dan token telah dikembalikan." });
+        refreshData();
         setTransactionToRefund(null);
-
     } catch (error) {
-        console.error("Error refunding transaction:", error);
-        toast({
-            variant: "destructive",
-            title: "Gagal Membatalkan Transaksi",
-            description: (error as Error).message,
-        });
+        toast({ variant: "destructive", title: "Gagal Membatalkan Transaksi", description: (error as Error).message });
     } finally {
-        setIsPaying(false);
+        setIsActionLoading(false);
     }
   }
 
@@ -486,18 +372,12 @@ export default function Transactions({ onPrintRequest, initialTransaction, onDia
           <CardHeader>
             <div className="flex flex-col gap-4">
                 <div>
-                    <CardTitle className="font-headline tracking-wider">
-                    Riwayat Transaksi
-                    </CardTitle>
-                    <CardDescription>
-                    Lihat semua penjualan yang lalu, status pesanan, dan detailnya.
-                    </CardDescription>
+                    <CardTitle className="font-headline tracking-wider">Riwayat Transaksi</CardTitle>
+                    <CardDescription>Lihat semua penjualan yang lalu, status pesanan, dan detailnya.</CardDescription>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
                     <Select value={statusFilter} onValueChange={(value: StatusFilter) => setStatusFilter(value)}>
-                        <SelectTrigger className="w-full sm:w-[180px]">
-                            <SelectValue placeholder="Filter status..." />
-                        </SelectTrigger>
+                        <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Filter status..." /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="Semua">Semua Status</SelectItem>
                             <SelectItem value="Diproses">Diproses</SelectItem>
@@ -511,35 +391,14 @@ export default function Transactions({ onPrintRequest, initialTransaction, onDia
                         <Button
                             id="date"
                             variant={"outline"}
-                            className={cn(
-                            "w-full sm:w-[300px] justify-start text-left font-normal",
-                            !date && "text-muted-foreground"
-                            )}
+                            className={cn("w-full sm:w-[300px] justify-start text-left font-normal", !date && "text-muted-foreground")}
                         >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {date?.from ? (
-                            date.to ? (
-                                <>
-                                {format(date.from, "LLL dd, y")} -{" "}
-                                {format(date.to, "LLL dd, y")}
-                                </>
-                            ) : (
-                                format(date.from, "LLL dd, y")
-                            )
-                            ) : (
-                            <span>Pilih tanggal</span>
-                            )}
+                            {date?.from ? (date.to ? (`${format(date.from, "LLL dd, y")} - ${format(date.to, "LLL dd, y")}`) : format(date.from, "LLL dd, y")) : (<span>Pilih tanggal</span>)}
                         </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="end">
-                        <Calendar
-                            initialFocus
-                            mode="range"
-                            defaultMonth={date?.from}
-                            selected={date}
-                            onSelect={setDate}
-                            numberOfMonths={2}
-                        />
+                        <Calendar initialFocus mode="range" defaultMonth={date?.from} selected={date} onSelect={setDate} numberOfMonths={2}/>
                         </PopoverContent>
                     </Popover>
                 </div>
@@ -567,7 +426,7 @@ export default function Transactions({ onPrintRequest, initialTransaction, onDia
                             <TableCell><Skeleton className="h-5 w-24"/></TableCell>
                             <TableCell><Skeleton className="h-5 w-32"/></TableCell>
                             <TableCell className="text-center"><Skeleton className="h-6 w-20 mx-auto"/></TableCell>
-                            <TableCell><Skeleton className="h-5 w-20"/></TableCell>
+                             <TableCell><Skeleton className="h-5 w-20"/></TableCell>
                             <TableCell className="text-right"><Skeleton className="h-5 w-20 ml-auto"/></TableCell>
                             <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto"/></TableCell>
                         </TableRow>
@@ -575,15 +434,9 @@ export default function Transactions({ onPrintRequest, initialTransaction, onDia
                 ) : (
                     paginatedTransactions.map((transaction) => {
                     return (
-                    <TableRow key={transaction.id} onClick={() => setSelectedTransaction(transaction)} className="cursor-pointer">
+                    <TableRow key={transaction.id} onClick={() => onDetailRequest(transaction)} className="cursor-pointer">
                         <TableCell className="font-mono">{String(transaction.receiptNumber).padStart(6, '0')}</TableCell>
-                        <TableCell>
-                        {new Date(transaction.createdAt).toLocaleDateString('id-ID', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                        })}
-                        </TableCell>
+                        <TableCell>{new Date(transaction.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</TableCell>
                         <TableCell>{transaction.customerName}</TableCell>
                         <TableCell className="text-center">
                           <Badge 
@@ -599,14 +452,12 @@ export default function Transactions({ onPrintRequest, initialTransaction, onDia
                           </Badge>
                         </TableCell>
                         <TableCell>{transaction.paymentMethod}</TableCell>
-                        <TableCell className="text-right font-mono">
-                        Rp {transaction.totalAmount.toLocaleString('id-ID')}
-                        </TableCell>
+                        <TableCell className="text-right font-mono">Rp {transaction.totalAmount.toLocaleString('id-ID')}</TableCell>
                          <TableCell className="text-right">
                            {transaction.status === 'Belum Dibayar' ? (
                                 <Button size="sm" onClick={(e) => { e.stopPropagation(); setTransactionToPay(transaction); }}>Bayar</Button>
                            ) : (
-                             <Button aria-haspopup="true" size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); setSelectedTransaction(transaction); }}>
+                             <Button aria-haspopup="true" size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onDetailRequest(transaction); }}>
                                 <MoreHorizontal className="h-4 w-4" />
                                 <span className="sr-only">Lihat Detail</span>
                             </Button>
@@ -619,92 +470,26 @@ export default function Transactions({ onPrintRequest, initialTransaction, onDia
             </Table>
             </TooltipProvider>
              <div className="flex items-center justify-between mt-4">
-                <span className="text-sm text-muted-foreground">
-                    Halaman {currentPage} dari {totalPages}
-                </span>
+                <span className="text-sm text-muted-foreground">Halaman {currentPage} dari {totalPages}</span>
                 <div className="flex gap-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                        disabled={currentPage === 1}
-                    >
-                        Sebelumnya
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                        disabled={currentPage === totalPages}
-                    >
-                        Berikutnya
-                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1}>Sebelumnya</Button>
+                    <Button variant="outline" size="sm" onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages}>Berikutnya</Button>
                 </div>
             </div>
           </CardContent>
         </Card>
       </div>
-      {selectedTransaction && (
-          <TransactionDetailsDialog
-              transaction={selectedTransaction}
-              open={!!selectedTransaction}
-              onOpenChange={() => {
-                  setSelectedTransaction(null)
-                  if(onDialogClose) onDialogClose();
-              }}
-              users={users || []}
-              onActionClick={handleActionClick}
-              onGenerateFollowUp={handleGenerateFollowUp}
-              onCompleteTransaction={() => setTransactionToComplete(selectedTransaction)}
-              onProcessPayment={() => setTransactionToPay(selectedTransaction)}
-              onRefundTransaction={() => setTransactionToRefund(selectedTransaction)}
-              onPrintRequest={onPrintRequest}
-              isActionLoading={completingTransactionId === selectedTransaction.id}
-              generatingTextId={generatingTextId}
-              sentWhatsappIds={sentWhatsappIds}
-          />
-      )}
-      {actionInProgress && activeStore && (
-        <OrderReadyDialog
-          transaction={actionInProgress.transaction}
-          customer={getCustomerForTransaction(actionInProgress.transaction)}
-          store={activeStore}
-          open={!!actionInProgress}
-          onOpenChange={() => setActionInProgress(null)}
-          onSuccess={() => {
-            if (actionInProgress.type === 'whatsapp') {
-                handleWhatsappSent(actionInProgress.transaction.id);
-            }
-          }}
-        />
-      )}
-      <AlertDialog open={!!transactionToComplete} onOpenChange={() => setTransactionToComplete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Selesaikan Pesanan?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Anda akan menandai pesanan untuk <span className="font-bold">{transactionToComplete?.customerName}</span> sebagai selesai. Pastikan pesanan sudah diserahkan kepada pelanggan.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction onClick={handleCompleteTransaction}>Ya, Selesaikan</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       <AlertDialog open={!!transactionToRefund} onOpenChange={() => setTransactionToRefund(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Batalkan &amp; Kembalikan Dana?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Transaksi ini akan dibatalkan. Stok, poin, dan biaya token akan dikembalikan. Tindakan ini tidak dapat diurungkan.
-            </AlertDialogDescription>
+            <AlertDialogDescription>Transaksi ini akan dibatalkan. Stok, poin, dan biaya token akan dikembalikan. Tindakan ini tidak dapat diurungkan.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRefund} disabled={isPaying} className="bg-destructive hover:bg-destructive/90">
-                {isPaying ? <Loader className="animate-spin mr-2"/> : <Undo2 className="mr-2 h-4 w-4"/>}
+            <AlertDialogAction onClick={handleRefund} disabled={isActionLoading} className="bg-destructive hover:bg-destructive/90">
+                {isActionLoading ? <Loader className="animate-spin mr-2"/> : <Undo2 className="mr-2 h-4 w-4"/>}
                 Ya, Batalkan Transaksi
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -716,9 +501,7 @@ export default function Transactions({ onPrintRequest, initialTransaction, onDia
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>Proses Pembayaran</DialogTitle>
-                <DialogDescription>
-                    Pilih metode pembayaran untuk transaksi nota #{String(transactionToPay?.receiptNumber).padStart(6, '0')}.
-                </DialogDescription>
+                <DialogDescription>Pilih metode pembayaran untuk transaksi nota #{String(transactionToPay?.receiptNumber).padStart(6, '0')}.</DialogDescription>
             </DialogHeader>
             <div className="py-4 space-y-4">
                 <div className="text-center">
@@ -726,9 +509,7 @@ export default function Transactions({ onPrintRequest, initialTransaction, onDia
                     <p className="text-3xl font-bold">Rp {transactionToPay?.totalAmount.toLocaleString('id-ID')}</p>
                 </div>
                 <Select value={paymentMethodForDialog} onValueChange={(value: 'Cash' | 'Card' | 'QRIS') => setPaymentMethodForDialog(value)}>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Pilih Metode Pembayaran"/>
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Pilih Metode Pembayaran"/></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="Cash">Tunai</SelectItem>
                         <SelectItem value="Card">Kartu</SelectItem>
@@ -738,8 +519,8 @@ export default function Transactions({ onPrintRequest, initialTransaction, onDia
             </div>
             <DialogFooter>
                 <Button variant="ghost" onClick={() => setTransactionToPay(null)}>Batal</Button>
-                <Button onClick={handleProcessPayment} disabled={isPaying}>
-                    {isPaying && <Loader className="mr-2 h-4 w-4 animate-spin"/>}
+                <Button onClick={handleProcessPayment} disabled={isActionLoading}>
+                    {isActionLoading && <Loader className="mr-2 h-4 w-4 animate-spin"/>}
                     Konfirmasi Pembayaran
                 </Button>
             </DialogFooter>
