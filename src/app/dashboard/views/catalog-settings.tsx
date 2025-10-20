@@ -1,10 +1,11 @@
+
 'use client';
 
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/auth-context';
-import { CheckCircle, ExternalLink, QrCode, Star, Calendar, AlertCircle } from 'lucide-react';
+import { CheckCircle, ExternalLink, QrCode, Star, Calendar, AlertCircle, Sparkles as SparklesIcon } from 'lucide-react';
 import { useDashboard } from '@/contexts/dashboard-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AIConfirmationDialog } from '@/components/dashboard/ai-confirmation-dialog';
@@ -78,7 +79,7 @@ export default function CatalogSettings() {
     }
   };
 
-  const handleSubscription = async (months: number) => {
+  const handleSubscription = async (planId: number | 'trial') => {
     try {
         const idToken = await auth.currentUser?.getIdToken(true);
         if (!idToken || !activeStore) {
@@ -91,7 +92,7 @@ export default function CatalogSettings() {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${idToken}`,
             },
-            body: JSON.stringify({ storeId: activeStore.id, months: months }),
+            body: JSON.stringify({ storeId: activeStore.id, planId }),
         });
 
         if (!response.ok) {
@@ -106,12 +107,13 @@ export default function CatalogSettings() {
             description: `Katalog Digital Premium Anda telah diperpanjang.`,
         });
 
-        // FIX: Update context immediately with the new expiry date from the API
+        // Update context immediately with the new expiry date from the API
         if (result.newExpiryDate) {
             updateActiveStore({ 
                 ...activeStore, 
                 catalogSubscriptionExpiry: result.newExpiryDate,
-                pradanaTokenBalance: result.newBalance, // Also update balance
+                pradanaTokenBalance: result.newBalance,
+                hasUsedCatalogTrial: planId === 'trial' ? true : activeStore.hasUsedCatalogTrial,
             });
         } else {
             // Fallback to refresh if API response is not as expected
@@ -146,6 +148,7 @@ export default function CatalogSettings() {
 
   const expiryDate = activeStore?.catalogSubscriptionExpiry ? new Date(activeStore.catalogSubscriptionExpiry) : null;
   const isSubscriptionActive = expiryDate ? expiryDate > new Date() : false;
+  const hasUsedTrial = activeStore?.hasUsedCatalogTrial ?? false;
 
 
   return (
@@ -203,7 +206,30 @@ export default function CatalogSettings() {
                     Pilih paket yang paling sesuai dengan kebutuhan bisnis Anda untuk mengaktifkan fitur ini.
                 </CardDescription>
             </CardHeader>
-            <CardContent className="grid md:grid-cols-3 gap-6">
+            <CardContent className="grid md:grid-cols-4 gap-6">
+                {!hasUsedTrial && (
+                    <Card>
+                        <CardHeader className="text-center">
+                            <CardTitle className="text-xl flex items-center justify-center gap-2 text-accent"><SparklesIcon /> Coba Dulu</CardTitle>
+                            <CardDescription>Penawaran Pertama Kali</CardDescription>
+                        </CardHeader>
+                        <CardContent className="text-center">
+                            <p className="text-4xl font-bold">{feeSettings.catalogTrialFee} <span className="text-base font-normal text-muted-foreground">Token/bln</span></p>
+                        </CardContent>
+                        <CardFooter>
+                            <AIConfirmationDialog
+                            featureName="Paket Coba Pertama"
+                            featureDescription={`Anda akan mengaktifkan langganan Katalog Digital selama 1 bulan dengan harga spesial.`}
+                            feeSettings={feeSettings}
+                            feeToDeduct={feeSettings.catalogTrialFee}
+                            onConfirm={() => handleSubscription('trial')}
+                            skipFeeDeduction={true}
+                            >
+                                <Button className="w-full" variant="secondary">Pilih Paket</Button>
+                            </AIConfirmationDialog>
+                        </CardFooter>
+                    </Card>
+                )}
                 <Card>
                     <CardHeader className="text-center">
                         <CardTitle className="text-xl">Bulanan</CardTitle>

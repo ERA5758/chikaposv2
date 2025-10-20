@@ -52,6 +52,7 @@ export type Store = {
   referralCode?: string;
   catalogSlug?: string;
   catalogSubscriptionExpiry?: string;
+  hasUsedCatalogTrial?: boolean;
   theme?: any;
   socialLinks?: any;
   logoUrl?: string;
@@ -226,6 +227,8 @@ export type TransactionFeeSettings = {
   aiBusinessPlanFee: number;
   aiSessionFee: number;
   aiSessionDurationMinutes: number;
+  catalogTrialFee: number;
+  catalogTrialDurationMonths: number;
   catalogMonthlyFee: number;
   catalogSixMonthFee: number;
   catalogYearlyFee: number;

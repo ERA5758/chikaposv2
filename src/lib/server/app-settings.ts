@@ -14,6 +14,8 @@ export const defaultFeeSettings: TransactionFeeSettings = {
   aiBusinessPlanFee: 25, // Biaya 25 token untuk AI Business Plan
   aiSessionFee: 5,        // Biaya 5 token untuk sesi chat AI
   aiSessionDurationMinutes: 30, // Durasi sesi chat 30 menit
+  catalogTrialFee: 55,
+  catalogTrialDurationMonths: 1,
   catalogMonthlyFee: 250,
   catalogSixMonthFee: 1400,
   catalogYearlyFee: 2500,

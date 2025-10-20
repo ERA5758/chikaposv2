@@ -14,21 +14,34 @@ export async function POST(req: NextRequest) {
   
   try {
     const decodedToken = await auth.verifyIdToken(idToken);
-    const { storeId, months } = await req.json();
+    const { storeId, planId } = await req.json();
 
-    if (!storeId || !months || ![1, 6, 12].includes(months)) {
-        return NextResponse.json({ error: 'Data tidak valid: storeId dan durasi bulan (1, 6, 12) diperlukan.' }, { status: 400 });
+    if (!storeId || !planId || !['trial', 1, 6, 12].includes(planId)) {
+        return NextResponse.json({ error: 'Data tidak valid: storeId dan planId (trial, 1, 6, 12) diperlukan.' }, { status: 400 });
     }
 
     const feeSettings = await getTransactionFeeSettings();
     let feeToDeduct = 0;
-    switch (months) {
-        case 1: feeToDeduct = feeSettings.catalogMonthlyFee; break;
-        case 6: feeToDeduct = feeSettings.catalogSixMonthFee; break;
-        case 12: feeToDeduct = feeSettings.catalogYearlyFee; break;
-    }
+    let monthsToAdd = 0;
 
-    // Tidak perlu cek feeToDeduct > 0, karena bisa jadi ada promo gratis
+    switch (planId) {
+        case 'trial': 
+            feeToDeduct = feeSettings.catalogTrialFee; 
+            monthsToAdd = feeSettings.catalogTrialDurationMonths;
+            break;
+        case 1: 
+            feeToDeduct = feeSettings.catalogMonthlyFee; 
+            monthsToAdd = 1;
+            break;
+        case 6: 
+            feeToDeduct = feeSettings.catalogSixMonthFee; 
+            monthsToAdd = 6;
+            break;
+        case 12: 
+            feeToDeduct = feeSettings.catalogYearlyFee; 
+            monthsToAdd = 12;
+            break;
+    }
 
     const storeRef = db.collection('stores').doc(storeId);
 
@@ -44,15 +57,25 @@ export async function POST(req: NextRequest) {
         if (currentBalance < feeToDeduct) {
             throw new Error(`Saldo Token tidak cukup. Saldo saat ini: ${currentBalance.toFixed(2)}, dibutuhkan: ${feeToDeduct}.`);
         }
+        
+        if (planId === 'trial' && storeData?.hasUsedCatalogTrial) {
+            throw new Error('Penawaran ini hanya berlaku satu kali untuk setiap toko.');
+        }
 
         const currentExpiry = storeData?.catalogSubscriptionExpiry ? new Date(storeData.catalogSubscriptionExpiry) : new Date();
-        const newExpiryDate = addMonths(currentExpiry > new Date() ? currentExpiry : new Date(), months);
+        const newExpiryDate = addMonths(currentExpiry > new Date() ? currentExpiry : new Date(), monthsToAdd);
 
-        transaction.update(storeRef, {
+        const updateData: { [key: string]: any } = {
             pradanaTokenBalance: currentBalance - feeToDeduct,
             catalogSubscriptionExpiry: newExpiryDate.toISOString(),
-            isCatalogPublished: true, // Pastikan katalog dipublikasikan saat langganan
-        });
+            isCatalogPublished: true,
+        };
+
+        if (planId === 'trial') {
+            updateData.hasUsedCatalogTrial = true;
+        }
+
+        transaction.update(storeRef, updateData);
         
         return { newExpiryDate: newExpiryDate.toISOString(), newBalance: currentBalance - feeToDeduct };
     });
