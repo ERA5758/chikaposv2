@@ -20,7 +20,7 @@ import {
 import type { Transaction, User, Customer, TransactionStatus } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Volume2, Send, CheckCircle, Loader, Calendar as CalendarIcon, Printer, Sparkles, CreditCard } from 'lucide-react';
+import { MoreHorizontal, Volume2, Send, CheckCircle, Loader, Calendar as CalendarIcon, Printer, Sparkles, CreditCard, Undo2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -184,7 +184,7 @@ function TransactionDetailsDialog({
                           {transaction.status === 'Belum Dibayar' && (
                               <Button variant="default" size="sm" className="h-8 gap-2" onClick={() => onProcessPayment(transaction)} disabled={isActionLoading}>
                                   {isActionLoading ? <Loader className="h-4 w-4 animate-spin"/> : <CreditCard className="h-4 w-4"/>}
-                                  Bayar
+                                  Proses Pembayaran
                               </Button>
                           )}
                           {transaction.status === 'Diproses' && (
@@ -206,6 +206,20 @@ function TransactionDetailsDialog({
                                   </Button>
                               </>
                           )}
+                           <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                <Button aria-haspopup="true" size="icon" variant="ghost" className="h-8 w-8">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                    <span className="sr-only">Aksi Lainnya</span>
+                                </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Aksi Lainnya</DropdownMenuLabel>
+                                <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                    <Undo2 className="mr-2 h-4 w-4"/> Pengembalian Dana
+                                </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </div>
                     </div>
                 </DialogFooter>
@@ -472,6 +486,7 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
                   <TableHead>Tanggal</TableHead>
                   <TableHead>Pelanggan</TableHead>
                   <TableHead className="text-center">Status</TableHead>
+                  <TableHead>Metode Pembayaran</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                 </TableRow>
               </TableHeader>
@@ -483,6 +498,7 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
                             <TableCell><Skeleton className="h-5 w-24"/></TableCell>
                             <TableCell><Skeleton className="h-5 w-32"/></TableCell>
                             <TableCell className="text-center"><Skeleton className="h-6 w-20 mx-auto"/></TableCell>
+                            <TableCell><Skeleton className="h-5 w-20"/></TableCell>
                             <TableCell className="text-right"><Skeleton className="h-5 w-20 ml-auto"/></TableCell>
                         </TableRow>
                     ))
@@ -511,6 +527,7 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
                               {transaction.status}
                           </Badge>
                         </TableCell>
+                        <TableCell>{transaction.paymentMethod}</TableCell>
                         <TableCell className="text-right font-mono">
                         Rp {transaction.totalAmount.toLocaleString('id-ID')}
                         </TableCell>
