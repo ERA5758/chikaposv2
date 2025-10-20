@@ -26,14 +26,13 @@ import { Suspense } from 'react';
 import type { User, Transaction, Customer } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-context';
 import { useDashboard } from '@/contexts/dashboard-context';
-import { UtensilsCrossed, Printer, Loader, Volume2, Send, CheckCircle } from 'lucide-react';
+import { UtensilsCrossed, Printer } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Receipt } from '@/components/dashboard/receipt';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { db, auth } from '@/lib/firebase';
-import { doc, writeBatch, getDoc } from 'firebase/firestore';
+import { auth } from '@/lib/firebase';
 import { OrderReadyDialog } from '@/components/dashboard/order-ready-dialog';
 
 function CheckoutReceiptDialog({ transaction, users, open, onOpenChange }: { transaction: Transaction | null; users: User[]; open: boolean; onOpenChange: (open: boolean) => void }) {
@@ -80,12 +79,7 @@ function DashboardContent() {
   // State for shared dialogs
   const [transactionToPrint, setTransactionToPrint] = React.useState<Transaction | null>(null);
   const [transactionForDetail, setTransactionForDetail] = React.useState<Transaction | null>(null);
-
-  // States for actions within the detail dialog
   const [actionInProgress, setActionInProgress] = React.useState<{ transaction: Transaction; type: 'call' | 'whatsapp' } | null>(null);
-  const [completingTransactionId, setCompletingTransactionId] = React.useState<string | null>(null);
-  const [generatingTextId, setGeneratingTextId] = React.useState<string | null>(null);
-  const [sentWhatsappIds, setSentWhatsappIds] = React.useState<Set<string>>(new Set());
   
   const isAdmin = currentUser?.role === 'admin';
   const defaultView = currentUser?.role === 'kitchen' ? 'kitchen' : (isAdmin ? 'overview' : 'pos');
@@ -97,60 +91,10 @@ function DashboardContent() {
 
   const { users, customers, transactions } = dashboardData;
 
-  const getCustomerForTransaction = (transaction: Transaction): Customer | undefined => {
+  const getCustomerForTransaction = (transaction: Transaction | null): Customer | undefined => {
     if (!transaction || !transaction.customerId || transaction.customerId === 'N/A') return undefined;
     return customers.find(c => c.id === transaction.customerId);
   }
-
-  // --- Handlers for actions inside TransactionDetailsDialog ---
-  const handleGenerateFollowUp = async (transaction: Transaction) => {
-    setGeneratingTextId(transaction.id);
-    try {
-        const idToken = await auth.currentUser?.getIdToken(true);
-        if (!idToken || !activeStore) throw new Error("Sesi atau toko tidak valid.");
-
-        const response = await fetch('/api/order-ready-notification', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}`},
-            body: JSON.stringify({ transaction, customer: getCustomerForTransaction(transaction), store: activeStore })
-        });
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.error || 'Gagal mengirim notifikasi.');
-        }
-        toast({ title: "Notifikasi Terkirim!", description: "Notifikasi WhatsApp telah dikirim ke pelanggan."});
-        setSentWhatsappIds(prev => new Set(prev).add(transaction.id));
-    } catch (error) {
-        toast({ variant: 'destructive', title: 'Gagal Mengirim Notifikasi', description: (error as Error).message });
-    } finally {
-        setGeneratingTextId(null);
-    }
-  };
-
-  const handleCompleteTransaction = async (transaction: Transaction) => {
-    if (!activeStore) return;
-    setCompletingTransactionId(transaction.id);
-    try {
-        const batch = writeBatch(db);
-        const transactionRef = doc(db, 'stores', activeStore.id, 'transactions', transaction.id);
-        batch.update(transactionRef, { status: 'Selesai' });
-
-        if (transaction.tableId) {
-            const tableRef = doc(db, 'stores', activeStore.id, 'tables', transaction.tableId);
-            const tableDoc = await getDoc(tableRef);
-            if (tableDoc.exists()) batch.update(tableRef, { status: 'Menunggu Dibersihkan' });
-        }
-        await batch.commit();
-        toast({ title: 'Pesanan Selesai!', description: `Status pesanan untuk ${transaction.customerName} telah diperbarui.`});
-        refreshData();
-    } catch (error) {
-        toast({ variant: 'destructive', title: 'Gagal Menyelesaikan Pesanan' });
-    } finally {
-        setCompletingTransactionId(null);
-        setTransactionForDetail(null);
-    }
-  }
-
 
   const renderView = () => {
     const commonProps = { onPrintRequest: setTransactionToPrint, onDetailRequest: setTransactionForDetail };
@@ -225,15 +169,6 @@ function DashboardContent() {
                 users={users}
                 open={!!transactionForDetail}
                 onOpenChange={() => setTransactionForDetail(null)}
-                onActionClick={setActionInProgress}
-                onGenerateFollowUp={handleGenerateFollowUp}
-                onCompleteTransaction={handleCompleteTransaction}
-                onProcessPayment={() => { /* This should trigger a payment dialog */ }}
-                onRefundTransaction={() => { /* This should trigger a refund dialog */}}
-                onPrintRequest={setTransactionToPrint}
-                isActionLoading={completingTransactionId === transactionForDetail.id}
-                generatingTextId={generatingTextId}
-                sentWhatsappIds={sentWhatsappIds}
             />
         )}
         
@@ -244,11 +179,6 @@ function DashboardContent() {
                 store={activeStore}
                 open={!!actionInProgress}
                 onOpenChange={() => setActionInProgress(null)}
-                onSuccess={() => {
-                    if (actionInProgress.type === 'whatsapp') {
-                        setSentWhatsappIds(prev => new Set(prev).add(actionInProgress!.transaction.id));
-                    }
-                }}
             />
         )}
     </>
