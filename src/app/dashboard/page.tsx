@@ -92,14 +92,14 @@ function DashboardContent() {
   const { users, customers, transactions } = dashboardData;
 
   const getCustomerForTransaction = (transaction: Transaction | null): Customer | undefined => {
-    if (!transaction || !transaction.customerId || transaction.customerId === 'N/A') return undefined;
+    if (!transaction?.customerId || transaction.customerId === 'N/A') return undefined;
     return customers.find(c => c.id === transaction.customerId);
   }
 
   const renderView = () => {
     const commonProps = { onPrintRequest: setTransactionToPrint, onDetailRequest: setTransactionForDetail };
     const cashierViews = ['overview', 'pos', 'transactions', 'products', 'customers', 'promotions'];
-    const kitchenViews = ['kitchen', 'transactions'];
+    const kitchenViews = ['kitchen'];
 
     if (currentUser?.role === 'cashier' && !cashierViews.includes(view)) {
         return <Tables />; // Default view for cashier
@@ -118,7 +118,7 @@ function DashboardContent() {
       case 'customers': return <Customers />;
       case 'customer-analytics': return <CustomerAnalytics />;
       case 'employees': return <Employees />;
-      case 'transactions': return <Transactions {...commonProps} />;
+      case 'transactions': return <Transactions onDetailRequest={setTransactionForDetail} onPrintRequest={setTransactionToPrint} />;
       case 'kitchen': return <Kitchen onFollowUpRequest={setTransactionForDetail} />;
       case 'settings': return <Settings />;
       case 'challenges': return <Challenges />;
@@ -169,6 +169,8 @@ function DashboardContent() {
                 users={users}
                 open={!!transactionForDetail}
                 onOpenChange={() => setTransactionForDetail(null)}
+                onFollowUpRequest={(transaction, type) => setActionInProgress({ transaction, type })}
+                onPrintRequest={setTransactionToPrint}
             />
         )}
         

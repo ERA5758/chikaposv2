@@ -40,7 +40,6 @@ import {
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { OrderReadyDialog } from '@/components/dashboard/order-ready-dialog';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/auth-context';
 import { useDashboard } from '@/contexts/dashboard-context';
@@ -74,11 +73,15 @@ export function TransactionDetailsDialog({
     open, 
     onOpenChange, 
     users,
+    onFollowUpRequest,
+    onPrintRequest,
 }: { 
     transaction: Transaction; 
     open: boolean; 
     onOpenChange: (open: boolean) => void; 
     users: User[];
+    onFollowUpRequest: (transaction: Transaction, type: 'call' | 'whatsapp') => void;
+    onPrintRequest: (transaction: Transaction) => void;
 }) {
     if (!transaction) return null;
 
@@ -93,16 +96,10 @@ export function TransactionDetailsDialog({
     const [transactionToRefund, setTransactionToRefund] = React.useState<Transaction | null>(null);
     const [transactionToPay, setTransactionToPay] = React.useState<Transaction | null>(null);
     const [paymentMethodForDialog, setPaymentMethodForDialog] = React.useState<'Cash' | 'Card' | 'QRIS'>('Cash');
-    const [actionInProgress, setActionInProgress] = React.useState<{ transaction: Transaction; type: 'call' | 'whatsapp' } | null>(null);
 
     const staff = (users || []).find(u => u.id === transaction.staffId);
     const isRefundable = transaction.status !== 'Dibatalkan';
     const { customers, feeSettings } = useDashboard().dashboardData;
-
-    const getCustomerForTransaction = (transaction: Transaction): Customer | undefined => {
-        if (!transaction.customerId || transaction.customerId === 'N/A') return undefined;
-        return customers.find(c => c.id === transaction.customerId);
-    }
     
     const handleGenerateFollowUp = async (transaction: Transaction) => {
         setGeneratingTextId(transaction.id);
@@ -110,10 +107,12 @@ export function TransactionDetailsDialog({
             const idToken = await auth.currentUser?.getIdToken(true);
             if (!idToken || !activeStore) throw new Error("Sesi atau toko tidak valid.");
 
+            const customer = customers.find(c => c.id === transaction.customerId);
+
             const response = await fetch('/api/order-ready-notification', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}`},
-                body: JSON.stringify({ transaction, customer: getCustomerForTransaction(transaction), store: activeStore })
+                body: JSON.stringify({ transaction, customer, store: activeStore })
             });
             if (!response.ok) {
                 const err = await response.json();
@@ -182,7 +181,7 @@ export function TransactionDetailsDialog({
                         transactionRun.update(productRef, { stock: increment(item.quantity) });
                      }
                 }
-                if (transactionToRefund.customerId !== 'N/A') {
+                if (transactionToRefund.customerId !== 'N/A' && customers.find(c => c.id === transactionToRefund.customerId)) {
                     const customerRef = doc(db, 'stores', activeStore.id, 'customers', transactionToRefund.customerId);
                     const pointsToRevert = transactionToRefund.pointsRedeemed - transactionToRefund.pointsEarned;
                     transactionRun.update(customerRef, { loyaltyPoints: increment(pointsToRevert) });
@@ -296,10 +295,10 @@ export function TransactionDetailsDialog({
                           )}
                           {transaction.status === 'Diproses' && (
                               <>
-                                  <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => setActionInProgress({ transaction, type: 'call' })} disabled={isActionLoading}>
+                                  <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => onFollowUpRequest(transaction, 'call')} disabled={isActionLoading}>
                                       <Volume2 className="h-4 w-4"/> Panggil
                                   </Button>
-                                  <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => handleGenerateFollowUp(transaction)} disabled={isActionLoading || generatingTextId === transaction.id}>
+                                  <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => onFollowUpRequest(transaction, 'whatsapp')} disabled={isActionLoading || generatingTextId === transaction.id}>
                                       {generatingTextId === transaction.id ? <Loader className="h-4 w-4 animate-spin"/> : (
                                           <div className="relative flex items-center gap-2">
                                               <Send className="h-4 w-4"/> WhatsApp
@@ -307,9 +306,9 @@ export function TransactionDetailsDialog({
                                           </div>
                                       )}
                                   </Button>
-                                  <Button variant="default" size="sm" className="h-8 gap-2" onClick={() => handleCompleteTransaction(transaction)} disabled={isActionLoading}>
-                                      {isActionLoading ? <Loader className="h-4 w-4 animate-spin"/> : <CheckCircle className="h-4 w-4"/>}
-                                      Selesaikan
+                                  <Button variant="default" size="sm" className="h-8 gap-2" onClick={() => handleGenerateFollowUp(transaction)} disabled={isActionLoading || generatingTextId === transaction.id}>
+                                    {generatingTextId === transaction.id ? <Loader className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                                    Follow Up AI
                                   </Button>
                               </>
                           )}
@@ -322,7 +321,7 @@ export function TransactionDetailsDialog({
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Aksi Lainnya</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => onOpenChange(false)}><Printer className="mr-2 h-4 w-4"/> Cetak Struk</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => onPrintRequest(transaction)}><Printer className="mr-2 h-4 w-4"/> Cetak Struk</DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 
                                   className="text-destructive focus:text-destructive focus:bg-destructive/10"
@@ -385,28 +384,13 @@ export function TransactionDetailsDialog({
                 </DialogFooter>
             </DialogContent>
         </Dialog>
-        
-        {actionInProgress && activeStore && (
-            <OrderReadyDialog
-              transaction={actionInProgress.transaction}
-              customer={getCustomerForTransaction(actionInProgress.transaction)}
-              store={activeStore}
-              open={!!actionInProgress}
-              onOpenChange={() => setActionInProgress(null)}
-              onSuccess={() => {
-                if (actionInProgress.type === 'whatsapp') {
-                    setSentWhatsappIds(prev => new Set(prev).add(actionInProgress!.transaction.id));
-                }
-              }}
-            />
-        )}
         </>
     );
 }
 
 type StatusFilter = 'Semua' | 'Diproses' | 'Selesai' | 'Belum Dibayar' | 'Dibatalkan';
 
-export default function Transactions({ onPrintRequest, onDetailRequest }: TransactionsProps) {
+export default function Transactions({ onDetailRequest, onPrintRequest }: TransactionsProps) {
   const { dashboardData, isLoading } = useDashboard();
   const { transactions } = dashboardData || {};
 
@@ -497,8 +481,8 @@ export default function Transactions({ onPrintRequest, onDetailRequest }: Transa
                   <TableHead>Nota</TableHead>
                   <TableHead>Tanggal</TableHead>
                   <TableHead>Pelanggan</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
                   <TableHead>Metode Pembayaran</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                   <TableHead className="text-right w-[100px]">Aksi</TableHead>
                 </TableRow>
@@ -510,8 +494,8 @@ export default function Transactions({ onPrintRequest, onDetailRequest }: Transa
                             <TableCell><Skeleton className="h-5 w-16"/></TableCell>
                             <TableCell><Skeleton className="h-5 w-24"/></TableCell>
                             <TableCell><Skeleton className="h-5 w-32"/></TableCell>
+                            <TableCell><Skeleton className="h-5 w-24"/></TableCell>
                             <TableCell className="text-center"><Skeleton className="h-6 w-20 mx-auto"/></TableCell>
-                             <TableCell><Skeleton className="h-5 w-20"/></TableCell>
                             <TableCell className="text-right"><Skeleton className="h-5 w-20 ml-auto"/></TableCell>
                             <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto"/></TableCell>
                         </TableRow>
@@ -523,6 +507,7 @@ export default function Transactions({ onPrintRequest, onDetailRequest }: Transa
                         <TableCell className="font-mono">{String(transaction.receiptNumber).padStart(6, '0')}</TableCell>
                         <TableCell>{new Date(transaction.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</TableCell>
                         <TableCell>{transaction.customerName}</TableCell>
+                        <TableCell>{transaction.paymentMethod}</TableCell>
                         <TableCell className="text-center">
                           <Badge 
                             variant={transaction.status === 'Selesai' || transaction.status === 'Selesai Dibayar' ? 'secondary' : 'default'}
@@ -536,7 +521,6 @@ export default function Transactions({ onPrintRequest, onDetailRequest }: Transa
                               {transaction.status}
                           </Badge>
                         </TableCell>
-                        <TableCell>{transaction.paymentMethod}</TableCell>
                         <TableCell className="text-right font-mono">Rp {transaction.totalAmount.toLocaleString('id-ID')}</TableCell>
                          <TableCell className="text-right">
                            {transaction.status === 'Belum Dibayar' ? (

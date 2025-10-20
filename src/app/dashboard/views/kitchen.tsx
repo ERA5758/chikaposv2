@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, ChefHat, Loader, MessageCircle } from 'lucide-react';
+import { CheckCircle, ChefHat, Loader, MessageSquare } from 'lucide-react';
 import { doc, writeBatch, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/auth-context';
@@ -114,7 +114,7 @@ export default function Kitchen({ onFollowUpRequest }: KitchenProps) {
                                         className="w-full" 
                                         onClick={() => onFollowUpRequest(order)}
                                     >
-                                        <MessageCircle className="mr-2 h-4 w-4" />
+                                        <MessageSquare className="mr-2 h-4 w-4" />
                                         Follow Up Cerdas
                                     </Button>
                                     {(currentUser?.role === 'admin' || currentUser?.role === 'cashier') && (
