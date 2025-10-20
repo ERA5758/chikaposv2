@@ -44,7 +44,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/auth-context';
 import { useDashboard } from '@/contexts/dashboard-context';
 import { db, auth } from '@/lib/firebase';
-import { doc, writeBatch, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, writeBatch, getDoc, updateDoc, runTransaction, increment } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -77,6 +77,7 @@ function TransactionDetailsDialog({
     onGenerateFollowUp,
     onCompleteTransaction,
     onProcessPayment,
+    onRefundTransaction,
     onPrintRequest,
     isActionLoading,
     generatingTextId,
@@ -90,6 +91,7 @@ function TransactionDetailsDialog({
     onGenerateFollowUp: (transaction: Transaction) => void;
     onCompleteTransaction: (transaction: Transaction) => void;
     onProcessPayment: (transaction: Transaction) => void;
+    onRefundTransaction: (transaction: Transaction) => void;
     onPrintRequest: (transaction: Transaction) => void;
     isActionLoading: boolean;
     generatingTextId: string | null;
@@ -98,6 +100,7 @@ function TransactionDetailsDialog({
     if (!transaction) return null;
     
     const staff = (users || []).find(u => u.id === transaction.staffId);
+    const isRefundable = transaction.status !== 'Dibatalkan';
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -215,7 +218,11 @@ function TransactionDetailsDialog({
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Aksi Lainnya</DropdownMenuLabel>
-                                <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                <DropdownMenuItem 
+                                  className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                  onClick={() => onRefundTransaction(transaction)}
+                                  disabled={!isRefundable}
+                                >
                                     <Undo2 className="mr-2 h-4 w-4"/> Pengembalian Dana
                                 </DropdownMenuItem>
                                 </DropdownMenuContent>
@@ -228,18 +235,19 @@ function TransactionDetailsDialog({
     );
 }
 
-type StatusFilter = 'Semua' | 'Diproses' | 'Selesai' | 'Belum Dibayar';
+type StatusFilter = 'Semua' | 'Diproses' | 'Selesai' | 'Belum Dibayar' | 'Dibatalkan';
 
 export default function Transactions({ onPrintRequest }: TransactionsProps) {
   const { activeStore } = useAuth();
   const { dashboardData, isLoading, refreshData: onDataChange } = useDashboard();
-  const { transactions, users, customers } = dashboardData || {};
+  const { transactions, users, customers, feeSettings } = dashboardData || {};
   
   const { toast } = useToast();
   const [selectedTransaction, setSelectedTransaction] = React.useState<Transaction | null>(null);
   const [actionInProgress, setActionInProgress] = React.useState<{ transaction: Transaction; type: 'call' | 'whatsapp' } | null>(null);
   const [completingTransactionId, setCompletingTransactionId] = React.useState<string | null>(null);
   const [transactionToComplete, setTransactionToComplete] = React.useState<Transaction | null>(null);
+  const [transactionToRefund, setTransactionToRefund] = React.useState<Transaction | null>(null);
   const [generatingTextId, setGeneratingTextId] = React.useState<string | null>(null);
   const [sentWhatsappIds, setSentWhatsappIds] = React.useState<Set<string>>(new Set());
 
@@ -277,6 +285,9 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
         }
         if (statusFilter === 'Belum Dibayar') {
             return t.status === 'Belum Dibayar';
+        }
+        if (statusFilter === 'Dibatalkan') {
+            return t.status === 'Dibatalkan';
         }
         return false;
     });
@@ -411,6 +422,61 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
         setIsPaying(false);
     }
   };
+  
+  const handleRefund = async () => {
+    if (!transactionToRefund || !activeStore || !feeSettings) return;
+    setIsPaying(true); // Reuse loading state
+
+    try {
+        await runTransaction(db, async (transaction) => {
+            const storeRef = doc(db, 'stores', activeStore.id);
+            const transRef = doc(db, 'stores', activeStore.id, 'transactions', transactionToRefund.id);
+            
+            // 1. Revert stock
+            for (const item of transactionToRefund.items) {
+                 if (!item.productId.startsWith('manual-')) {
+                    const productRef = doc(db, 'stores', activeStore.id, 'products', item.productId);
+                    transaction.update(productRef, { stock: increment(item.quantity) });
+                 }
+            }
+            
+            // 2. Revert points
+            if (transactionToRefund.customerId !== 'N/A') {
+                const customerRef = doc(db, 'stores', activeStore.id, 'customers', transactionToRefund.customerId);
+                const pointsToRevert = transactionToRefund.pointsRedeemed - transactionToRefund.pointsEarned;
+                transaction.update(customerRef, { loyaltyPoints: increment(pointsToRevert) });
+            }
+
+            // 3. Refund transaction fee
+            const feeFromPercentage = transactionToRefund.totalAmount * feeSettings.feePercentage;
+            const feeCappedAtMin = Math.max(feeFromPercentage, feeSettings.minFeeRp);
+            const feeToRefund = Math.min(feeCappedAtMin, feeSettings.maxFeeRp) / feeSettings.tokenValueRp;
+            transaction.update(storeRef, { pradanaTokenBalance: increment(feeToRefund) });
+
+            // 4. Update transaction status
+            transaction.update(transRef, { status: 'Dibatalkan' });
+        });
+        
+        toast({
+            title: "Transaksi Dibatalkan",
+            description: "Stok, poin, dan token telah dikembalikan.",
+        });
+
+        onDataChange();
+        setTransactionToRefund(null);
+
+    } catch (error) {
+        console.error("Error refunding transaction:", error);
+        toast({
+            variant: "destructive",
+            title: "Gagal Membatalkan Transaksi",
+            description: (error as Error).message,
+        });
+    } finally {
+        setIsPaying(false);
+    }
+  }
+
 
   return (
     <>
@@ -436,6 +502,7 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
                             <SelectItem value="Diproses">Diproses</SelectItem>
                             <SelectItem value="Selesai">Selesai</SelectItem>
                             <SelectItem value="Belum Dibayar">Belum Dibayar</SelectItem>
+                            <SelectItem value="Dibatalkan">Dibatalkan</SelectItem>
                         </SelectContent>
                     </Select>
                     <Popover>
@@ -521,7 +588,8 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
                             className={cn(
                                 transaction.status === 'Diproses' && 'bg-amber-500/20 text-amber-800 border-amber-500/50',
                                 (transaction.status === 'Selesai' || transaction.status === 'Selesai Dibayar') && 'bg-green-500/20 text-green-800 border-green-500/50',
-                                transaction.status === 'Belum Dibayar' && 'bg-red-500/20 text-red-800 border-red-500/50',
+                                transaction.status === 'Belum Dibayar' && 'bg-orange-500/20 text-orange-800 border-orange-500/50',
+                                transaction.status === 'Dibatalkan' && 'bg-red-500/20 text-red-800 border-red-500/50',
                             )}
                           >
                               {transaction.status}
@@ -573,6 +641,7 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
               onGenerateFollowUp={handleGenerateFollowUp}
               onCompleteTransaction={() => setTransactionToComplete(selectedTransaction)}
               onProcessPayment={() => setTransactionToPay(selectedTransaction)}
+              onRefundTransaction={() => setTransactionToRefund(selectedTransaction)}
               onPrintRequest={onPrintRequest}
               isActionLoading={completingTransactionId === selectedTransaction.id}
               generatingTextId={generatingTextId}
@@ -604,6 +673,24 @@ export default function Transactions({ onPrintRequest }: TransactionsProps) {
           <AlertDialogFooter>
             <AlertDialogCancel>Batal</AlertDialogCancel>
             <AlertDialogAction onClick={handleCompleteTransaction}>Ya, Selesaikan</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!transactionToRefund} onOpenChange={() => setTransactionToRefund(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Batalkan & Kembalikan Dana?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Transaksi ini akan dibatalkan. Stok, poin, dan biaya token akan dikembalikan. Tindakan ini tidak dapat diurungkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRefund} disabled={isPaying} className="bg-destructive hover:bg-destructive/90">
+                {isPaying ? <Loader className="animate-spin mr-2"/> : <Undo2 className="mr-2 h-4 w-4"/>}
+                Ya, Batalkan Transaksi
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
