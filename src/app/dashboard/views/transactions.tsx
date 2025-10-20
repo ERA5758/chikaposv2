@@ -62,7 +62,7 @@ import { format, isWithinInterval, startOfMonth, endOfMonth } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { OrderReadyFollowUpOutput } from '@/ai/flows/order-ready-follow-up';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 
 type TransactionsProps = {
     onPrintRequest: (transaction: Transaction) => void;
