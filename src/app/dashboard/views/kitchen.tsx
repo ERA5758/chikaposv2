@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -21,7 +22,7 @@ type KitchenProps = {
 
 export default function Kitchen({ onFollowUpRequest }: KitchenProps) {
     const { dashboardData } = useDashboard();
-    const { activeStore } = useAuth();
+    const { activeStore, currentUser } = useAuth();
     const { transactions } = dashboardData;
     const { toast } = useToast();
     const [completingId, setCompletingId] = React.useState<string | null>(null);
@@ -80,7 +81,7 @@ export default function Kitchen({ onFollowUpRequest }: KitchenProps) {
     return (
         <div className="h-[calc(100vh-8rem)] flex flex-col">
             <ScrollArea className="flex-grow">
-                <div className="grid grid-cols-1 gap-4 p-1">
+                <div className="space-y-4 p-1">
                     {activeOrders.length > 0 ? (
                         activeOrders.map(order => (
                             <Card key={order.id} className="flex flex-col">
@@ -114,20 +115,22 @@ export default function Kitchen({ onFollowUpRequest }: KitchenProps) {
                                         onClick={() => onFollowUpRequest(order)}
                                     >
                                         <MessageCircle className="mr-2 h-4 w-4" />
-                                        Follow Up
+                                        Follow Up Cerdas
                                     </Button>
-                                    <Button 
-                                        className="w-full" 
-                                        onClick={() => handleCompleteOrder(order.id)}
-                                        disabled={completingId === order.id}
-                                    >
-                                        {completingId === order.id ? (
-                                            <Loader className="mr-2 h-4 w-4 animate-spin" />
-                                        ) : (
-                                            <CheckCircle className="mr-2 h-4 w-4" />
-                                        )}
-                                        Selesaikan Pesanan
-                                    </Button>
+                                    {(currentUser?.role === 'admin' || currentUser?.role === 'cashier') && (
+                                        <Button 
+                                            className="w-full" 
+                                            onClick={() => handleCompleteOrder(order.id)}
+                                            disabled={completingId === order.id}
+                                        >
+                                            {completingId === order.id ? (
+                                                <Loader className="mr-2 h-4 w-4 animate-spin" />
+                                            ) : (
+                                                <CheckCircle className="mr-2 h-4 w-4" />
+                                            )}
+                                            Selesaikan Pesanan
+                                        </Button>
+                                    )}
                                 </CardFooter>
                             </Card>
                         ))
