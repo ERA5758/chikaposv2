@@ -19,7 +19,7 @@ async function getWhatsappSettingsForApi(): Promise<WhatsappSettings> {
     const settingsDocRef = adminDb.collection('appSettings').doc('whatsappConfig');
     try {
         const docSnap = await settingsDocRef.get();
-        if (docSnap.exists()) {
+        if (docSnap.exists) {
             return { ...defaultWhatsappSettings, ...(docSnap.data() as WhatsappSettings) };
         } else {
             await settingsDocRef.set(defaultWhatsappSettings);
