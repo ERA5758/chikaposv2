@@ -87,7 +87,7 @@ export function TransactionDetailsDialog({
 
     const { activeStore } = useAuth();
     const { toast } = useToast();
-    const { refreshData } = useDashboard();
+    const { refreshData, dashboardData } = useDashboard();
     
     // States for this dialog's actions
     const [isActionLoading, setIsActionLoading] = React.useState(false);
@@ -99,7 +99,7 @@ export function TransactionDetailsDialog({
 
     const staff = (users || []).find(u => u.id === transaction.staffId);
     const isRefundable = transaction.status !== 'Dibatalkan';
-    const { customers, feeSettings } = useDashboard().dashboardData;
+    const { customers, feeSettings } = dashboardData;
     
     const handleGenerateFollowUp = async (transaction: Transaction) => {
         setGeneratingTextId(transaction.id);
@@ -298,15 +298,7 @@ export function TransactionDetailsDialog({
                                   <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => onFollowUpRequest(transaction, 'call')} disabled={isActionLoading}>
                                       <Volume2 className="h-4 w-4"/> Panggil
                                   </Button>
-                                  <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => onFollowUpRequest(transaction, 'whatsapp')} disabled={isActionLoading || generatingTextId === transaction.id}>
-                                      {generatingTextId === transaction.id ? <Loader className="h-4 w-4 animate-spin"/> : (
-                                          <div className="relative flex items-center gap-2">
-                                              <Send className="h-4 w-4"/> WhatsApp
-                                              {sentWhatsappIds.has(transaction.id) && <CheckCircle className="h-3 w-3 absolute -top-1 -right-2 text-green-500 bg-background rounded-full"/>}
-                                          </div>
-                                      )}
-                                  </Button>
-                                  <Button variant="default" size="sm" className="h-8 gap-2" onClick={() => handleGenerateFollowUp(transaction)} disabled={isActionLoading || generatingTextId === transaction.id}>
+                                   <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => handleGenerateFollowUp(transaction)} disabled={isActionLoading || generatingTextId === transaction.id}>
                                     {generatingTextId === transaction.id ? <Loader className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                                     Follow Up AI
                                   </Button>
@@ -391,7 +383,7 @@ export function TransactionDetailsDialog({
 type StatusFilter = 'Semua' | 'Diproses' | 'Selesai' | 'Belum Dibayar' | 'Dibatalkan';
 
 export default function Transactions({ onDetailRequest, onPrintRequest }: TransactionsProps) {
-  const { dashboardData, isLoading } = useDashboard();
+  const { dashboardData, isLoading, refreshData } = useDashboard();
   const { transactions } = dashboardData || {};
 
   const [date, setDate] = React.useState<DateRange | undefined>({
@@ -401,6 +393,9 @@ export default function Transactions({ onDetailRequest, onPrintRequest }: Transa
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('Semua');
   const [currentPage, setCurrentPage] = React.useState(1);
   const itemsPerPage = 100;
+  
+  const [transactionToPay, setTransactionToPay] = React.useState<Transaction | null>(null);
+  const [transactionToComplete, setTransactionToComplete] = React.useState<Transaction | null>(null);
 
   const filteredTransactions = React.useMemo(() => {
     let dateFiltered = transactions || [];
@@ -484,7 +479,7 @@ export default function Transactions({ onDetailRequest, onPrintRequest }: Transa
                   <TableHead>Metode Pembayaran</TableHead>
                   <TableHead className="text-center">Status</TableHead>
                   <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="text-right w-[100px]">Aksi</TableHead>
+                  <TableHead className="text-right w-[200px]">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -497,7 +492,7 @@ export default function Transactions({ onDetailRequest, onPrintRequest }: Transa
                             <TableCell><Skeleton className="h-5 w-24"/></TableCell>
                             <TableCell className="text-center"><Skeleton className="h-6 w-20 mx-auto"/></TableCell>
                             <TableCell className="text-right"><Skeleton className="h-5 w-20 ml-auto"/></TableCell>
-                            <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto"/></TableCell>
+                            <TableCell className="text-right"><Skeleton className="h-8 w-28 ml-auto"/></TableCell>
                         </TableRow>
                     ))
                 ) : (
@@ -523,14 +518,18 @@ export default function Transactions({ onDetailRequest, onPrintRequest }: Transa
                         </TableCell>
                         <TableCell className="text-right font-mono">Rp {transaction.totalAmount.toLocaleString('id-ID')}</TableCell>
                          <TableCell className="text-right">
-                           {transaction.status === 'Belum Dibayar' ? (
+                           <div className="flex justify-end gap-2">
+                            {transaction.status === 'Belum Dibayar' && (
                                 <Button size="sm" onClick={(e) => { e.stopPropagation(); onDetailRequest(transaction); }}>Bayar</Button>
-                           ) : (
-                             <Button aria-haspopup="true" size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onDetailRequest(transaction); }}>
+                           )}
+                           {transaction.status === 'Diproses' && (
+                               <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setTransactionToComplete(transaction); }}>Selesaikan</Button>
+                           )}
+                            <Button aria-haspopup="true" size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onDetailRequest(transaction); }}>
                                 <MoreHorizontal className="h-4 w-4" />
                                 <span className="sr-only">Lihat Detail</span>
                             </Button>
-                           )}
+                           </div>
                         </TableCell>
                     </TableRow>
                     )})
