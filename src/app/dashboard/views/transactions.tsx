@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import * as React from 'react';
@@ -80,7 +79,7 @@ export function TransactionDetailsDialog({
     open: boolean; 
     onOpenChange: (open: boolean) => void; 
     users: User[];
-    onFollowUpRequest: (transaction: Transaction, type: 'call' | 'whatsapp') => void;
+    onFollowUpRequest: (transaction: Transaction) => void;
     onPrintRequest: (transaction: Transaction) => void;
 }) {
     if (!transaction) return null;
@@ -126,30 +125,6 @@ export function TransactionDetailsDialog({
             setGeneratingTextId(null);
         }
     };
-
-    const handleCompleteTransaction = async (transaction: Transaction) => {
-        if (!activeStore) return;
-        setIsActionLoading(true);
-        try {
-            const batch = writeBatch(db);
-            const transactionRef = doc(db, 'stores', activeStore.id, 'transactions', transaction.id);
-            batch.update(transactionRef, { status: 'Selesai' });
-
-            if (transaction.tableId) {
-                const tableRef = doc(db, 'stores', activeStore.id, 'tables', transaction.tableId);
-                const tableDoc = await getDoc(tableRef);
-                if (tableDoc.exists()) batch.update(tableRef, { status: 'Menunggu Dibersihkan' });
-            }
-            await batch.commit();
-            toast({ title: 'Pesanan Selesai!', description: `Status pesanan untuk ${transaction.customerName} telah diperbarui.`});
-            refreshData();
-            onOpenChange(false);
-        } catch (error) {
-            toast({ variant: 'destructive', title: 'Gagal Menyelesaikan Pesanan' });
-        } finally {
-            setIsActionLoading(false);
-        }
-    }
 
     const handleProcessPayment = async () => {
         if (!transactionToPay || !activeStore) return;
@@ -287,22 +262,16 @@ export function TransactionDetailsDialog({
                             Tutup
                         </Button>
                         <div className="flex items-center gap-1">
-                          {transaction.status === 'Belum Dibayar' && (
+                          {transaction.paymentMethod === 'Belum Dibayar' && (
                               <Button variant="default" size="sm" className="h-8 gap-2" onClick={() => setTransactionToPay(transaction)} disabled={isActionLoading}>
                                   {isActionLoading ? <Loader className="h-4 w-4 animate-spin"/> : <CreditCard className="h-4 w-4"/>}
                                   Proses Pembayaran
                               </Button>
                           )}
                           {transaction.status === 'Diproses' && (
-                              <>
-                                  <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => onFollowUpRequest(transaction, 'call')} disabled={isActionLoading}>
-                                      <Volume2 className="h-4 w-4"/> Panggil
-                                  </Button>
-                                   <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => handleGenerateFollowUp(transaction)} disabled={isActionLoading || generatingTextId === transaction.id}>
-                                    {generatingTextId === transaction.id ? <Loader className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                                    Follow Up AI
-                                  </Button>
-                              </>
+                            <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => onFollowUpRequest(transaction)} disabled={isActionLoading}>
+                                <Sparkles className="mr-2 h-4 w-4" /> Follow Up Cerdas
+                            </Button>
                           )}
                            <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -385,6 +354,12 @@ type StatusFilter = 'Semua' | 'Diproses' | 'Selesai' | 'Belum Dibayar' | 'Dibata
 export default function Transactions({ onDetailRequest, onPrintRequest }: TransactionsProps) {
   const { dashboardData, isLoading, refreshData } = useDashboard();
   const { transactions } = dashboardData || {};
+  const [isActionLoading, setIsActionLoading] = React.useState(false);
+  const [transactionToPay, setTransactionToPay] = React.useState<Transaction | null>(null);
+  const [transactionToComplete, setTransactionToComplete] = React.useState<Transaction | null>(null);
+  const [paymentMethodForDialog, setPaymentMethodForDialog] = React.useState<'Cash' | 'Card' | 'QRIS'>('Cash');
+  const { activeStore } = useAuth();
+  const { toast } = useToast();
 
   const [date, setDate] = React.useState<DateRange | undefined>({
     from: startOfMonth(new Date()),
@@ -394,9 +369,6 @@ export default function Transactions({ onDetailRequest, onPrintRequest }: Transa
   const [currentPage, setCurrentPage] = React.useState(1);
   const itemsPerPage = 100;
   
-  const [transactionToPay, setTransactionToPay] = React.useState<Transaction | null>(null);
-  const [transactionToComplete, setTransactionToComplete] = React.useState<Transaction | null>(null);
-
   const filteredTransactions = React.useMemo(() => {
     let dateFiltered = transactions || [];
     if (date?.from && date?.to) {
@@ -410,7 +382,7 @@ export default function Transactions({ onDetailRequest, onPrintRequest }: Transa
     return dateFiltered.filter(t => {
         if (statusFilter === 'Diproses') return t.status === 'Diproses';
         if (statusFilter === 'Selesai') return t.status === 'Selesai' || t.status === 'Selesai Dibayar';
-        if (statusFilter === 'Belum Dibayar') return t.status === 'Belum Dibayar';
+        if (statusFilter === 'Belum Dibayar') return t.paymentMethod === 'Belum Dibayar' && t.status !== 'Dibatalkan';
         if (statusFilter === 'Dibatalkan') return t.status === 'Dibatalkan';
         return false;
     });
@@ -428,6 +400,47 @@ export default function Transactions({ onDetailRequest, onPrintRequest }: Transa
   React.useEffect(() => {
       setCurrentPage(1);
   }, [date, statusFilter]);
+
+  const handleProcessPayment = async () => {
+        if (!transactionToPay || !activeStore) return;
+        setIsActionLoading(true);
+        try {
+            const transactionRef = doc(db, 'stores', activeStore.id, 'transactions', transactionToPay.id);
+            await updateDoc(transactionRef, { status: 'Selesai Dibayar', paymentMethod: paymentMethodForDialog });
+            toast({ title: "Pembayaran Berhasil", description: `Pembayaran untuk nota #${String(transactionToPay.receiptNumber).padStart(6, '0')} telah diterima.` });
+            refreshData();
+            setTransactionToPay(null);
+        } catch (error) {
+            toast({ variant: "destructive", title: "Gagal Memproses Pembayaran", description: (error as Error).message });
+        } finally {
+            setIsActionLoading(false);
+        }
+    };
+      
+  const handleCompleteTransaction = async () => {
+    if (!transactionToComplete || !activeStore) return;
+    setIsActionLoading(true);
+    try {
+        const batch = writeBatch(db);
+        const transactionRef = doc(db, 'stores', activeStore.id, 'transactions', transactionToComplete.id);
+        batch.update(transactionRef, { status: 'Selesai' });
+
+        if (transactionToComplete.tableId) {
+            const tableRef = doc(db, 'stores', activeStore.id, 'tables', transactionToComplete.tableId);
+            const tableDoc = await getDoc(tableRef);
+            if (tableDoc.exists()) batch.update(tableRef, { status: 'Menunggu Dibersihkan' });
+        }
+        await batch.commit();
+        toast({ title: 'Pesanan Selesai!', description: `Status pesanan untuk ${transactionToComplete.customerName} telah diperbarui.`});
+        refreshData();
+        setTransactionToComplete(null);
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Gagal Menyelesaikan Pesanan' });
+    } finally {
+        setIsActionLoading(false);
+    }
+  }
+
 
   return (
     <>
@@ -509,23 +522,23 @@ export default function Transactions({ onDetailRequest, onPrintRequest }: Transa
                             className={cn(
                                 transaction.status === 'Diproses' && 'bg-amber-500/20 text-amber-800 border-amber-500/50',
                                 (transaction.status === 'Selesai' || transaction.status === 'Selesai Dibayar') && 'bg-green-500/20 text-green-800 border-green-500/50',
-                                transaction.status === 'Belum Dibayar' && 'bg-orange-500/20 text-orange-800 border-orange-500/50',
+                                transaction.paymentMethod === 'Belum Dibayar' && transaction.status !== 'Dibatalkan' && 'bg-orange-500/20 text-orange-800 border-orange-500/50',
                                 transaction.status === 'Dibatalkan' && 'bg-red-500/20 text-red-800 border-red-500/50',
                             )}
                           >
-                              {transaction.status}
+                              {transaction.paymentMethod === 'Belum Dibayar' && transaction.status !== 'Dibatalkan' ? 'Belum Dibayar' : transaction.status}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right font-mono">Rp {transaction.totalAmount.toLocaleString('id-ID')}</TableCell>
                          <TableCell className="text-right">
-                           <div className="flex justify-end gap-2">
-                            {transaction.status === 'Belum Dibayar' && (
-                                <Button size="sm" onClick={(e) => { e.stopPropagation(); onDetailRequest(transaction); }}>Bayar</Button>
+                           <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                            {transaction.paymentMethod === 'Belum Dibayar' && transaction.status !== 'Dibatalkan' && (
+                                <Button size="sm" onClick={() => setTransactionToPay(transaction)}>Bayar</Button>
                            )}
                            {transaction.status === 'Diproses' && (
-                               <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setTransactionToComplete(transaction); }}>Selesaikan</Button>
+                               <Button size="sm" variant="outline" onClick={() => setTransactionToComplete(transaction)}>Selesaikan</Button>
                            )}
-                            <Button aria-haspopup="true" size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onDetailRequest(transaction); }}>
+                            <Button aria-haspopup="true" size="icon" variant="ghost" onClick={() => onDetailRequest(transaction)}>
                                 <MoreHorizontal className="h-4 w-4" />
                                 <span className="sr-only">Lihat Detail</span>
                             </Button>
@@ -547,6 +560,51 @@ export default function Transactions({ onDetailRequest, onPrintRequest }: Transa
           </CardContent>
         </Card>
       </div>
+
+       <Dialog open={!!transactionToPay} onOpenChange={() => setTransactionToPay(null)}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Proses Pembayaran</DialogTitle>
+                    <DialogDescription>Pilih metode pembayaran untuk transaksi nota #{String(transactionToPay?.receiptNumber).padStart(6, '0')}.</DialogDescription>
+                </DialogHeader>
+                <div className="py-4 space-y-4">
+                    <div className="text-center">
+                        <p className="text-muted-foreground">Total Tagihan</p>
+                        <p className="text-3xl font-bold">Rp {transactionToPay?.totalAmount.toLocaleString('id-ID')}</p>
+                    </div>
+                    <Select value={paymentMethodForDialog} onValueChange={(value: 'Cash' | 'Card' | 'QRIS') => setPaymentMethodForDialog(value)}>
+                        <SelectTrigger><SelectValue placeholder="Pilih Metode Pembayaran"/></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="Cash">Tunai</SelectItem>
+                            <SelectItem value="Card">Kartu</SelectItem>
+                            <SelectItem value="QRIS">QRIS</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                <DialogFooter>
+                    <Button variant="ghost" onClick={() => setTransactionToPay(null)}>Batal</Button>
+                    <Button onClick={handleProcessPayment} disabled={isActionLoading}>
+                        {isActionLoading && <Loader className="mr-2 h-4 w-4 animate-spin"/>}
+                        Konfirmasi Pembayaran
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+      
+      <AlertDialog open={!!transactionToComplete} onOpenChange={() => setTransactionToComplete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Selesaikan Pesanan?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Anda akan menandai pesanan untuk <span className="font-bold">{transactionToComplete?.customerName}</span> sebagai selesai. Pastikan pesanan sudah diserahkan kepada pelanggan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCompleteTransaction}>Ya, Selesaikan</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
