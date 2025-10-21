@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -10,7 +11,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import type { Product, Customer, CartItem, Transaction } from '@/lib/types';
+import type { Product, Customer, CartItem, Transaction, Table } from '@/lib/types';
 import {
   Search,
   PlusCircle,
@@ -63,7 +64,7 @@ import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { db, auth } from '@/lib/firebase';
-import { collection, doc, runTransaction, increment, serverTimestamp, getDoc } from 'firebase/firestore';
+import { collection, doc, runTransaction, increment, serverTimestamp, getDoc, deleteDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context';
 import { useDashboard } from '@/contexts/dashboard-context';
@@ -134,6 +135,7 @@ export default function POS({ onPrintRequest }: POSProps) {
   const [noteProduct, setNoteProduct] = React.useState<CartItem | null>(null);
 
   const tableId = searchParams.get('tableId');
+  const tableName = searchParams.get('tableName');
   
   // Effect to load order from table if it exists
   React.useEffect(() => {
@@ -367,6 +369,10 @@ export default function POS({ onPrintRequest }: POSProps) {
 
     try {
       let finalTransactionData: Transaction | null = null;
+      
+      const currentTable = tables.find(t => t.id === tableId);
+      const isVirtualTable = currentTable?.isVirtual ?? false;
+
       await runTransaction(db, async (transaction) => {
 
         const storeRef = doc(db, 'stores', storeId);
@@ -448,13 +454,19 @@ export default function POS({ onPrintRequest }: POSProps) {
         };
         transaction.set(newTransactionRef, transactionData);
         
-        // If it's from a table, clear the table order
+        // If it's a table order, handle table state change
         if (tableId) {
             const tableRef = doc(db, 'stores', storeId, 'tables', tableId);
-            transaction.update(tableRef, {
-                status: 'Menunggu Dibersihkan',
-                currentOrder: null
-            });
+            // If it's a paid transaction for a virtual table, delete the table.
+            if (isPaid && isVirtualTable) {
+                transaction.delete(tableRef);
+            } else {
+                // Otherwise, update its status.
+                transaction.update(tableRef, {
+                    status: 'Menunggu Dibersihkan',
+                    currentOrder: null
+                });
+            }
         }
 
         finalTransactionData = transactionData;
@@ -563,7 +575,7 @@ export default function POS({ onPrintRequest }: POSProps) {
           <Card>
             <CardHeader>
               <CardTitle className="font-headline tracking-wider">
-                Pesanan Baru
+                Pesanan Baru untuk {tableName || 'Take Away'}
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
@@ -747,9 +759,9 @@ export default function POS({ onPrintRequest }: POSProps) {
                     disabled={!selectedCustomer || selectedCustomer.loyaltyPoints === 0}
                   />
                 </div>
-                <div className="flex justify-between text-muted-foreground">
+                <div className="flex justify-between text-destructive">
                   <span>Diskon</span>
-                  <span className="text-destructive">- Rp {discountAmount.toLocaleString('id-ID')}</span>
+                  <span>- Rp {discountAmount.toLocaleString('id-ID')}</span>
                 </div>
                 {taxAmount > 0 && (
                   <div className="flex justify-between text-muted-foreground">
@@ -767,14 +779,14 @@ export default function POS({ onPrintRequest }: POSProps) {
                   <span className="flex items-center gap-1"><Sparkles className="h-3 w-3" /> Poin Didapat</span>
                   <span>+ {pointsEarned.toLocaleString('id-ID')} pts</span>
                 </div>
-                <div className="flex justify-between text-muted-foreground">
-                  <span className="flex items-center gap-1 text-destructive"><Gift className="h-3 w-3" /> Poin Ditukar</span>
-                  <span className="text-destructive">- {pointsToRedeem.toLocaleString('id-ID')} pts</span>
+                <div className="flex justify-between text-destructive">
+                  <span className="flex items-center gap-1"><Gift className="h-3 w-3" /> Poin Ditukar</span>
+                  <span>- {pointsToRedeem.toLocaleString('id-ID')} pts</span>
                 </div>
                 {transactionFee > 0 && (
-                  <div className="flex justify-between text-muted-foreground">
-                    <span className="flex items-center gap-1 text-destructive"><Coins className="h-3 w-3" /> Biaya Transaksi</span>
-                    <span className="text-destructive">- {transactionFee.toFixed(2)} Token</span>
+                  <div className="flex justify-between text-destructive">
+                    <span className="flex items-center gap-1"><Coins className="h-3 w-3" /> Biaya Transaksi</span>
+                    <span>- {transactionFee.toFixed(2)} Token</span>
                   </div>
                 )}
                 <Separator />
@@ -865,5 +877,3 @@ export default function POS({ onPrintRequest }: POSProps) {
     </>
   );
 }
-
-    

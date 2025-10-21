@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -182,26 +183,33 @@ export default function Tables() {
   }
 
   const handleClearTable = async () => {
-    if (!activeStore || !selectedTable || !currentUser) return;
+    if (!activeStore || !selectedTable) return;
     setIsProcessing(true);
-     const tableRef = doc(db, 'stores', activeStore.id, 'tables', selectedTable.id);
-     
-     try {
+    
+    try {
+      const tableRef = doc(db, 'stores', activeStore.id, 'tables', selectedTable.id);
+
+      // If the table is virtual, delete it. Otherwise, just update the status.
+      if (selectedTable.isVirtual) {
+        await deleteDoc(tableRef);
+        toast({ title: `Meja virtual ${selectedTable.name} telah dihapus.` });
+      } else {
         await updateDoc(tableRef, {
             status: 'Tersedia',
             currentOrder: null
         });
-
         toast({ title: `Meja ${selectedTable.name} telah dibersihkan.` });
-        refreshData();
-        closeDialogs();
+      }
 
-     } catch (error) {
-        console.error("Error clearing table:", error);
-        toast({ variant: 'destructive', title: 'Gagal membersihkan meja', description: (error as Error).message });
-     } finally {
-        setIsProcessing(false);
-     }
+      refreshData();
+      closeDialogs();
+
+    } catch (error) {
+      console.error("Error clearing or deleting table:", error);
+      toast({ variant: 'destructive', title: 'Gagal memproses meja', description: (error as Error).message });
+    } finally {
+      setIsProcessing(false);
+    }
   }
   
   const openEditDialog = (table: Table) => {
@@ -512,6 +520,7 @@ export default function Tables() {
             <AlertDialogTitle>Bersihkan Meja?</AlertDialogTitle>
             <AlertDialogDescription>
                 Ini akan menandai meja <span className="font-bold">{selectedTable?.name}</span> sebagai &apos;Tersedia&apos; dan siap untuk pelanggan berikutnya.
+                {selectedTable?.isVirtual && <span className="block mt-2 font-semibold">Karena ini adalah meja virtual, meja ini juga akan dihapus dari daftar.</span>}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
