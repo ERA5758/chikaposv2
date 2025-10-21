@@ -48,6 +48,8 @@ export async function getPromotionRecommendations(
 
 const promptText = `Anda adalah Chika AI, seorang ahli strategi loyalitas untuk sebuah **{{businessDescription}}** bernama **{{activeStoreName}}**.
 
+**Tugas Anda:** Buat 2-3 rekomendasi promo penukaran poin baru berdasarkan data kinerja yang diberikan.
+
 **Data Analisis Kinerja:**
 - **Promo Aktif Saat Ini:**
 {{#each currentRedemptionOptions}}
@@ -57,21 +59,14 @@ const promptText = `Anda adalah Chika AI, seorang ahli strategi loyalitas untuk 
 {{/each}}
 - **Produk Terlaris Bulan Ini:** {{#if topSellingProducts}}{{#each topSellingProducts}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}{{else}}Tidak ada data{{/if}}
 - **Produk Kurang Laris Bulan Ini:** {{#if worstSellingProducts}}{{#each worstSellingProducts}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}{{else}}Tidak ada data{{/if}}
+- **Semua Nama Produk di Menu:** {{#each allProductNames}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}
 
-**Instruksi KRITIS:**
-1.  **Fokus Pada Data yang Diberikan**: Buat 2-3 rekomendasi promo baru. Anda HARUS mendasarkan rekomendasi Anda pada data di atas.
-2.  **Gunakan Nama Produk yang Ada**: Saat membuat rekomendasi 'bundling' atau diskon produk spesifik, Anda WAJIB hanya menggunakan nama produk yang ada di daftar "Produk Terlaris" atau "Produk Kurang Laris" yang telah disediakan.
-3.  **LARANGAN**: Jangan pernah menghasilkan teks yang mengandung kurung kurawal, seperti '{{' atau '}}'. Selalu ganti placeholder dengan nama produk yang sebenarnya.
-4.  **Jenis Rekomendasi**:
-    -   Gunakan data produk terlaris dan kurang laris sebagai INSPIRASI untuk membuat promo *bundling* yang cerdas.
-    -   Usulkan juga promo baru yang lebih umum dan relevan untuk jenis usaha **{{businessDescription}}** (misal: "Diskon khusus hari Selasa", "Gratis Minuman untuk Poin Tertentu").
-    -   Jika ada promo lama yang tidak efektif (misalnya, poin terlalu tinggi), sarankan untuk **menonaktifkannya** dan berikan alasannya.
-5.  **Format Output**: Setiap rekomendasi HARUS memiliki:
-    -   'title': Judul singkat dan menarik (misal: "Promo Bundling Juara", "Diskon Hari Kerja").
-    -   'description': Deskripsi promo yang akan dilihat pelanggan (gunakan nama produk aktual dari data!).
-    -   'justification': Alasan singkat mengapa ini ide yang bagus, berdasarkan data yang ada.
-    -   'pointsRequired': Jumlah poin yang disarankan. Harus angka yang masuk akal.
-    -   'value': Nilai promo dalam Rupiah (jika diskon, gunakan nilai diskon. Jika barang gratis, bisa 0).`;
+**Instruksi:**
+1.  **Gunakan Data**: Rekomendasi Anda harus terinspirasi dari data di atas.
+2.  **Promo Bundling Cerdas**: Jika Anda menyarankan promo bundling, gunakan produk dari daftar "Produk Terlaris" dan "Produk Kurang Laris" untuk menciptakan penawaran yang menarik. Pastikan Anda menggunakan nama produk yang sebenarnya dari daftar tersebut.
+3.  **Promo Kreatif Lainnya**: Selain bundling, usulkan juga promo umum yang relevan untuk **{{businessDescription}}**, seperti diskon pada hari tertentu atau penawaran untuk mendapatkan produk gratis.
+4.  **Format Output**: Setiap rekomendasi harus memiliki 'title', 'description' (yang jelas untuk pelanggan), 'justification' (alasan di balik ide tersebut), 'pointsRequired' (angka yang masuk akal), dan 'value' (nilai promo dalam Rupiah).
+`;
 
 
 export const promotionRecommendationFlow = ai.defineFlow(
