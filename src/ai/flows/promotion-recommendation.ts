@@ -13,6 +13,7 @@ import { z } from 'genkit';
 export const PromotionRecommendationInputSchema = z.object({
   businessDescription: z.string().describe('A brief description of the business (e.g., "kafe", "vape store").'),
   activeStoreName: z.string().describe('The name of the store for context.'),
+  allProductNames: z.array(z.string()).describe('A list of all available product names in the menu.'),
   currentRedemptionOptions: z.array(
     z.object({
       description: z.string(),
@@ -47,9 +48,13 @@ export async function getPromotionRecommendations(
 
 const promptText = `Anda adalah Chika AI, seorang ahli strategi loyalitas untuk bisnis F&B **{{businessDescription}}** bernama **{{activeStoreName}}**.
 
-Tugas Anda adalah menganalisis data dan menghasilkan 2-3 rekomendasi promo loyalitas yang kreatif dan dapat ditindaklanjuti.
+**Kamus Produk Anda:**
+Anda HANYA boleh menggunakan nama produk dari daftar lengkap menu berikut saat membuat rekomendasi:
+{{#each allProductNames}}
+- {{this}}
+{{/each}}
 
-**Data Analisis:**
+**Data Analisis Kinerja:**
 - **Promo Aktif Saat Ini:**
 {{#each currentRedemptionOptions}}
   - {{description}} (membutuhkan {{pointsRequired}} poin, status: {{#if isActive}}Aktif{{else}}Tidak Aktif{{/if}})
@@ -60,17 +65,17 @@ Tugas Anda adalah menganalisis data dan menghasilkan 2-3 rekomendasi promo loyal
 - **Produk Kurang Laris Bulan Ini:** {{#if worstSellingProducts}}{{#each worstSellingProducts}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}{{else}}Tidak ada data{{/if}}
 
 **Instruksi KRITIS:**
-1.  **WAJIB GUNAKAN NAMA PRODUK AKTUAL**: Saat membuat rekomendasi 'bundling' atau diskon produk, Anda HARUS menggunakan nama produk yang ada di daftar "Produk Terlaris" atau "Produk Kurang Laris". JANGAN PERNAH mengarang atau menggunakan nama produk yang tidak ada dalam daftar tersebut.
-    -   Contoh **BENAR**: Jika "Kopi Susu" adalah produk terlaris dan "Donat Coklat" adalah produk kurang laris, Anda bisa menyarankan: "Bundling Hemat: Dapatkan diskon 50% untuk Donat Coklat setiap pembelian Kopi Susu."
-    -   Contoh **SALAH (DILARANG)**: "Bundling Roti Sobek dan Kopi Susu." (jika "Roti Sobek" tidak ada dalam daftar).
+1.  **WAJIB GUNAKAN NAMA PRODUK DARI KAMUS**: Saat membuat rekomendasi 'bundling' atau diskon, Anda HARUS menggunakan nama produk yang ada di "Kamus Produk Anda". JANGAN PERNAH mengarang, menyimpulkan, atau menggunakan nama produk yang tidak ada dalam daftar tersebut.
+    -   Contoh **BENAR**: Jika "Kopi Susu" dan "Donat Coklat" ada di kamus, Anda bisa menyarankan: "Bundling Hemat: Dapatkan diskon 50% untuk Donat Coklat setiap pembelian Kopi Susu."
+    -   Contoh **SALAH (DILARANG)**: "Bundling Roti Sobek dan Kopi Susu." (jika "Roti Sobek" tidak ada dalam "Kamus Produk Anda").
 2.  **Fokus Rekomendasi**:
-    -   Buat promo baru yang menarik dan relevan untuk jenis usaha **{{businessDescription}}** (misal: "Diskon khusus hari Selasa", "Gratis Minuman untuk Poin Tertentu").
-    -   Usulkan 'bundling' antara produk dari daftar terlaris dan produk dari daftar kurang laris untuk meningkatkan penjualan produk yang lambat.
+    -   Gunakan data "Produk Terlaris" dan "Produk Kurang Laris" sebagai INSPIRASI untuk membuat promo bundling yang cerdas.
+    -   Usulkan promo baru yang menarik dan relevan untuk jenis usaha **{{businessDescription}}** (misal: "Diskon khusus hari Selasa", "Gratis Minuman untuk Poin Tertentu").
     -   Jika ada promo lama yang tidak efektif (misalnya, poin terlalu tinggi atau tidak relevan), sarankan untuk **menonaktifkannya** dan berikan alasannya.
-3.  **Spesifik & Relevan**: Semua rekomendasi harus sangat relevan untuk sebuah **{{businessDescription}}**. Hindari menyarankan produk atau promo yang tidak sesuai (misalnya, jangan sarankan promo kopi untuk toko vape).
+3.  **Spesifik & Relevan**: Semua rekomendasi harus sangat relevan untuk sebuah **{{businessDescription}}**.
 4.  **Format Output**: Setiap rekomendasi HARUS memiliki:
     -   'title': Judul singkat dan menarik (misal: "Promo Bundling Juara", "Diskon Hari Kerja").
-    -   'description': Deskripsi promo yang akan dilihat pelanggan (gunakan nama produk aktual!).
+    -   'description': Deskripsi promo yang akan dilihat pelanggan (gunakan nama produk aktual dari kamus!).
     -   'justification': Alasan singkat mengapa ini ide yang bagus, berdasarkan data yang ada.
     -   'pointsRequired': Jumlah poin yang disarankan. Harus angka yang masuk akal.
     -   'value': Nilai promo dalam Rupiah (jika diskon, gunakan nilai diskon. Jika barang gratis, bisa 0).`;

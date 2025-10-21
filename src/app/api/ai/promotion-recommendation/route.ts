@@ -5,9 +5,9 @@ import type { PromotionRecommendationInput } from '@/ai/flows/promotion-recommen
 export async function POST(request: NextRequest) {
   const input: PromotionRecommendationInput = await request.json();
 
-  const { businessDescription, activeStoreName, currentRedemptionOptions, topSellingProducts, worstSellingProducts } = input;
+  const { businessDescription, activeStoreName, currentRedemptionOptions, topSellingProducts, worstSellingProducts, allProductNames } = input;
 
-  if (!businessDescription || !activeStoreName || !currentRedemptionOptions || !topSellingProducts || !worstSellingProducts) {
+  if (!businessDescription || !activeStoreName || !currentRedemptionOptions || !topSellingProducts || !worstSellingProducts || !allProductNames) {
     return NextResponse.json({ error: 'Missing required input parameters' }, { status: 400 });
   }
 

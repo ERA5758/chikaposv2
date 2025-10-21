@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -58,6 +59,7 @@ import { AIConfirmationDialog } from '@/components/dashboard/ai-confirmation-dia
 interface PromotionRecommendationInput {
   businessDescription: string;
   activeStoreName: string;
+  allProductNames: string[];
   currentRedemptionOptions: { description: string, pointsRequired: number, isActive: boolean }[];
   topSellingProducts: string[];
   worstSellingProducts: string[];
@@ -76,7 +78,7 @@ interface PromotionRecommendationOutput {
 export default function Promotions() {
   const { currentUser, activeStore } = useAuth();
   const { dashboardData, refreshData } = useDashboard();
-  const { redemptionOptions, transactions, feeSettings } = dashboardData || {};
+  const { redemptionOptions, transactions, products, feeSettings } = dashboardData || {};
 
   const isAdmin = currentUser?.role === 'admin';
   const [recommendations, setRecommendations] = React.useState<PromotionRecommendationOutput | null>(null);
@@ -142,7 +144,7 @@ export default function Promotions() {
   };
 
   const handleGenerateRecommendations = async (): Promise<PromotionRecommendationOutput> => {
-    if (!activeStore || !feeSettings || !transactions || !redemptionOptions) {
+    if (!activeStore || !feeSettings || !transactions || !redemptionOptions || !products) {
         throw new Error('Data yang dibutuhkan untuk membuat rekomendasi tidak lengkap.');
     }
 
@@ -171,6 +173,7 @@ export default function Promotions() {
     const inputData: PromotionRecommendationInput = {
         businessDescription: activeStore.businessDescription || 'bisnis',
         activeStoreName: activeStore.name,
+        allProductNames: products.map(p => p.name),
         currentRedemptionOptions: redemptionOptions.map(o => ({
           description: o.description,
           pointsRequired: o.pointsRequired,
