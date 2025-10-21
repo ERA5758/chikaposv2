@@ -139,10 +139,9 @@ export default function POS({ onPrintRequest }: POSProps) {
   
   // Effect to load order from table if it exists
   React.useEffect(() => {
-    if (tableId && tables.length > 0) {
+    if (tableId && tables.length > 0 && products.length > 0) {
         const table = tables.find(t => t.id === tableId);
         if (table?.currentOrder) {
-            // Reconstruct cart items ensuring productName is included
             const reconstructedCart: CartItem[] = table.currentOrder.items.map(orderItem => {
                 const product = products.find(p => p.id === orderItem.productId);
                 return {
@@ -155,19 +154,22 @@ export default function POS({ onPrintRequest }: POSProps) {
             setCart(reconstructedCart);
 
             if (table.currentOrder.customer) {
-                const customer = customers.find(c => c.id === table.currentOrder.customer?.id);
-                setSelectedCustomer(customer);
+                const customerFromOrder = customers.find(c => c.id === table.currentOrder.customer?.id);
+                if (customerFromOrder) {
+                    setSelectedCustomer(customerFromOrder);
+                }
             }
             toast({
                 title: 'Pesanan Dimuat',
                 description: `Pesanan dari meja ${table.name} telah dimuat ke keranjang.`
             });
         }
-    } else if (!tableId) { // Clear cart if we navigate away from a table POS view
+    } else if (!tableId) { 
         setCart([]);
         setSelectedCustomer(undefined);
     }
-  }, [tableId, tables, products, customers, toast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tableId, tables, products, customers]);
 
 
   const customerOptions = (customers || []).map((c) => ({
