@@ -60,14 +60,13 @@ const promptText = `Anda adalah Chika AI, seorang ahli strategi loyalitas untuk 
 
 **Instruksi KRITIS:**
 1.  **Fokus Pada Data yang Diberikan**: Buat 2-3 rekomendasi promo baru. Anda HARUS mendasarkan rekomendasi Anda pada data di atas.
-2.  **Gunakan Nama Produk yang Ada**: Saat membuat rekomendasi 'bundling' atau diskon produk spesifik, Anda WAJIB hanya menggunakan nama produk yang ada di daftar "Produk Terlaris" atau "Produk Kurang Laris" yang telah disediakan. JANGAN mengarang atau menggunakan nama produk di luar daftar itu.
-    -   Contoh **BENAR**: Jika "Kopi Susu" ada di daftar terlaris dan "Donat Coklat" di daftar kurang laris, Anda bisa menyarankan: "Bundling Hemat: Dapatkan diskon 50% untuk Donat Coklat setiap pembelian Kopi Susu."
-    -   Contoh **SALAH (DILARANG)**: "Bundling Roti Sobek dan Kopi Susu." (jika "Roti Sobek" tidak disebutkan dalam data di atas).
-3.  **Jenis Rekomendasi**:
+2.  **Gunakan Nama Produk yang Ada**: Saat membuat rekomendasi 'bundling' atau diskon produk spesifik, Anda WAJIB hanya menggunakan nama produk yang ada di daftar "Produk Terlaris" atau "Produk Kurang Laris" yang telah disediakan.
+3.  **LARANGAN**: Jangan pernah menghasilkan teks yang mengandung kurung kurawal, seperti '{{' atau '}}'. Selalu ganti placeholder dengan nama produk yang sebenarnya.
+4.  **Jenis Rekomendasi**:
     -   Gunakan data produk terlaris dan kurang laris sebagai INSPIRASI untuk membuat promo *bundling* yang cerdas.
     -   Usulkan juga promo baru yang lebih umum dan relevan untuk jenis usaha **{{businessDescription}}** (misal: "Diskon khusus hari Selasa", "Gratis Minuman untuk Poin Tertentu").
     -   Jika ada promo lama yang tidak efektif (misalnya, poin terlalu tinggi), sarankan untuk **menonaktifkannya** dan berikan alasannya.
-4.  **Format Output**: Setiap rekomendasi HARUS memiliki:
+5.  **Format Output**: Setiap rekomendasi HARUS memiliki:
     -   'title': Judul singkat dan menarik (misal: "Promo Bundling Juara", "Diskon Hari Kerja").
     -   'description': Deskripsi promo yang akan dilihat pelanggan (gunakan nama produk aktual dari data!).
     -   'justification': Alasan singkat mengapa ini ide yang bagus, berdasarkan data yang ada.
