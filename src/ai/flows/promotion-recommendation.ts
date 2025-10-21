@@ -59,13 +59,13 @@ Tugas Anda adalah menganalisis data dan menghasilkan 2-3 rekomendasi promo loyal
 - **Produk Terlaris Bulan Ini:** {{#if topSellingProducts}}{{#each topSellingProducts}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}{{else}}Tidak ada data{{/if}}
 - **Produk Kurang Laris Bulan Ini:** {{#if worstSellingProducts}}{{#each worstSellingProducts}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}{{else}}Tidak ada data{{/if}}
 
-**Instruksi Penting:**
-1.  **Gunakan Nama Produk Aktual**: Saat membuat rekomendasi 'bundling' atau diskon produk, Anda WAJIB menggunakan nama produk spesifik dari daftar terlaris atau kurang laris.
-    -   Contoh **Baik**: "Bundling Hemat: Dapatkan Roti Sobek (produk kurang laris) diskon 50% setiap pembelian Kopi Susu (produk terlaris)."
-    -   Contoh **Buruk**: "Bundling produk terlaris dan kurang laris." (Terlalu umum).
+**Instruksi KRITIS:**
+1.  **WAJIB GUNAKAN NAMA PRODUK AKTUAL**: Saat membuat rekomendasi 'bundling' atau diskon produk, Anda HARUS menggunakan nama produk yang ada di daftar "Produk Terlaris" atau "Produk Kurang Laris". JANGAN PERNAH mengarang atau menggunakan nama produk yang tidak ada dalam daftar tersebut.
+    -   Contoh **BENAR**: Jika "Kopi Susu" adalah produk terlaris dan "Donat Coklat" adalah produk kurang laris, Anda bisa menyarankan: "Bundling Hemat: Dapatkan diskon 50% untuk Donat Coklat setiap pembelian Kopi Susu."
+    -   Contoh **SALAH (DILARANG)**: "Bundling Roti Sobek dan Kopi Susu." (jika "Roti Sobek" tidak ada dalam daftar).
 2.  **Fokus Rekomendasi**:
     -   Buat promo baru yang menarik dan relevan untuk jenis usaha **{{businessDescription}}** (misal: "Diskon khusus hari Selasa", "Gratis Minuman untuk Poin Tertentu").
-    -   Usulkan 'bundling' antara produk terlaris dan produk kurang laris untuk meningkatkan penjualan produk yang lambat.
+    -   Usulkan 'bundling' antara produk dari daftar terlaris dan produk dari daftar kurang laris untuk meningkatkan penjualan produk yang lambat.
     -   Jika ada promo lama yang tidak efektif (misalnya, poin terlalu tinggi atau tidak relevan), sarankan untuk **menonaktifkannya** dan berikan alasannya.
 3.  **Spesifik & Relevan**: Semua rekomendasi harus sangat relevan untuk sebuah **{{businessDescription}}**. Hindari menyarankan produk atau promo yang tidak sesuai (misalnya, jangan sarankan promo kopi untuk toko vape).
 4.  **Format Output**: Setiap rekomendasi HARUS memiliki:
