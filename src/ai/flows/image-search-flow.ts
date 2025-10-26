@@ -9,6 +9,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
+import { randomBytes } from 'crypto';
 
 export const ImageSearchInputSchema = z.object({
   query: z.string().describe('The search query for the product image.'),
@@ -43,8 +44,9 @@ export const imageSearchFlow = ai.defineFlow(
     const sanitizedQuery = query.replace(/\s+/g, '-').toLowerCase();
 
     for (let i = 0; i < imageCount; i++) {
-        // Create a unique seed for each image to ensure variety
-        const seed = `${sanitizedQuery}-${i}`;
+        // Use a more stable method for generating unique IDs on the server
+        const uniqueSuffix = randomBytes(4).toString('hex');
+        const seed = `${sanitizedQuery}-${i}-${uniqueSuffix}`;
         images.push({
             url: `https://picsum.photos/seed/${seed}/400/400`,
             alt: `A placeholder image for: ${query}`,
