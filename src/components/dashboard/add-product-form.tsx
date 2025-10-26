@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -34,6 +35,7 @@ import Image from 'next/image';
 import { Textarea } from '../ui/textarea';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ImageSearchResponse } from '@/ai/flows/image-search-flow';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const FormSchema = z.object({
   name: z.string().min(2, {
