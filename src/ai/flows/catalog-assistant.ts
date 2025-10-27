@@ -1,9 +1,10 @@
-
 'use server';
 
 import { ai } from '@/ai/genkit';
-import { CatalogAssistantInputSchema, CatalogAssistantOutputSchema } from './catalog-assistant-schemas';
-
+import {
+  CatalogAssistantInputSchema,
+  CatalogAssistantOutputSchema,
+} from './catalog-assistant-schemas';
 
 const PROMPT_TEMPLATE = `
 Anda adalah "Chika", asisten virtual yang ramah untuk toko bernama {{storeName}}.
@@ -22,6 +23,7 @@ PERTANYAAN PENGGUNA:
 "{{userQuestion}}"
 
 JAWABAN ANDA:
+Selalu kembalikan jawaban Anda dalam format JSON yang valid seperti ini: { "answer": "jawaban Anda di sini" }.
 `;
 
 export const catalogAssistantFlow = ai.defineFlow(
@@ -31,14 +33,22 @@ export const catalogAssistantFlow = ai.defineFlow(
     outputSchema: CatalogAssistantOutputSchema,
   },
   async (input) => {
+    // Render the prompt template with the provided input.
+    const finalPrompt = PROMPT_TEMPLATE.replace(
+      '{{storeName}}',
+      input.storeName
+    )
+      .replace('{{productContext.name}}', input.productContext.name)
+      .replace('{{productContext.price}}', String(input.productContext.price))
+      .replace(
+        '{{productContext.description}}',
+        input.productContext.description
+      )
+      .replace('{{userQuestion}}', input.userQuestion);
+
     const { output } = await ai.generate({
       model: 'openai/gpt-4o',
-      prompt: PROMPT_TEMPLATE,
-      input: {
-        userQuestion: input.userQuestion,
-        storeName: input.storeName,
-        productContext: input.productContext,
-      },
+      prompt: finalPrompt, // Pass the final, rendered prompt string.
       output: {
         schema: CatalogAssistantOutputSchema,
       },
