@@ -67,6 +67,9 @@ export function MiniStickerDialog({ transaction, open, onOpenChange }: MiniStick
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xs p-0">
+        <DialogHeader className="sr-only">
+          <DialogTitle>Pratinjau Stiker Pesanan</DialogTitle>
+        </DialogHeader>
         <div id={`sticker-for-${transaction.id}`}>
           <MiniSticker transaction={transaction} />
         </div>
