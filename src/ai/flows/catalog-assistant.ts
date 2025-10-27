@@ -37,7 +37,10 @@ export const catalogAssistantFlow = ai.defineFlow(
     const { output } = await ai.generate({
       model: 'openai/gpt-4o',
       prompt: PROMPT_TEMPLATE,
-      input: input,
+      input: {
+        ...input,
+        productContext: JSON.stringify(input.productContext, null, 2),
+      },
       output: {
         schema: CatalogAssistantOutputSchema,
       },
