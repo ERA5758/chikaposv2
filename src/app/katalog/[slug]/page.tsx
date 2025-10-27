@@ -85,54 +85,31 @@ type ChatMessage = {
   text: string;
 };
 
-function CatalogAIChat({ store, products, open, onOpenChange }: { store: Store, products: Product[], open: boolean, onOpenChange: (open: boolean) => void }) {
+function CatalogAIChat({ store, products, open, onOpenChange, initialQuestion }: { store: Store, products: Product[], open: boolean, onOpenChange: (open: boolean) => void, initialQuestion: string | null }) {
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
   const [input, setInput] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
   
-  const initialMessage = `Halo! Saya asisten AI dari ${store.name}. Ada yang bisa saya bantu terkait menu kami?`;
-
-  React.useEffect(() => {
-    if (open && messages.length === 0) {
-      setMessages([{ sender: 'ai', text: initialMessage }]);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-  
-  React.useEffect(() => {
-    if (scrollAreaRef.current) {
-        setTimeout(() => {
-            const viewport = scrollAreaRef.current?.querySelector('div[data-radix-scroll-area-viewport]');
-            if (viewport) viewport.scrollTop = viewport.scrollHeight;
-        }, 100);
-    }
-}, [messages]);
-
-  const productContext = React.useMemo(() => {
-    return products.map(p => ({
-        name: p.name,
-        category: p.category,
-        description: p.description || '',
-        price: p.price,
-        stock: p.stock,
-    }));
-  }, [products]);
-
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
-
-    const newMessages: ChatMessage[] = [...messages, { sender: 'user', text: input }];
-    setMessages(newMessages);
-    const question = input;
-    setInput('');
+  const sendMessage = React.useCallback(async (question: string) => {
     setIsLoading(true);
+    setInput('');
+    
+    // Add user message immediately if it's not the initial, automated question
+    if (question !== initialQuestion) {
+       setMessages(prev => [...prev, { sender: 'user', text: question }]);
+    }
 
     try {
         const payload: CatalogAssistantInput = {
             userQuestion: question,
-            productContext: productContext,
+            productContext: products.map(p => ({
+                name: p.name,
+                category: p.category,
+                description: p.description || '',
+                price: p.price,
+                stock: p.stock,
+            })),
             storeName: store.name,
         };
 
@@ -155,6 +132,31 @@ function CatalogAIChat({ store, products, open, onOpenChange }: { store: Store, 
     } finally {
         setIsLoading(false);
     }
+  }, [initialQuestion, products, store.name]);
+
+  React.useEffect(() => {
+    if (open) {
+      const introMessage = { sender: 'ai' as const, text: `Halo! Saya asisten AI dari ${store.name}. Ada yang bisa saya bantu terkait menu kami?` };
+      setMessages([introMessage]);
+      if (initialQuestion) {
+        sendMessage(initialQuestion);
+      }
+    }
+  }, [open, initialQuestion, store.name, sendMessage]);
+  
+  React.useEffect(() => {
+    if (scrollAreaRef.current) {
+        setTimeout(() => {
+            const viewport = scrollAreaRef.current?.querySelector('div[data-radix-scroll-area-viewport]');
+            if (viewport) viewport.scrollTop = viewport.scrollHeight;
+        }, 100);
+    }
+}, [messages]);
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+    sendMessage(input);
   }
 
   return (
@@ -192,7 +194,7 @@ function CatalogAIChat({ store, products, open, onOpenChange }: { store: Store, 
             </div>
         </ScrollArea>
         <DialogFooter>
-            <form onSubmit={handleSendMessage} className="flex w-full items-center space-x-2">
+            <form onSubmit={handleFormSubmit} className="flex w-full items-center space-x-2">
                 <Input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Tanya tentang menu..." disabled={isLoading} />
                 <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
                     <Send className="h-4 w-4" />
@@ -303,6 +305,7 @@ export default function CatalogPage() {
     const [error, setError] = React.useState<string | undefined>(undefined);
     const [isLoading, setIsLoading] = React.useState(true);
     const [isChatOpen, setIsChatOpen] = React.useState(false);
+    const [initialChatQuestion, setInitialChatQuestion] = React.useState<string | null>(null);
     const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null);
     const [cart, setCart] = React.useState<CartItem[]>([]);
     const [isSubmittingOrder, setIsSubmittingOrder] = React.useState(false);
@@ -437,6 +440,11 @@ export default function CatalogPage() {
                 item.productId === productId ? { ...item, notes: newNote } : item
             )
         );
+    };
+
+    const handleAskAI = (productName: string) => {
+        setInitialChatQuestion(`Jelaskan tentang ${productName}`);
+        setIsChatOpen(true);
     };
 
     const handleCreateOrder = async () => {
@@ -646,6 +654,9 @@ export default function CatalogPage() {
                                                         Catatan: {itemInCart.notes}
                                                     </Button>
                                                 )}
+                                                <Button variant="secondary" size="sm" className="w-full" onClick={() => handleAskAI(product.name)}>
+                                                    <Sparkles className="mr-2 h-4 w-4" /> Tanya Chika AI
+                                                </Button>
                                                 {product.stock > 0 ? (
                                                     itemInCart ? (
                                                         <div className="flex items-center gap-2 w-full">
@@ -673,22 +684,19 @@ export default function CatalogPage() {
             </main>
         </div>
 
-        <div className="fixed bottom-6 right-6 z-20 flex flex-col gap-4 items-end">
-            {cartItemCount > 0 && (
-                <SheetTrigger asChild>
-                    <Button size="lg" className="rounded-full shadow-lg h-16 w-auto pl-4 pr-6">
-                        <ShoppingCart className="h-7 w-7 mr-3"/>
-                        <div className="text-left">
-                            <p className="font-bold">{cartItemCount} Item</p>
-                            <p className="text-xs">Rp {cartSubtotal.toLocaleString('id-ID')}</p>
-                        </div>
-                    </Button>
-                </SheetTrigger>
-            )}
-            <Button size="icon" className="rounded-full h-14 w-14 shadow-lg" onClick={() => setIsChatOpen(true)}>
-                <MessageCircle className="h-7 w-7"/>
-            </Button>
-        </div>
+        {cartItemCount > 0 && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-20">
+            <SheetTrigger asChild>
+                <Button size="lg" className="rounded-full shadow-lg h-16 w-auto pl-4 pr-6">
+                    <ShoppingCart className="h-7 w-7 mr-3"/>
+                    <div className="text-left">
+                        <p className="font-bold">{cartItemCount} Item</p>
+                        <p className="text-xs">Rp {cartSubtotal.toLocaleString('id-ID')}</p>
+                    </div>
+                </Button>
+            </SheetTrigger>
+          </div>
+        )}
         
         {store && products.length > 0 && (
             <CatalogAIChat 
@@ -696,6 +704,7 @@ export default function CatalogPage() {
                 products={products}
                 open={isChatOpen}
                 onOpenChange={setIsChatOpen}
+                initialQuestion={initialChatQuestion}
             />
         )}
         
@@ -805,4 +814,5 @@ export default function CatalogPage() {
 }
 
     
+
 
