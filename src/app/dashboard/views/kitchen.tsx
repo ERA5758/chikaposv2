@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -9,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, ChefHat, Loader, MessageSquare } from 'lucide-react';
+import { CheckCircle, ChefHat, Loader, MessageSquare, Printer } from 'lucide-react';
 import { doc, writeBatch, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/auth-context';
@@ -18,9 +19,10 @@ import type { Transaction } from '@/lib/types';
 
 type KitchenProps = {
     onFollowUpRequest: (transaction: Transaction) => void;
+    onPrintStickerRequest: (transaction: Transaction) => void;
 };
 
-export default function Kitchen({ onFollowUpRequest }: KitchenProps) {
+export default function Kitchen({ onFollowUpRequest, onPrintStickerRequest }: KitchenProps) {
     const { dashboardData } = useDashboard();
     const { activeStore, currentUser } = useAuth();
     const { transactions } = dashboardData;
@@ -116,6 +118,14 @@ export default function Kitchen({ onFollowUpRequest }: KitchenProps) {
                                     >
                                         <MessageSquare className="mr-2 h-4 w-4" />
                                         Follow Up Cerdas
+                                    </Button>
+                                    <Button 
+                                        variant="outline"
+                                        className="w-full" 
+                                        onClick={() => onPrintStickerRequest(order)}
+                                    >
+                                        <Printer className="mr-2 h-4 w-4" />
+                                        Cetak Stiker
                                     </Button>
                                     {(currentUser?.role === 'admin' || currentUser?.role === 'cashier') && (
                                         <Button 

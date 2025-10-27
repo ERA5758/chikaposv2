@@ -34,6 +34,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { auth } from '@/lib/firebase';
 import { OrderReadyDialog } from '@/components/dashboard/order-ready-dialog';
+import { MiniStickerDialog } from '@/components/dashboard/mini-sticker-dialog';
 
 function CheckoutReceiptDialog({ transaction, users, open, onOpenChange }: { transaction: Transaction | null; users: User[]; open: boolean; onOpenChange: (open: boolean) => void }) {
     if (!transaction) return null;
@@ -80,6 +81,7 @@ function DashboardContent() {
   const [transactionToPrint, setTransactionToPrint] = React.useState<Transaction | null>(null);
   const [transactionForDetail, setTransactionForDetail] = React.useState<Transaction | null>(null);
   const [transactionForFollowUp, setTransactionForFollowUp] = React.useState<Transaction | null>(null);
+  const [transactionForSticker, setTransactionForSticker] = React.useState<Transaction | null>(null);
   
   const isAdmin = currentUser?.role === 'admin';
   const defaultView = currentUser?.role === 'kitchen' ? 'kitchen' : (isAdmin ? 'overview' : 'pos');
@@ -105,10 +107,10 @@ function DashboardContent() {
         return <Tables />; // Default view for cashier
     }
     if (currentUser?.role === 'kitchen' && !kitchenViews.includes(view)) {
-        return <Kitchen onFollowUpRequest={setTransactionForFollowUp}/>; // Default for kitchen
+        return <Kitchen onFollowUpRequest={setTransactionForFollowUp} onPrintStickerRequest={setTransactionForSticker}/>; // Default for kitchen
     }
     if (currentUser?.role === 'admin' && view === 'kitchen') {
-        return <Kitchen onFollowUpRequest={setTransactionForFollowUp} />;
+        return <Kitchen onFollowUpRequest={setTransactionForFollowUp} onPrintStickerRequest={setTransactionForSticker} />;
     }
 
     switch (view) {
@@ -119,7 +121,7 @@ function DashboardContent() {
       case 'customer-analytics': return <CustomerAnalytics />;
       case 'employees': return <Employees />;
       case 'transactions': return <Transactions onDetailRequest={setTransactionForDetail} onPrintRequest={setTransactionToPrint} />;
-      case 'kitchen': return <Kitchen onFollowUpRequest={setTransactionForFollowUp} />;
+      case 'kitchen': return <Kitchen onFollowUpRequest={setTransactionForFollowUp} onPrintStickerRequest={setTransactionForSticker} />;
       case 'settings': return <Settings />;
       case 'challenges': return <Challenges />;
       case 'promotions': return <Promotions />;
@@ -181,6 +183,14 @@ function DashboardContent() {
                 store={activeStore}
                 open={!!transactionForFollowUp}
                 onOpenChange={() => setTransactionForFollowUp(null)}
+            />
+        )}
+
+        {transactionForSticker && (
+            <MiniStickerDialog 
+                transaction={transactionForSticker}
+                open={!!transactionForSticker}
+                onOpenChange={() => setTransactionForSticker(null)}
             />
         )}
     </>
