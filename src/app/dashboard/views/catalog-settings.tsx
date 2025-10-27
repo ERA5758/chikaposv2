@@ -5,7 +5,7 @@ import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/auth-context';
-import { CheckCircle, ExternalLink, QrCode, Star, Calendar, AlertCircle, Sparkles as SparklesIcon } from 'lucide-react';
+import { CheckCircle, ExternalLink, QrCode as QrCodeIcon, Star, Calendar, AlertCircle, Sparkles as SparklesIcon } from 'lucide-react';
 import { useDashboard } from '@/contexts/dashboard-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AIConfirmationDialog } from '@/components/dashboard/ai-confirmation-dialog';
@@ -15,6 +15,7 @@ import { doc, updateDoc, setDoc } from 'firebase/firestore'; // Import setDoc
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { QrCodeDialog } from '@/components/dashboard/QrCodeDialog';
 
 const features = [
   "Tampilan menu modern & profesional yang bisa diakses dari mana saja.",
@@ -149,6 +150,9 @@ export default function CatalogSettings() {
   const expiryDate = activeStore?.catalogSubscriptionExpiry ? new Date(activeStore.catalogSubscriptionExpiry) : null;
   const isSubscriptionActive = expiryDate ? expiryDate > new Date() : false;
   const hasUsedTrial = activeStore?.hasUsedCatalogTrial ?? false;
+  const catalogUrl = typeof window !== 'undefined' && activeStore.catalogSlug 
+    ? `${window.location.origin}/katalog/${activeStore.catalogSlug}` 
+    : '';
 
 
   return (
@@ -183,17 +187,25 @@ export default function CatalogSettings() {
                     </ul>
                 </div>
                  <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed bg-secondary/50 p-6 text-center">
-                    <QrCode className="h-20 w-20 text-muted-foreground mb-4" />
+                    <QrCodeIcon className="h-20 w-20 text-muted-foreground mb-4" />
                     <h4 className="font-semibold text-lg">Akses QR Code</h4>
                     <p className="text-muted-foreground text-sm">
-                        Pelanggan cukup memindai QR Code di meja untuk langsung membuka katalog produk Anda di ponsel mereka.
+                        Pelanggan dapat memindai QR Code untuk langsung membuka katalog Anda.
                     </p>
-                    <Button variant="outline" className="mt-4" onClick={handleOpenCatalog} disabled={!isSubscriptionActive}>
-                        <ExternalLink className="mr-2 h-4 w-4" />
-                        Lihat Pratinjau Katalog
-                    </Button>
+                    <div className="flex items-center gap-2 mt-4">
+                        <Button variant="outline" onClick={handleOpenCatalog} disabled={!isSubscriptionActive}>
+                            <ExternalLink className="mr-2 h-4 w-4" />
+                            Pratinjau
+                        </Button>
+                        <QrCodeDialog catalogUrl={catalogUrl} storeName={activeStore.name}>
+                            <Button disabled={!isSubscriptionActive}>
+                                <QrCodeIcon className="mr-2 h-4 w-4" />
+                                Tampilkan QR Code
+                            </Button>
+                        </QrCodeDialog>
+                    </div>
                     {!isSubscriptionActive && (
-                        <p className="text-xs text-muted-foreground mt-2">Aktifkan langganan untuk melihat pratinjau.</p>
+                        <p className="text-xs text-muted-foreground mt-2">Aktifkan langganan untuk memakai fitur ini.</p>
                     )}
                 </div>
             </CardContent>
