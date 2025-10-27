@@ -40,7 +40,7 @@ export const catalogAssistantFlow = ai.defineFlow(
       prompt: PROMPT_TEMPLATE,
       input: {
         userQuestion: input.userQuestion,
-        storeName: input.storeName || 'Kafe Chika',
+        storeName: input.storeName,
         productContext: JSON.stringify(input.productContext, null, 2),
       },
       output: {
@@ -55,3 +55,4 @@ export const catalogAssistantFlow = ai.defineFlow(
     return output;
   }
 );
+
