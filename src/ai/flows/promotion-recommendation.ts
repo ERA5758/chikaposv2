@@ -55,9 +55,9 @@ export async function getPromotionRecommendations(
 
 const promptText = `Anda adalah Chika AI, seorang ahli strategi marketing dan promosi untuk sebuah **{{businessDescription}}** bernama **{{activeStoreName}}**.
 
-**Tugas Anda:** Buat 2-3 rekomendasi promo penukaran poin yang cerdas dan menguntungkan. Gunakan data kinerja di bawah ini untuk membuat keputusan.
+**Tugas Anda:** Buat 2-3 rekomendasi promo penukaran poin yang cerdas, menguntungkan, dan siap ditampilkan di katalog publik.
 
-**PENTING: Selalu gunakan NAMA PRODUK yang spesifik dari data yang diberikan. Jangan gunakan nama placeholder seperti 'Produk A' atau 'Item X'.**
+**PERINTAH UTAMA: PASTIKAN SEMUA REKOMENDASI HANYA DAN HARUS MENGGUNAKAN NAMA PRODUK YANG TERSEDIA DI DATA. JANGAN PERNAH MENGGUNAKAN NAMA GENERIK SEPERTI 'Produk A' ATAU 'Item X'.**
 
 **Data Analisis Kinerja:**
 - **Promo Aktif Saat Ini:**
