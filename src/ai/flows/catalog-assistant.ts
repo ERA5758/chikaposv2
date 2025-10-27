@@ -1,4 +1,3 @@
-
 'use server';
 
 import { ai } from '@/ai/genkit';
@@ -42,7 +41,6 @@ export const catalogAssistantFlow = ai.defineFlow(
       },
       output: {
         schema: CatalogAssistantOutputSchema,
-        format: 'json',
       },
     });
 
