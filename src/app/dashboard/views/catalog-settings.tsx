@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -16,6 +15,7 @@ import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { QrCodeDialog } from '@/components/dashboard/QrCodeDialog';
+import html2canvas from 'html2canvas';
 
 const features = [
   "Tampilan menu modern & profesional yang bisa diakses dari mana saja.",
@@ -235,7 +235,7 @@ export default function CatalogSettings() {
                             feeSettings={feeSettings}
                             feeToDeduct={feeSettings.catalogTrialFee}
                             onConfirm={() => handleSubscription('trial')}
-                            skipFeeDeduction={true}
+                            skipFeeDeduction={false}
                             >
                                 <Button className="w-full" variant="secondary">Pilih Paket</Button>
                             </AIConfirmationDialog>
@@ -257,7 +257,7 @@ export default function CatalogSettings() {
                           feeSettings={feeSettings}
                           feeToDeduct={feeSettings.catalogMonthlyFee}
                           onConfirm={() => handleSubscription(1)}
-                          skipFeeDeduction={true}
+                          skipFeeDeduction={false}
                         >
                             <Button className="w-full" variant="outline">Pilih Paket</Button>
                         </AIConfirmationDialog>
@@ -287,7 +287,7 @@ export default function CatalogSettings() {
                           feeSettings={feeSettings}
                           feeToDeduct={feeSettings.catalogSixMonthFee}
                           onConfirm={() => handleSubscription(6)}
-                          skipFeeDeduction={true}
+                          skipFeeDeduction={false}
                         >
                            <Button className="w-full">Pilih Paket</Button>
                         </AIConfirmationDialog>
@@ -312,7 +312,7 @@ export default function CatalogSettings() {
                           feeSettings={feeSettings}
                           feeToDeduct={feeSettings.catalogYearlyFee}
                           onConfirm={() => handleSubscription(12)}
-                          skipFeeDeduction={true}
+                          skipFeeDeduction={false}
                         >
                             <Button className="w-full" variant="outline">Pilih Paket</Button>
                         </AIConfirmationDialog>

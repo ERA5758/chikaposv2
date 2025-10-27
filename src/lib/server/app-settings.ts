@@ -1,7 +1,7 @@
-
-
 import { getFirebaseAdmin } from './firebase-admin'; // Use server-side db
 import type { TransactionFeeSettings } from '../types';
+import { doc, runTransaction, increment } from 'firebase/firestore';
+import type { useToast } from '@/hooks/use-toast';
 
 // Default settings in case the document doesn't exist in Firestore
 export const defaultFeeSettings: TransactionFeeSettings = {
@@ -39,5 +39,37 @@ export async function getTransactionFeeSettings(): Promise<TransactionFeeSetting
   } catch (error) {
     console.error("Error fetching transaction fee settings:", error);
     return defaultFeeSettings;
+  }
+}
+
+/**
+ * Deducts a specified fee from the store's Pradana Token balance in a secure transaction.
+ * This function is intended to be called from SERVER-SIDE components/routes.
+ * @param feeToDeduct The number of tokens to deduct.
+ * @param storeId The ID of the active store.
+ * @throws An error if the token balance is insufficient or transaction fails.
+ */
+export async function deductAiUsageFee(
+  feeToDeduct: number,
+  storeId: string,
+) {
+  const { db } = getFirebaseAdmin();
+  const storeRef = doc(db, 'stores', storeId);
+
+  try {
+    await runTransaction(db, async (transaction) => {
+      const storeDoc = await transaction.get(storeRef);
+      if (!storeDoc.exists()) {
+        throw new Error("Toko tidak ditemukan.");
+      }
+      const serverBalance = storeDoc.data()?.pradanaTokenBalance || 0;
+      if (serverBalance < feeToDeduct) {
+        throw new Error(`Saldo token di server tidak cukup. Saldo saat ini: ${serverBalance.toFixed(2)}.`);
+      }
+      transaction.update(storeRef, { pradanaTokenBalance: increment(-feeToDeduct) });
+    });
+  } catch (error) {
+    console.error("Error deducting AI usage fee:", error);
+    throw error; // Re-throw the error to be handled by the caller API route
   }
 }

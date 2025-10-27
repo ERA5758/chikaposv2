@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -16,10 +15,11 @@ import {
 import { ButtonProps } from '@/components/ui/button';
 import { AILoadingOverlay } from './ai-loading-overlay';
 import { useAuth } from '@/contexts/auth-context';
-import type { TransactionFeeSettings } from '@/lib/app-settings';
-import { deductAiUsageFee } from '@/lib/app-settings';
+import type { TransactionFeeSettings } from '@/lib/types';
+import { deductAiUsageFee } from '@/lib/server/app-settings';
 import { useToast } from '@/hooks/use-toast';
 import { Sparkles, Coins } from 'lucide-react';
+import { auth } from '@/lib/firebase';
 
 type AIConfirmationDialogProps<T> = {
   featureName: string;
@@ -50,26 +50,28 @@ export function AIConfirmationDialog<T>({
   const { activeStore, pradanaTokenBalance, refreshPradanaTokenBalance } = useAuth();
   const { toast } = useToast();
 
-  const actualFee = skipFeeDeduction ? 0 : (feeToDeduct ?? feeSettings?.aiUsageFee ?? 0);
+  const actualFee = feeToDeduct ?? feeSettings?.aiUsageFee ?? 0;
 
   const handleConfirm = async () => {
     if (!activeStore) {
       toast({ variant: 'destructive', title: 'Error', description: 'Toko tidak aktif.' });
       return;
     }
-
-    // The fee deduction logic is now more cleanly separated.
+    
     if (!skipFeeDeduction) {
-        if (!feeSettings) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Pengaturan biaya tidak tersedia.' });
-            return;
-        }
-        try {
-            await deductAiUsageFee(pradanaTokenBalance, actualFee, activeStore.id, toast, featureName);
-        } catch {
-            setIsOpen(false);
-            return; // Stop if fee deduction fails
-        }
+      if (!feeSettings) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Pengaturan biaya tidak tersedia.' });
+        return;
+      }
+      if (pradanaTokenBalance < actualFee) {
+        toast({
+          variant: 'destructive',
+          title: 'Saldo Token Tidak Cukup',
+          description: `Penggunaan fitur ini memerlukan ${actualFee} token, tetapi saldo Anda hanya ${pradanaTokenBalance.toFixed(2)}. Silakan top up.`
+        });
+        setIsOpen(false);
+        return;
+      }
     }
     
     setIsOpen(false);
@@ -78,10 +80,6 @@ export function AIConfirmationDialog<T>({
     try {
       const result = await onConfirm();
       
-      if (!skipFeeDeduction) {
-        refreshPradanaTokenBalance();
-      }
-
       toast({ title: 'Sukses!', description: `${featureName} berhasil diproses.` });
       
       if (onSuccess) {
@@ -96,20 +94,6 @@ export function AIConfirmationDialog<T>({
         description: (error as Error).message || 'Terjadi kesalahan. Silakan coba lagi.',
       });
       
-      // Refund logic only if the fee was deducted in the first place
-      if (!skipFeeDeduction && feeSettings) {
-        try {
-          await deductAiUsageFee(pradanaTokenBalance, -actualFee, activeStore.id, () => {});
-          refreshPradanaTokenBalance();
-          toast({
-            title: 'Pengembalian Dana Token',
-            description: `Biaya token sebesar ${actualFee} telah dikembalikan karena terjadi kesalahan.`,
-          });
-        } catch (refundError) {
-          console.error("CRITICAL: Failed to refund tokens after AI error.", refundError);
-        }
-      }
-
       if (onError && error instanceof Error) {
         onError(error);
       }
