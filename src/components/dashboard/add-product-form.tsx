@@ -25,7 +25,7 @@ import { useToast } from '@/hooks/use-toast';
 import { productCategories } from '@/lib/types';
 import type { UserRole, Store } from '@/lib/types';
 import * as React from 'react';
-import { Loader, ScanBarcode, Upload, Search, Sparkles } from 'lucide-react';
+import { Loader, ScanBarcode, Upload, Search, Sparkles, Link as LinkIcon } from 'lucide-react';
 import { BarcodeScanner } from './barcode-scanner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { auth, db, storage } from '@/lib/firebase';
@@ -70,6 +70,7 @@ export function AddProductForm({ setDialogOpen, userRole, onProductAdded, active
   const [searchQuery, setSearchQuery] = React.useState('');
   const [isSearching, setIsSearching] = React.useState(false);
   const [searchResults, setSearchResults] = React.useState<ImageSearchResponse['images']>([]);
+  const [imageUrl, setImageUrl] = React.useState('');
 
   const isAdmin = userRole === 'admin';
 
@@ -108,6 +109,7 @@ export function AddProductForm({ setDialogOpen, userRole, onProductAdded, active
       setImageFile(file);
       setImagePreview(URL.createObjectURL(file));
       setSearchResults([]);
+      setImageUrl('');
     }
   };
 
@@ -123,7 +125,8 @@ export function AddProductForm({ setDialogOpen, userRole, onProductAdded, active
             body: JSON.stringify({ query: searchQuery }),
         });
         if (!response.ok) {
-            throw new Error('Gagal mencari gambar');
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Gagal mencari gambar');
         }
         const data: ImageSearchResponse = await response.json();
         setSearchResults(data.images);
@@ -140,6 +143,7 @@ export function AddProductForm({ setDialogOpen, userRole, onProductAdded, active
 
   const handleImageSelect = async (url: string) => {
     setImagePreview(url);
+    setImageUrl('');
     try {
         const response = await fetch(url);
         const blob = await response.blob();
@@ -149,6 +153,29 @@ export function AddProductForm({ setDialogOpen, userRole, onProductAdded, active
         toast({ title: 'Gambar Dipilih!' });
     } catch (error) {
         toast({ variant: 'destructive', title: 'Gagal memilih gambar', description: 'Tidak dapat mengunduh gambar yang dipilih.' });
+    }
+  };
+
+  const handleUrlChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const url = e.target.value;
+    setImageUrl(url);
+    setImagePreview(url); // Show preview immediately
+
+    if (url) {
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Network response was not ok');
+        const blob = await response.blob();
+        const file = new File([blob], `${url.substring(url.lastIndexOf('/')+1) || 'image-from-url'}`);
+        setImageFile(file);
+      } catch (error) {
+        toast({ variant: 'destructive', title: 'URL Gambar Tidak Valid', description: 'Gagal memuat gambar dari URL yang diberikan.' });
+        setImageFile(null);
+        // Don't clear preview, let user see what they pasted
+      }
+    } else {
+        setImageFile(null);
+        setImagePreview(null);
     }
   };
 
@@ -217,16 +244,17 @@ export function AddProductForm({ setDialogOpen, userRole, onProductAdded, active
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <Tabs defaultValue="upload">
-            <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="upload">Upload Manual</TabsTrigger>
-                <TabsTrigger value="search">Cari Gambar AI</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="upload">Upload</TabsTrigger>
+                <TabsTrigger value="search">Cari AI</TabsTrigger>
+                <TabsTrigger value="link">Link</TabsTrigger>
             </TabsList>
             <TabsContent value="upload" className="pt-2">
                  <div 
                     className="flex justify-center items-center w-full h-48 rounded-md border-2 border-dashed border-input cursor-pointer bg-secondary/50 hover:bg-secondary/70"
                     onClick={() => fileInputRef.current?.click()}
                 >
-                    {imagePreview ? (
+                    {imagePreview && !imageUrl ? (
                         <Image src={imagePreview} alt="Pratinjau produk" width={192} height={192} className="h-full w-full object-contain rounded-md" unoptimized/>
                     ) : (
                         <div className="text-center text-muted-foreground">
@@ -271,7 +299,7 @@ export function AddProductForm({ setDialogOpen, userRole, onProductAdded, active
                             </div>
                         ))}
                     </div>
-                ) : imagePreview ? (
+                ) : imagePreview && !imageUrl ? (
                     <div className="flex justify-center items-center w-full h-48 rounded-md border-2 border-dashed border-input bg-secondary/50">
                         <Image src={imagePreview} alt="Gambar terpilih" width={192} height={192} className="h-full w-full object-contain rounded-md" unoptimized/>
                     </div>
@@ -281,6 +309,27 @@ export function AddProductForm({ setDialogOpen, userRole, onProductAdded, active
                         <p>Hasil pencarian akan muncul di sini</p>
                     </div>
                 )}
+            </TabsContent>
+            <TabsContent value="link" className="pt-2 space-y-2">
+                <div className="space-y-1">
+                    <Label htmlFor="image-url">Link Gambar</Label>
+                    <Input 
+                        id="image-url"
+                        placeholder="https://example.com/gambar.jpg"
+                        value={imageUrl}
+                        onChange={handleUrlChange}
+                    />
+                </div>
+                 <div className="flex justify-center items-center w-full h-48 rounded-md border-2 border-dashed border-input bg-secondary/50">
+                    {imagePreview && imageUrl ? (
+                         <Image src={imagePreview} alt="Pratinjau dari URL" width={192} height={192} className="h-full w-full object-contain rounded-md" unoptimized/>
+                    ) : (
+                        <div className="text-center text-muted-foreground p-4">
+                            <LinkIcon className="mx-auto h-8 w-8 mb-2" />
+                            <p>Pratinjau gambar dari link akan muncul di sini.</p>
+                        </div>
+                    )}
+                </div>
             </TabsContent>
         </Tabs>
         <FormField
