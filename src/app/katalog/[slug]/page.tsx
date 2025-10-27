@@ -709,16 +709,6 @@ export default function CatalogPage() {
           </div>
         )}
         
-        {store && currentProductContext && (
-            <CatalogAIChat 
-                store={store}
-                productContext={currentProductContext}
-                open={isChatOpen}
-                onOpenChange={setIsChatOpen}
-                initialQuestion={initialChatQuestion}
-            />
-        )}
-        
         <SheetContent className="flex flex-col">
           <SheetHeader>
             <SheetTitle className="font-headline tracking-wider text-2xl">Pesanan Anda</SheetTitle>
@@ -805,6 +795,16 @@ export default function CatalogPage() {
         </SheetContent>
         </Sheet>
         
+        {store && currentProductContext && (
+            <CatalogAIChat 
+                store={store}
+                productContext={currentProductContext}
+                open={isChatOpen}
+                onOpenChange={setIsChatOpen}
+                initialQuestion={initialChatQuestion}
+            />
+        )}
+        
         {store && <CustomerAuthDialog
             open={isAuthDialogOpen}
             onOpenChange={setIsAuthDialogOpen}
@@ -825,6 +825,7 @@ export default function CatalogPage() {
 }
 
     
+
 
 
 
