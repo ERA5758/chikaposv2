@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -25,7 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { productCategories } from '@/lib/types';
 import type { UserRole, Store } from '@/lib/types';
 import * as React from 'react';
-import { Loader, ScanBarcode, Upload, Search, Sparkles, Link as LinkIcon } from 'lucide-react';
+import { Loader, ScanBarcode, Upload, Link as LinkIcon } from 'lucide-react';
 import { BarcodeScanner } from './barcode-scanner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { auth, db, storage } from '@/lib/firebase';
@@ -34,8 +33,6 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import Image from 'next/image';
 import { Textarea } from '../ui/textarea';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { ImageSearchResponse } from '@/ai/flows/image-search-flow';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 
 const FormSchema = z.object({
@@ -67,10 +64,6 @@ export function AddProductForm({ setDialogOpen, userRole, onProductAdded, active
   const [imageFile, setImageFile] = React.useState<File | null>(null);
   const [imagePreview, setImagePreview] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-
-  const [searchQuery, setSearchQuery] = React.useState('');
-  const [isSearching, setIsSearching] = React.useState(false);
-  const [searchResults, setSearchResults] = React.useState<ImageSearchResponse['images']>([]);
   const [imageUrl, setImageUrl] = React.useState('');
 
   const isAdmin = userRole === 'admin';
@@ -87,13 +80,6 @@ export function AddProductForm({ setDialogOpen, userRole, onProductAdded, active
       description: '',
     },
   });
-  
-  const productName = form.watch('name');
-  React.useEffect(() => {
-    if (productName) {
-      setSearchQuery(productName);
-    }
-  }, [productName]);
 
   const handleBarcodeScanned = (barcode: string) => {
     form.setValue('barcode', barcode);
@@ -109,51 +95,7 @@ export function AddProductForm({ setDialogOpen, userRole, onProductAdded, active
       const file = e.target.files[0];
       setImageFile(file);
       setImagePreview(URL.createObjectURL(file));
-      setSearchResults([]);
       setImageUrl('');
-    }
-  };
-
-  async function handleImageSearch(e: React.MouseEvent) {
-    e.preventDefault();
-    if (!searchQuery) return;
-    setIsSearching(true);
-    setSearchResults([]);
-    try {
-        const response = await fetch('/api/image-search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query: searchQuery }),
-        });
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Gagal mencari gambar');
-        }
-        const data: ImageSearchResponse = await response.json();
-        setSearchResults(data.images);
-    } catch (error) {
-        toast({
-            variant: 'destructive',
-            title: 'Gagal Mencari Gambar',
-            description: (error as Error).message,
-        });
-    } finally {
-        setIsSearching(false);
-    }
-  }
-
-  const handleImageSelect = async (url: string) => {
-    setImagePreview(url);
-    setImageUrl('');
-    try {
-        const response = await fetch(url);
-        const blob = await response.blob();
-        const file = new File([blob], `${searchQuery.replace(/\s+/g, '-') || 'selected-image'}.jpg`, { type: 'image/jpeg' });
-        setImageFile(file);
-        setSearchResults([]);
-        toast({ title: 'Gambar Dipilih!' });
-    } catch (error) {
-        toast({ variant: 'destructive', title: 'Gagal memilih gambar', description: 'Tidak dapat mengunduh gambar yang dipilih.' });
     }
   };
 
@@ -245,9 +187,8 @@ export function AddProductForm({ setDialogOpen, userRole, onProductAdded, active
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <Tabs defaultValue="upload">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="upload">Upload</TabsTrigger>
-                <TabsTrigger value="search">Cari AI</TabsTrigger>
                 <TabsTrigger value="link">Link</TabsTrigger>
             </TabsList>
             <TabsContent value="upload" className="pt-2">
@@ -273,43 +214,6 @@ export function AddProductForm({ setDialogOpen, userRole, onProductAdded, active
                         accept="image/png, image/jpeg, image/webp"
                     />
                 </FormControl>
-            </TabsContent>
-            <TabsContent value="search" className="pt-2 space-y-2">
-                <div className="flex gap-2">
-                    <Input 
-                        placeholder="Contoh: kopi susu"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                    <Button onClick={handleImageSearch} disabled={isSearching}>
-                        {isSearching ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
-                        Cari
-                    </Button>
-                </div>
-                {isSearching ? (
-                     <div className="grid grid-cols-3 gap-2 h-48">
-                        <Skeleton className="w-full h-full" />
-                        <Skeleton className="w-full h-full" />
-                        <Skeleton className="w-full h-full" />
-                    </div>
-                ) : searchResults.length > 0 ? (
-                    <div className="grid grid-cols-3 gap-2 h-48 overflow-y-auto">
-                        {searchResults.map(img => (
-                            <div key={img.url} className="relative aspect-square cursor-pointer" onClick={() => handleImageSelect(img.url)}>
-                                <Image src={img.url} alt={img.alt} fill className="object-cover rounded-md"/>
-                            </div>
-                        ))}
-                    </div>
-                ) : imagePreview && !imageUrl ? (
-                    <div className="flex justify-center items-center w-full h-48 rounded-md border-2 border-dashed border-input bg-secondary/50">
-                        <Image src={imagePreview} alt="Gambar terpilih" width={192} height={192} className="h-full w-full object-contain rounded-md" unoptimized/>
-                    </div>
-                ) : (
-                    <div className="flex flex-col gap-2 justify-center items-center w-full h-48 rounded-md border-2 border-dashed border-input bg-secondary/50 text-center text-muted-foreground">
-                        <Sparkles />
-                        <p>Hasil pencarian akan muncul di sini</p>
-                    </div>
-                )}
             </TabsContent>
             <TabsContent value="link" className="pt-2 space-y-2">
                 <div className="space-y-1">
