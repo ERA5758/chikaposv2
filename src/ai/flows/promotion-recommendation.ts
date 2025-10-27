@@ -57,44 +57,56 @@ const promptText = `Anda adalah Chika AI, seorang ahli strategi marketing dan pr
 
 **Tugas Anda:** Buat 2-3 rekomendasi promo penukaran poin yang cerdas, menguntungkan, dan siap ditampilkan di katalog publik.
 
-**PERINTAH UTAMA: PASTIKAN SEMUA REKOMENDASI HANYA DAN HARUS MENGGUNAKAN NAMA PRODUK YANG TERSEDIA DI DATA. JANGAN PERNAH MENGGUNAKAN NAMA GENERIK SEPERTI 'Produk A' ATAU 'Item X'.**
-
-**Data Analisis Kinerja:**
-- **Promo Aktif Saat Ini:**
-{{#each currentRedemptionOptions}}
-  - {{description}} (membutuhkan {{pointsRequired}} poin, status: {{#if isActive}}Aktif{{else}}Tidak Aktif{{/if}})
-{{else}}
-  - Belum ada promo penukaran poin yang dibuat.
-{{/each}}
-- **Produk Terlaris Bulan Ini (Nama, Harga Jual, Harga Pokok):**
-{{#each topSellingProducts}}
-  - {{name}} (Jual: {{price}}, Pokok: {{costPrice}})
-{{else}}
-  - Tidak ada data
-{{/each}}
-- **Produk Kurang Laris Bulan Ini (Nama, Harga Jual, Harga Pokok):**
-{{#each worstSellingProducts}}
-  - {{name}} (Jual: {{price}}, Pokok: {{costPrice}})
-{{else}}
-  - Tidak ada data
-{{/each}}
-- **Produk Belum Terjual Bulan Ini (Nama, Harga Jual, Harga Pokok):**
-{{#each unsoldProducts}}
-  - {{name}} (Jual: {{price}}, Pokok: {{costPrice}})
-{{else}}
-  - Semua produk terjual bulan ini.
-{{/each}}
-
-
-**Instruksi Strategis:**
-1.  **Gunakan Nama Produk Nyata**: Semua deskripsi promo HARUS menyertakan nama produk spesifik dari daftar di atas.
+**Instruksi Utama:**
+1.  **Gunakan Nama Produk Spesifik**: Semua rekomendasi HARUS menggunakan nama produk yang ada di dalam data. Jangan pernah gunakan nama generik.
     - **Contoh Buruk**: "Beli Produk A dan dapatkan Produk B gratis."
     - **Contoh Baik**: "Beli **Chika's Kopi Susu** dan dapatkan **Roti Bakar Cokelat** gratis."
-2.  **Analisis Keuntungan**: Hitung keuntungan (harga jual - harga pokok) untuk setiap produk. Gunakan ini untuk merekomendasikan promo yang tidak merugikan.
-3.  **Manfaatkan Produk Belum Laku**: Usulkan promo "pemancing" untuk produk yang belum laku sama sekali. Contoh: "Beli produk terlaris, dapatkan diskon 50% untuk **[nama produk belum laku]**".
-4.  **Buat Bundling Cerdas**: Gabungkan produk kurang laris dengan produk terlaris. Pastikan Anda menggunakan nama produk yang spesifik dari data. Contoh: "Beli **[nama produk terlaris]** dan **[nama produk kurang laris]** hanya dengan Rp XXX".
-5.  **Diskon Berbasis Keuntungan**: Jika menyarankan diskon, pastikan nilai diskon lebih kecil dari keuntungan produk tersebut. Berikan justifikasi mengapa promo itu bagus (misal: "membersihkan stok" atau "memperkenalkan produk baru").
-6.  **Format Output**: Setiap rekomendasi harus memiliki 'title' (judul menarik), 'description' (deskripsi jelas untuk pelanggan), 'justification' (alasan strategis), 'pointsRequired' (angka yang masuk akal), dan 'value' (nilai promo dalam Rupiah).
+2.  **Analisis Data**: Gunakan data kinerja di bawah ini untuk membuat promo yang strategis.
+3.  **Strategi Promo**:
+    - **Produk Belum Laku**: Jika ada, buat promo 'pemancing' untuk memperkenalkan produk ini. Contoh: "Dapatkan diskon 50% untuk **[nama produk belum laku]** dengan menukar poin."
+    - **Produk Kurang Laris**: Jika ada, buat promo 'bundling' dengan produk terlaris.
+    - **Produk Terlaris**: Gunakan sebagai daya tarik utama dalam promo bundling.
+4.  **Hitung Keuntungan**: Pertimbangkan harga jual dan harga pokok untuk menyarankan diskon yang tetap masuk akal.
+5.  **Output Teks**: Semua teks harus dalam Bahasa Indonesia.
+
+**Data Kinerja untuk Analisis:**
+- **Promo Aktif Saat Ini:**
+{{#if currentRedemptionOptions.length}}
+  {{#each currentRedemptionOptions}}
+  - {{description}} (membutuhkan {{pointsRequired}} poin, status: {{#if isActive}}Aktif{{else}}Tidak Aktif{{/if}})
+  {{/each}}
+{{else}}
+  - Belum ada promo penukaran poin yang dibuat.
+{{/if}}
+
+- **Produk Terlaris Bulan Ini (Nama, Harga Jual, Harga Pokok):**
+{{#if topSellingProducts.length}}
+  {{#each topSellingProducts}}
+  - {{name}} (Jual: {{price}}, Pokok: {{costPrice}})
+  {{/each}}
+{{else}}
+  - Tidak ada data.
+{{/if}}
+
+- **Produk Kurang Laris Bulan Ini (Nama, Harga Jual, Harga Pokok):**
+{{#if worstSellingProducts.length}}
+  {{#each worstSellingProducts}}
+  - {{name}} (Jual: {{price}}, Pokok: {{costPrice}})
+  {{/each}}
+{{else}}
+  - Tidak ada produk yang berkinerja buruk secara signifikan bulan ini.
+{{/if}}
+
+- **Produk Belum Terjual Bulan Ini (Nama, Harga Jual, Harga Pokok):**
+{{#if unsoldProducts.length}}
+  {{#each unsoldProducts}}
+  - {{name}} (Jual: {{price}}, Pokok: {{costPrice}})
+  {{/each}}
+{{else}}
+  - Semua produk terjual bulan ini.
+{{/if}}
+
+Hasilkan 2-3 rekomendasi promo berdasarkan data dan instruksi di atas.
 `;
 
 
@@ -115,7 +127,7 @@ export const promotionRecommendationFlow = ai.defineFlow(
     });
 
     if (!output) {
-      throw new Error('AI did not return a valid recommendation.');
+      throw new Error('AI did not return a valid recommendation. The model may have failed to generate a response.');
     }
     return output;
   }
