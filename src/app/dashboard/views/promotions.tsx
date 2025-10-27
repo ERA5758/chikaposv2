@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { RedemptionOption, Transaction } from '@/lib/types';
+import type { RedemptionOption, Transaction, Product } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, PlusCircle, CheckCircle, XCircle, Sparkles, Target } from 'lucide-react';
@@ -56,13 +56,20 @@ import { useAuth } from '@/contexts/auth-context';
 import { useDashboard } from '@/contexts/dashboard-context';
 import { AIConfirmationDialog } from '@/components/dashboard/ai-confirmation-dialog';
 
+interface ProductPerformanceInfo {
+    name: string;
+    price: number;
+    costPrice: number;
+    unitsSold?: number;
+}
+
 interface PromotionRecommendationInput {
   businessDescription: string;
   activeStoreName: string;
-  allProductNames: string[];
   currentRedemptionOptions: { description: string, pointsRequired: number, isActive: boolean }[];
-  topSellingProducts: string[];
-  worstSellingProducts: string[];
+  topSellingProducts: ProductPerformanceInfo[];
+  worstSellingProducts: ProductPerformanceInfo[];
+  unsoldProducts: ProductPerformanceInfo[];
 }
 
 interface PromotionRecommendationOutput {
@@ -153,27 +160,37 @@ export default function Promotions() {
     const endOfThisMonth = endOfMonth(now);
     const thisMonthTransactions = transactions.filter(t => isWithinInterval(new Date(t.createdAt), { start: startOfThisMonth, end: endOfThisMonth }));
 
-    const calculateProductSales = (txs: Transaction[]) => {
-      const sales: Record<string, number> = {};
-      txs.forEach(t => {
-        t.items.forEach(item => {
-          if (!sales[item.productName]) {
-            sales[item.productName] = 0;
-          }
-          sales[item.productName] += item.quantity;
-        });
-      });
-      return Object.entries(sales).sort(([, a], [, b]) => b - a);
-    };
+    const sales: Record<string, { product: Product, unitsSold: number }> = {};
+    products.forEach(p => {
+        sales[p.id] = { product: p, unitsSold: 0 };
+    });
 
-    const sortedProductsThisMonth = calculateProductSales(thisMonthTransactions);
-    const topProducts = sortedProductsThisMonth.slice(0, 3).map(([name]) => name);
-    const worstProducts = sortedProductsThisMonth.slice(-3).reverse().map(([name]) => name);
+    thisMonthTransactions.forEach(t => {
+        t.items.forEach(item => {
+            if (sales[item.productId]) {
+                sales[item.productId].unitsSold += item.quantity;
+            }
+        });
+    });
+
+    const productSalesArray = Object.values(sales);
+    const sortedProducts = productSalesArray.sort((a, b) => b.unitsSold - a.unitsSold);
+    const soldProducts = sortedProducts.filter(p => p.unitsSold > 0);
+    const unsoldProducts = sortedProducts.filter(p => p.unitsSold === 0);
+
+    const toPerformanceInfo = (p: {product: Product, unitsSold?: number}): ProductPerformanceInfo => ({
+        name: p.product.name,
+        price: p.product.price,
+        costPrice: p.product.costPrice,
+        unitsSold: p.unitsSold
+    });
+    
+    const topProducts = soldProducts.slice(0, 5).map(toPerformanceInfo);
+    const worstProducts = soldProducts.slice(-5).reverse().map(toPerformanceInfo);
 
     const inputData: PromotionRecommendationInput = {
         businessDescription: activeStore.businessDescription || 'bisnis',
         activeStoreName: activeStore.name,
-        allProductNames: products.map(p => p.name),
         currentRedemptionOptions: redemptionOptions.map(o => ({
           description: o.description,
           pointsRequired: o.pointsRequired,
@@ -181,6 +198,7 @@ export default function Promotions() {
         })),
         topSellingProducts: topProducts,
         worstSellingProducts: worstProducts,
+        unsoldProducts: unsoldProducts.map(toPerformanceInfo),
     };
 
     const response = await fetch('/api/ai/promotion-recommendation', {

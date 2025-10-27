@@ -10,10 +10,16 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
+const ProductPerformanceInfoSchema = z.object({
+    name: z.string(),
+    price: z.number(),
+    costPrice: z.number(),
+    unitsSold: z.number().optional(), // Optional as unsold items won't have this
+});
+
 export const PromotionRecommendationInputSchema = z.object({
   businessDescription: z.string().describe('A brief description of the business (e.g., "kafe", "vape store").'),
   activeStoreName: z.string().describe('The name of the store for context.'),
-  allProductNames: z.array(z.string()).describe('A list of all available product names in the menu.'),
   currentRedemptionOptions: z.array(
     z.object({
       description: z.string(),
@@ -21,8 +27,9 @@ export const PromotionRecommendationInputSchema = z.object({
       isActive: z.boolean(),
     })
   ).describe('A list of the current loyalty redemption options.'),
-  topSellingProducts: z.array(z.string()).describe('A list of the best-selling products this month.'),
-  worstSellingProducts: z.array(z.string()).describe('A list of the worst-selling products this month.'),
+  topSellingProducts: z.array(ProductPerformanceInfoSchema).describe('A list of the best-selling products this month, including their price and cost.'),
+  worstSellingProducts: z.array(ProductPerformanceInfoSchema).describe('A list of the worst-selling products this month, including their price and cost.'),
+  unsoldProducts: z.array(ProductPerformanceInfoSchema).describe('A list of products that had zero sales this month, including their price and cost.'),
 });
 export type PromotionRecommendationInput = z.infer<typeof PromotionRecommendationInputSchema>;
 
@@ -46,9 +53,9 @@ export async function getPromotionRecommendations(
   return promotionRecommendationFlow(input);
 }
 
-const promptText = `Anda adalah Chika AI, seorang ahli strategi loyalitas untuk sebuah **{{businessDescription}}** bernama **{{activeStoreName}}**.
+const promptText = `Anda adalah Chika AI, seorang ahli strategi marketing dan promosi untuk sebuah **{{businessDescription}}** bernama **{{activeStoreName}}**.
 
-**Tugas Anda:** Buat 2-3 rekomendasi promo penukaran poin baru berdasarkan data kinerja yang diberikan.
+**Tugas Anda:** Buat 2-3 rekomendasi promo penukaran poin yang cerdas dan menguntungkan. Gunakan data kinerja di bawah ini untuk membuat keputusan.
 
 **Data Analisis Kinerja:**
 - **Promo Aktif Saat Ini:**
@@ -57,15 +64,32 @@ const promptText = `Anda adalah Chika AI, seorang ahli strategi loyalitas untuk 
 {{else}}
   - Belum ada promo penukaran poin yang dibuat.
 {{/each}}
-- **Produk Terlaris Bulan Ini:** {{#if topSellingProducts}}{{#each topSellingProducts}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}{{else}}Tidak ada data{{/if}}
-- **Produk Kurang Laris Bulan Ini:** {{#if worstSellingProducts}}{{#each worstSellingProducts}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}{{else}}Tidak ada data{{/if}}
-- **Semua Nama Produk di Menu:** {{#each allProductNames}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}
+- **Produk Terlaris Bulan Ini (Nama, Harga Jual, Harga Pokok):**
+{{#each topSellingProducts}}
+  - {{name}} (Jual: {{price}}, Pokok: {{costPrice}})
+{{else}}
+  - Tidak ada data
+{{/each}}
+- **Produk Kurang Laris Bulan Ini (Nama, Harga Jual, Harga Pokok):**
+{{#each worstSellingProducts}}
+  - {{name}} (Jual: {{price}}, Pokok: {{costPrice}})
+{{else}}
+  - Tidak ada data
+{{/each}}
+- **Produk Belum Terjual Bulan Ini (Nama, Harga Jual, Harga Pokok):**
+{{#each unsoldProducts}}
+  - {{name}} (Jual: {{price}}, Pokok: {{costPrice}})
+{{else}}
+  - Semua produk terjual bulan ini.
+{{/each}}
 
-**Instruksi:**
-1.  **Gunakan Data**: Rekomendasi Anda harus terinspirasi dari data di atas.
-2.  **Promo Bundling Cerdas**: Jika Anda menyarankan promo bundling, gunakan produk dari daftar "Produk Terlaris" dan "Produk Kurang Laris" untuk menciptakan penawaran yang menarik. Pastikan Anda menggunakan nama produk yang sebenarnya dari daftar tersebut.
-3.  **Promo Kreatif Lainnya**: Selain bundling, usulkan juga promo umum yang relevan untuk **{{businessDescription}}**, seperti diskon pada hari tertentu atau penawaran untuk mendapatkan produk gratis.
-4.  **Format Output**: Setiap rekomendasi harus memiliki 'title', 'description' (yang jelas untuk pelanggan), 'justification' (alasan di balik ide tersebut), 'pointsRequired' (angka yang masuk akal), dan 'value' (nilai promo dalam Rupiah).
+
+**Instruksi Strategis:**
+1.  **Analisis Keuntungan**: Hitung keuntungan (harga jual - harga pokok) untuk setiap produk. Gunakan ini untuk merekomendasikan promo yang tidak merugikan.
+2.  **Manfaatkan Produk Belum Laku**: Usulkan promo "pemancing" untuk produk yang belum laku sama sekali. Contoh: "Beli produk terlaris, dapatkan diskon 50% untuk [produk belum laku]".
+3.  **Buat Bundling Cerdas**: Gabungkan produk kurang laris dengan produk terlaris. Pastikan Anda menggunakan nama produk yang spesifik dari data. Contoh: "Beli [produk terlaris] dan [produk kurang laris] hanya dengan Rp XXX".
+4.  **Diskon Berbasis Keuntungan**: Jika menyarankan diskon, pastikan nilai diskon lebih kecil dari keuntungan produk tersebut. Berikan justifikasi mengapa promo itu bagus (misal: "membersihkan stok" atau "memperkenalkan produk baru").
+5.  **Format Output**: Setiap rekomendasi harus memiliki 'title' (judul menarik), 'description' (deskripsi jelas untuk pelanggan), 'justification' (alasan strategis), 'pointsRequired' (angka yang masuk akal), dan 'value' (nilai promo dalam Rupiah).
 `;
 
 
