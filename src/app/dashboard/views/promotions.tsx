@@ -176,7 +176,7 @@ export default function Promotions() {
     const productSalesArray = Object.values(sales);
     const sortedProducts = productSalesArray.sort((a, b) => b.unitsSold - a.unitsSold);
     const soldProducts = sortedProducts.filter(p => p.unitsSold > 0);
-    const unsoldProducts = sortedProducts.filter(p => p.unitsSold === 0);
+    const unsoldProductsInfo = sortedProducts.filter(p => p.unitsSold === 0);
 
     const toPerformanceInfo = (p: {product: Product, unitsSold?: number}): ProductPerformanceInfo => ({
         name: p.product.name,
@@ -198,7 +198,7 @@ export default function Promotions() {
         })),
         topSellingProducts: topProducts,
         worstSellingProducts: worstProducts,
-        unsoldProducts: unsoldProducts.map(toPerformanceInfo),
+        unsoldProducts: unsoldProductsInfo.map(toPerformanceInfo),
     };
 
     const response = await fetch('/api/ai/promotion-recommendation', {
