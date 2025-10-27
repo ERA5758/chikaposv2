@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -57,10 +56,11 @@ import { useDashboard } from '@/contexts/dashboard-context';
 import { AIConfirmationDialog } from '@/components/dashboard/ai-confirmation-dialog';
 
 interface ProductPerformanceInfo {
-    name: string;
-    price: number;
-    costPrice: number;
-    unitsSold?: number;
+  name: string;
+  price: number;
+  costPrice: number;
+  unitsSold: number;
+  totalRevenue: number;
 }
 
 interface PromotionRecommendationInput {
@@ -160,33 +160,36 @@ export default function Promotions() {
     const endOfThisMonth = endOfMonth(now);
     const thisMonthTransactions = transactions.filter(t => isWithinInterval(new Date(t.createdAt), { start: startOfThisMonth, end: endOfThisMonth }));
 
-    const sales: Record<string, { product: Product, unitsSold: number }> = {};
+    const sales: Record<string, { product: Product; unitsSold: number; totalRevenue: number; }> = {};
     products.forEach(p => {
-        sales[p.id] = { product: p, unitsSold: 0 };
+        sales[p.id] = { product: p, unitsSold: 0, totalRevenue: 0 };
     });
 
     thisMonthTransactions.forEach(t => {
         t.items.forEach(item => {
             if (sales[item.productId]) {
                 sales[item.productId].unitsSold += item.quantity;
+                sales[item.productId].totalRevenue += item.quantity * item.price;
             }
         });
     });
 
     const productSalesArray = Object.values(sales);
     const sortedProducts = productSalesArray.sort((a, b) => b.unitsSold - a.unitsSold);
+    
     const soldProducts = sortedProducts.filter(p => p.unitsSold > 0);
-    const unsoldProductsInfo = sortedProducts.filter(p => p.unitsSold === 0);
+    const unsoldProducts = sortedProducts.filter(p => p.unitsSold === 0);
 
-    const toPerformanceInfo = (p: {product: Product, unitsSold?: number}): ProductPerformanceInfo => ({
+    const toPerformanceInfo = (p: {product: Product; unitsSold: number; totalRevenue: number;}): ProductPerformanceInfo => ({
         name: p.product.name,
         price: p.product.price,
         costPrice: p.product.costPrice,
-        unitsSold: p.unitsSold
+        unitsSold: p.unitsSold,
+        totalRevenue: p.totalRevenue
     });
     
     const topProducts = soldProducts.slice(0, 5).map(toPerformanceInfo);
-    const worstProducts = soldProducts.slice(-5).reverse().map(toPerformanceInfo);
+    const worstProducts = soldProducts.length > 5 ? soldProducts.slice(-5).reverse().map(toPerformanceInfo) : [];
 
     const inputData: PromotionRecommendationInput = {
         businessDescription: activeStore.businessDescription || 'bisnis',
@@ -198,7 +201,7 @@ export default function Promotions() {
         })),
         topSellingProducts: topProducts,
         worstSellingProducts: worstProducts,
-        unsoldProducts: unsoldProductsInfo.map(toPerformanceInfo),
+        unsoldProducts: unsoldProducts.map(toPerformanceInfo),
     };
 
     const response = await fetch('/api/ai/promotion-recommendation', {

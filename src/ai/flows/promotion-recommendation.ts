@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview An AI agent for generating loyalty promotion recommendations.
  *
@@ -14,7 +13,8 @@ const ProductPerformanceInfoSchema = z.object({
     name: z.string(),
     price: z.number(),
     costPrice: z.number(),
-    unitsSold: z.number().optional(), // Optional as unsold items won't have this
+    unitsSold: z.number(),
+    totalRevenue: z.number(),
 });
 
 export const PromotionRecommendationInputSchema = z.object({
@@ -27,9 +27,9 @@ export const PromotionRecommendationInputSchema = z.object({
       isActive: z.boolean(),
     })
   ).describe('A list of the current loyalty redemption options.'),
-  topSellingProducts: z.array(ProductPerformanceInfoSchema).describe('A list of the best-selling products this month, including their price and cost.'),
-  worstSellingProducts: z.array(ProductPerformanceInfoSchema).describe('A list of the worst-selling products this month, including their price and cost.'),
-  unsoldProducts: z.array(ProductPerformanceInfoSchema).describe('A list of products that had zero sales this month, including their price and cost.'),
+  topSellingProducts: z.array(ProductPerformanceInfoSchema).describe('A list of the best-selling products this month.'),
+  worstSellingProducts: z.array(ProductPerformanceInfoSchema).describe('A list of the worst-selling products this month.'),
+  unsoldProducts: z.array(ProductPerformanceInfoSchema).describe('A list of products that had zero sales this month.'),
 });
 export type PromotionRecommendationInput = z.infer<typeof PromotionRecommendationInputSchema>;
 
@@ -55,21 +55,15 @@ export async function getPromotionRecommendations(
 
 const promptText = `Anda adalah Chika AI, seorang ahli strategi marketing dan promosi untuk sebuah **{{businessDescription}}** bernama **{{activeStoreName}}**.
 
-**Tugas Anda:** Buat 2-3 rekomendasi promo penukaran poin yang cerdas, menguntungkan, dan siap ditampilkan di katalog publik.
+**PERINTAH UTAMA:** Buat 2-3 rekomendasi promo penukaran poin yang cerdas dan menguntungkan. PASTIKAN SEMUA REKOMENDASI HANYA DAN HARUS MENGGUNAKAN NAMA PRODUK YANG TERSEDIA DI DATA. JANGAN PERNAH MENGGUNAKAN NAMA GENERIK SEPERTI 'Produk A'.
 
-**Instruksi Utama:**
-1.  **Gunakan Nama Produk Spesifik**: Semua rekomendasi HARUS menggunakan nama produk yang ada di dalam data. Jangan pernah gunakan nama generik.
-    - **Contoh Buruk**: "Beli Produk A dan dapatkan Produk B gratis."
-    - **Contoh Baik**: "Beli **Chika's Kopi Susu** dan dapatkan **Roti Bakar Cokelat** gratis."
-2.  **Analisis Data**: Gunakan data kinerja di bawah ini untuk membuat promo yang strategis.
-3.  **Strategi Promo**:
-    - **Produk Belum Laku**: Jika ada, buat promo 'pemancing' untuk memperkenalkan produk ini. Contoh: "Dapatkan diskon 50% untuk **[nama produk belum laku]** dengan menukar poin."
-    - **Produk Kurang Laris**: Jika ada, buat promo 'bundling' dengan produk terlaris.
-    - **Produk Terlaris**: Gunakan sebagai daya tarik utama dalam promo bundling.
-4.  **Hitung Keuntungan**: Pertimbangkan harga jual dan harga pokok untuk menyarankan diskon yang tetap masuk akal.
-5.  **Output Teks**: Semua teks harus dalam Bahasa Indonesia.
+**Gunakan data kinerja di bawah ini untuk membuat promo yang strategis:**
+1.  **Untuk Produk Belum Laku**: Buat promo 'pemancing' untuk memperkenalkan produk ini. Contoh: "Dapatkan diskon 50% untuk **[nama produk belum laku]** dengan menukar poin." Ini akan mendorong pelanggan mencoba item baru.
+2.  **Untuk Produk Kurang Laris**: Buat promo 'bundling' dengan produk terlaris. Contoh: "Beli **[nama produk terlaris]**, dapatkan **[nama produk kurang laris]** hanya dengan tambahan X poin." Ini membantu meningkatkan penjualan item yang lambat bergerak.
+3.  **Pertimbangkan Keuntungan**: Perhatikan `hargaJual` dan `hargaPokok` untuk menyarankan promo yang tetap masuk akal secara bisnis.
 
-**Data Kinerja untuk Analisis:**
+**DATA KINERJA TOKO (BULAN INI):**
+
 - **Promo Aktif Saat Ini:**
 {{#if currentRedemptionOptions.length}}
   {{#each currentRedemptionOptions}}
@@ -79,31 +73,31 @@ const promptText = `Anda adalah Chika AI, seorang ahli strategi marketing dan pr
   - Belum ada promo penukaran poin yang dibuat.
 {{/if}}
 
-- **Produk Terlaris Bulan Ini (Nama, Harga Jual, Harga Pokok):**
+- **Produk Terlaris (Nama, Jual, Pokok, Unit Terjual, Total Omset):**
 {{#if topSellingProducts.length}}
   {{#each topSellingProducts}}
-  - {{name}} (Jual: {{price}}, Pokok: {{costPrice}})
+  - {{name}} (Jual: {{price}}, Pokok: {{costPrice}}, Terjual: {{unitsSold}}, Omset: {{totalRevenue}})
   {{/each}}
 {{else}}
-  - Tidak ada data.
+  - Tidak ada data produk terlaris.
 {{/if}}
 
-- **Produk Kurang Laris Bulan Ini (Nama, Harga Jual, Harga Pokok):**
+- **Produk Kurang Laris (Nama, Jual, Pokok, Unit Terjual, Total Omset):**
 {{#if worstSellingProducts.length}}
   {{#each worstSellingProducts}}
-  - {{name}} (Jual: {{price}}, Pokok: {{costPrice}})
+  - {{name}} (Jual: {{price}}, Pokok: {{costPrice}}, Terjual: {{unitsSold}}, Omset: {{totalRevenue}})
   {{/each}}
 {{else}}
-  - Tidak ada produk yang berkinerja buruk secara signifikan bulan ini.
+  - Tidak ada produk yang berkinerja buruk signifikan bulan ini.
 {{/if}}
 
-- **Produk Belum Terjual Bulan Ini (Nama, Harga Jual, Harga Pokok):**
+- **Produk Belum Terjual (Nama, Jual, Pokok):**
 {{#if unsoldProducts.length}}
   {{#each unsoldProducts}}
   - {{name}} (Jual: {{price}}, Pokok: {{costPrice}})
   {{/each}}
 {{else}}
-  - Semua produk terjual bulan ini.
+  - Semua produk terjual setidaknya satu kali bulan ini.
 {{/if}}
 
 Hasilkan 2-3 rekomendasi promo berdasarkan data dan instruksi di atas.
