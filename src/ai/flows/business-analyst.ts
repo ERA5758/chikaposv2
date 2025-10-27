@@ -57,19 +57,20 @@ export const businessAnalystFlow = ai.defineFlow(
     const sortedProducts = Object.entries(sales).sort(([, a], [, b]) => b.quantity - a.quantity);
     const totalRevenueLastMonth = transactions.filter(t => new Date(t.createdAt).getMonth() === lastMonth).reduce((sum, t) => sum + t.totalAmount, 0);
 
-    const aiInput = {
-      question,
-      totalRevenueLastMonth,
-      topSellingProducts: sortedProducts.slice(0, 5).map(([name]) => name),
-      worstSellingProducts: sortedProducts.slice(-5).reverse().map(([name]) => name),
-      activeStoreName: activeStore.name,
-    };
+    const topSellingProductsList = sortedProducts.slice(0, 5).map(([name]) => name).join(', ');
+    const worstSellingProductsList = sortedProducts.slice(-5).reverse().map(([name]) => name).join(', ');
+
+    const prompt = PROMPT_TEMPLATE
+        .replace('{{activeStoreName}}', activeStore.name)
+        .replace('{{totalRevenueLastMonth}}', totalRevenueLastMonth.toLocaleString('id-ID'))
+        .replace('{{topSellingProducts}}', topSellingProductsList || 'Tidak ada data')
+        .replace('{{worstSellingProducts}}', worstSellingProductsList || 'Tidak ada data')
+        .replace('{{question}}', question);
 
     // 3. AI Generation
     const { output } = await ai.generate({
       model: 'openai/gpt-4o',
-      prompt: PROMPT_TEMPLATE,
-      input: aiInput,
+      prompt: prompt,
       output: {
         schema: ChikaAnalystOutputSchema,
       },
