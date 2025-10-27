@@ -21,7 +21,7 @@ import {
   Bar,
   BarChart,
 } from 'recharts';
-import { TrendingUp, DollarSign, Sparkles, ShoppingBag, Target, CheckCircle, Calendar as CalendarIcon, TrendingDown, FileText, FileSpreadsheet } from 'lucide-react';
+import { TrendingUp, DollarSign, Sparkles, ShoppingBag, Target, CheckCircle, Calendar as CalendarIcon, TrendingDown, FileText, FileSpreadsheet, PackageX } from 'lucide-react';
 import { subMonths, format, startOfMonth, endOfMonth, isWithinInterval, formatISO, subDays, addDays } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -99,6 +99,7 @@ export default function AdminOverview() {
     storeMetrics,
     topProductsThisMonth,
     worstProductsThisMonth,
+    unsoldProductsThisMonth,
   } = React.useMemo(() => {
     const now = new Date();
 
@@ -143,12 +144,17 @@ export default function AdminOverview() {
     };
 
     const sortedProductsThisMonth = calculateProductSales(thisMonthTransactions);
+    
+    const soldProductNames = new Set(sortedProductsThisMonth.map(([name]) => name));
+    const allProductNames = new Set((products || []).map(p => p.name));
+    const unsold = Array.from(allProductNames).filter(name => !soldProductNames.has(name));
 
     return {
       monthlyGrowthData: monthlyData,
       storeMetrics: { totalRevenue, grossProfit },
-      topProductsThisMonth: sortedProductsThisMonth.slice(0, 3),
-      worstProductsThisMonth: sortedProductsThisMonth.slice(-3).reverse(),
+      topProductsThisMonth: sortedProductsThisMonth.slice(0, 5),
+      worstProductsThisMonth: sortedProductsThisMonth.filter(([,qty]) => qty > 0).slice(-5).reverse(),
+      unsoldProductsThisMonth: unsold.slice(0, 5),
     };
   }, [transactions, products]);
 
@@ -455,7 +461,7 @@ export default function AdminOverview() {
         </Card>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 font-headline tracking-wider"><TrendingUp className="text-primary" />Produk Terlaris</CardTitle>
@@ -485,6 +491,25 @@ export default function AdminOverview() {
                   <span className="font-mono">{quantity}x</span>
                 </li>
               ))}
+            </ul>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 font-headline tracking-wider"><PackageX className="text-muted-foreground" />Produk Belum Laku</CardTitle>
+            <CardDescription>Bulan ini, belum ada penjualan</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              {unsoldProductsThisMonth.length > 0 ? (
+                unsoldProductsThisMonth.map((name, index) => (
+                  <li key={name} className="flex justify-between text-sm font-medium">
+                    <span>{index + 1}. {name}</span>
+                  </li>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground text-center">Semua produk terjual bulan ini!</p>
+              )}
             </ul>
           </CardContent>
         </Card>
