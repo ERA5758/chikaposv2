@@ -1,6 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/lib/server/firebase-admin';
+import { URLSearchParams } from 'url';
 
 // --- Start of Inlined WhatsApp Logic ---
 
@@ -19,7 +20,7 @@ async function getWhatsappSettingsForApi(): Promise<WhatsappSettings> {
     const settingsDocRef = adminDb.collection('appSettings').doc('whatsappConfig');
     try {
         const docSnap = await settingsDocRef.get();
-        if (docSnap.exists) {
+        if (docSnap.exists()) {
             return { ...defaultWhatsappSettings, ...(docSnap.data() as WhatsappSettings) };
         } else {
             await settingsDocRef.set(defaultWhatsappSettings);
@@ -32,17 +33,21 @@ async function getWhatsappSettingsForApi(): Promise<WhatsappSettings> {
 }
 
 async function internalSendWhatsapp(deviceId: string, target: string, message: string, isGroup: boolean = false) {
-    const formData = new FormData();
-    formData.append('device_id', deviceId);
-    formData.append(isGroup ? 'group' : 'number', target);
-    formData.append('message', message);
+    const body = new URLSearchParams();
+    body.append('device_id', deviceId);
+    body.append(isGroup ? 'group' : 'number', target);
+    body.append('message', message);
+    
     const endpoint = isGroup ? 'sendGroup' : 'send';
     const webhookUrl = `https://app.whacenter.com/api/${endpoint}`;
 
     try {
         const response = await fetch(webhookUrl, {
             method: 'POST',
-            body: formData,
+            body: body,
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
         });
 
         if (!response.ok) {
