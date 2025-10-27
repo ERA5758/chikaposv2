@@ -55,4 +55,3 @@ export const catalogAssistantFlow = ai.defineFlow(
     return output;
   }
 );
-
