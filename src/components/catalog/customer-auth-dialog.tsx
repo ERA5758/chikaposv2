@@ -38,6 +38,7 @@ export function CustomerAuthDialog({ open, onOpenChange, storeId, onLoginSuccess
     const [birthYear, setBirthYear] = React.useState('');
     const [isLoading, setIsLoading] = React.useState(false);
     const { toast } = useToast();
+    const descriptionId = React.useId();
 
     React.useEffect(() => {
         if (open) {
@@ -120,7 +121,7 @@ export function CustomerAuthDialog({ open, onOpenChange, storeId, onLoginSuccess
                 return (
                     <form onSubmit={handleRegisterSubmit} className="space-y-4">
                         <DialogTitle>Selamat Datang!</DialogTitle>
-                        <DialogDescription>
+                        <DialogDescription id={descriptionId}>
                             Nomor Anda belum terdaftar. Masukkan nama Anda untuk menjadi member.
                         </DialogDescription>
                         <div className="space-y-2">
@@ -170,7 +171,7 @@ export function CustomerAuthDialog({ open, onOpenChange, storeId, onLoginSuccess
                 return (
                      <form onSubmit={handlePhoneSubmit} className="space-y-4">
                         <DialogTitle>Login atau Daftar</DialogTitle>
-                        <DialogDescription>
+                        <DialogDescription id={descriptionId}>
                             Masukkan nomor WhatsApp Anda untuk melanjutkan.
                         </DialogDescription>
                         <div className="space-y-2">
@@ -197,7 +198,7 @@ export function CustomerAuthDialog({ open, onOpenChange, storeId, onLoginSuccess
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-md" aria-describedby={descriptionId}>
                 <DialogHeader>
                     {/* The title is now inside the step renderer */}
                 </DialogHeader>
