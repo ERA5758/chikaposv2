@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -198,7 +199,7 @@ export function BusinessAnalystChatDialog({ open, onOpenChange }: BusinessAnalys
     );
 
     const renderPresenting = () => (
-        <DialogContent aria-describedby="presenting-description">
+        <DialogContent className="sm:max-w-lg" aria-describedby="presenting-description">
             <DialogHeader>
                 <DialogTitle className='font-headline tracking-wider'>Hasil Analisis Awal</DialogTitle>
             </DialogHeader>
