@@ -60,48 +60,47 @@ const promptText = `Anda adalah Chika AI, seorang ahli strategi marketing dan pr
 **Gunakan data kinerja di bawah ini untuk membuat promo yang strategis:**
 1.  **Untuk Produk Belum Laku**: Buat promo 'pemancing' untuk memperkenalkan produk ini. Contoh: "Dapatkan diskon 50% untuk **[nama produk belum laku]** dengan menukar poin." Ini akan mendorong pelanggan mencoba item baru.
 2.  **Untuk Produk Kurang Laris**: Buat promo 'bundling' dengan produk terlaris. Contoh: "Beli **[nama produk terlaris]**, dapatkan **[nama produk kurang laris]** hanya dengan tambahan X poin." Ini membantu meningkatkan penjualan item yang lambat bergerak.
-3.  **Pertimbangkan Keuntungan**: Perhatikan `hargaJual` dan `hargaPokok` untuk menyarankan promo yang tetap masuk akal secara bisnis.
+3.  **Pertimbangkan Keuntungan**: Perhatikan selisih antara \`hargaJual\` dan \`hargaPokok\` untuk menyarankan promo yang tetap masuk akal secara bisnis.
 
 **DATA KINERJA TOKO (BULAN INI):**
 
 - **Promo Aktif Saat Ini:**
 {{#if currentRedemptionOptions.length}}
-  {{#each currentRedemptionOptions}}
+{{#each currentRedemptionOptions}}
   - {{description}} (membutuhkan {{pointsRequired}} poin, status: {{#if isActive}}Aktif{{else}}Tidak Aktif{{/if}})
-  {{/each}}
+{{/each}}
 {{else}}
   - Belum ada promo penukaran poin yang dibuat.
 {{/if}}
 
 - **Produk Terlaris (Nama, Jual, Pokok, Unit Terjual, Total Omset):**
 {{#if topSellingProducts.length}}
-  {{#each topSellingProducts}}
+{{#each topSellingProducts}}
   - {{name}} (Jual: {{price}}, Pokok: {{costPrice}}, Terjual: {{unitsSold}}, Omset: {{totalRevenue}})
-  {{/each}}
+{{/each}}
 {{else}}
   - Tidak ada data produk terlaris.
 {{/if}}
 
 - **Produk Kurang Laris (Nama, Jual, Pokok, Unit Terjual, Total Omset):**
 {{#if worstSellingProducts.length}}
-  {{#each worstSellingProducts}}
+{{#each worstSellingProducts}}
   - {{name}} (Jual: {{price}}, Pokok: {{costPrice}}, Terjual: {{unitsSold}}, Omset: {{totalRevenue}})
-  {{/each}}
+{{/each}}
 {{else}}
   - Tidak ada produk yang berkinerja buruk signifikan bulan ini.
 {{/if}}
 
 - **Produk Belum Terjual (Nama, Jual, Pokok):**
 {{#if unsoldProducts.length}}
-  {{#each unsoldProducts}}
+{{#each unsoldProducts}}
   - {{name}} (Jual: {{price}}, Pokok: {{costPrice}})
-  {{/each}}
+{{/each}}
 {{else}}
   - Semua produk terjual setidaknya satu kali bulan ini.
 {{/if}}
 
-Hasilkan 2-3 rekomendasi promo berdasarkan data dan instruksi di atas.
-`;
+Hasilkan 2-3 rekomendasi promo berdasarkan data dan instruksi di atas.`;
 
 
 export const promotionRecommendationFlow = ai.defineFlow(
