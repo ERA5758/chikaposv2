@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview An AI agent for generating loyalty promotion recommendations.
  *
@@ -62,18 +63,18 @@ export const promotionRecommendationFlow = ai.defineFlow(
   },
   async (input) => {
     // --- MANUAL PROMPT CONSTRUCTION ---
-    const buildProductList = (title: string, products: ProductPerformanceInfo[]): string => {
+    const buildProductList = (title: string, products: z.infer<typeof ProductPerformanceInfoSchema>[]): string => {
         if (!products.length) {
-            return `- **${title}:**\n  - Tidak ada data.`;
+            return `- **${title}:**\\n  - Tidak ada data.`;
         }
-        return `- **${title} (Nama, Jual, Pokok, Unit, Omset):**\n${products.map(p => `  - ${p.name} (Jual: ${p.price}, Pokok: ${p.costPrice}, Terjual: ${p.unitsSold}, Omset: ${p.totalRevenue})`).join('\n')}`;
+        return `- **${title} (Nama, Jual, Pokok, Unit, Omset):**\\n${products.map(p => `  - ${p.name} (Jual: ${p.price}, Pokok: ${p.costPrice}, Terjual: ${p.unitsSold}, Omset: ${p.totalRevenue})`).join('\\n')}`;
     };
 
     const dataBlock = `
 **DATA KINERJA TOKO (BULAN INI):**
 
 - **Promo Aktif Saat Ini:**
-${input.currentRedemptionOptions.length ? input.currentRedemptionOptions.map(o => `  - ${o.description} (${o.pointsRequired} poin, status: ${o.isActive ? 'Aktif' : 'Tidak Aktif'})`).join('\n') : '  - Belum ada promo penukaran poin yang dibuat.'}
+${input.currentRedemptionOptions.length ? input.currentRedemptionOptions.map(o => `  - ${o.description} (${o.pointsRequired} poin, status: ${o.isActive ? 'Aktif' : 'Tidak Aktif'})`).join('\\n') : '  - Belum ada promo penukaran poin yang dibuat.'}
 
 ${buildProductList('Produk Terlaris', input.topSellingProducts)}
 
@@ -89,7 +90,7 @@ ${buildProductList('Produk Belum Terjual', input.unsoldProducts)}
 **Gunakan data kinerja di bawah ini untuk membuat promo yang strategis:**
 1.  **Untuk Produk Belum Laku**: Buat promo 'pemancing' untuk memperkenalkan produk ini. Contoh: "Dapatkan diskon 50% untuk **[nama produk belum laku]** dengan menukar poin." Ini akan mendorong pelanggan mencoba item baru.
 2.  **Untuk Produk Kurang Laris**: Buat promo 'bundling' dengan produk terlaris. Contoh: "Beli **[nama produk terlaris]**, dapatkan **[nama produk kurang laris]** hanya dengan tambahan X poin." Ini membantu meningkatkan penjualan item yang lambat bergerak.
-3.  **Pertimbangkan Keuntungan**: Perhatikan selisih antara \`hargaJual\` dan \`hargaPokok\` untuk menyarankan promo yang tetap masuk akal secara bisnis.
+3.  **Pertimbangkan Keuntungan**: Perhatikan selisih antara \\\`hargaJual\\\` dan \\\`hargaPokok\\\` untuk menyarankan promo yang tetap masuk akal secara bisnis.
 ${dataBlock}
 
 Hasilkan 2-3 rekomendasi promo berdasarkan data dan instruksi di atas.`;
