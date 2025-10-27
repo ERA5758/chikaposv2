@@ -57,6 +57,8 @@ const promptText = `Anda adalah Chika AI, seorang ahli strategi marketing dan pr
 
 **Tugas Anda:** Buat 2-3 rekomendasi promo penukaran poin yang cerdas dan menguntungkan. Gunakan data kinerja di bawah ini untuk membuat keputusan.
 
+**PENTING: Selalu gunakan NAMA PRODUK yang spesifik dari data yang diberikan. Jangan gunakan nama placeholder seperti 'Produk A' atau 'Item X'.**
+
 **Data Analisis Kinerja:**
 - **Promo Aktif Saat Ini:**
 {{#each currentRedemptionOptions}}
@@ -85,11 +87,14 @@ const promptText = `Anda adalah Chika AI, seorang ahli strategi marketing dan pr
 
 
 **Instruksi Strategis:**
-1.  **Analisis Keuntungan**: Hitung keuntungan (harga jual - harga pokok) untuk setiap produk. Gunakan ini untuk merekomendasikan promo yang tidak merugikan.
-2.  **Manfaatkan Produk Belum Laku**: Usulkan promo "pemancing" untuk produk yang belum laku sama sekali. Contoh: "Beli produk terlaris, dapatkan diskon 50% untuk [produk belum laku]".
-3.  **Buat Bundling Cerdas**: Gabungkan produk kurang laris dengan produk terlaris. Pastikan Anda menggunakan nama produk yang spesifik dari data. Contoh: "Beli [produk terlaris] dan [produk kurang laris] hanya dengan Rp XXX".
-4.  **Diskon Berbasis Keuntungan**: Jika menyarankan diskon, pastikan nilai diskon lebih kecil dari keuntungan produk tersebut. Berikan justifikasi mengapa promo itu bagus (misal: "membersihkan stok" atau "memperkenalkan produk baru").
-5.  **Format Output**: Setiap rekomendasi harus memiliki 'title' (judul menarik), 'description' (deskripsi jelas untuk pelanggan), 'justification' (alasan strategis), 'pointsRequired' (angka yang masuk akal), dan 'value' (nilai promo dalam Rupiah).
+1.  **Gunakan Nama Produk Nyata**: Semua deskripsi promo HARUS menyertakan nama produk spesifik dari daftar di atas.
+    - **Contoh Buruk**: "Beli Produk A dan dapatkan Produk B gratis."
+    - **Contoh Baik**: "Beli **Chika's Kopi Susu** dan dapatkan **Roti Bakar Cokelat** gratis."
+2.  **Analisis Keuntungan**: Hitung keuntungan (harga jual - harga pokok) untuk setiap produk. Gunakan ini untuk merekomendasikan promo yang tidak merugikan.
+3.  **Manfaatkan Produk Belum Laku**: Usulkan promo "pemancing" untuk produk yang belum laku sama sekali. Contoh: "Beli produk terlaris, dapatkan diskon 50% untuk **[nama produk belum laku]**".
+4.  **Buat Bundling Cerdas**: Gabungkan produk kurang laris dengan produk terlaris. Pastikan Anda menggunakan nama produk yang spesifik dari data. Contoh: "Beli **[nama produk terlaris]** dan **[nama produk kurang laris]** hanya dengan Rp XXX".
+5.  **Diskon Berbasis Keuntungan**: Jika menyarankan diskon, pastikan nilai diskon lebih kecil dari keuntungan produk tersebut. Berikan justifikasi mengapa promo itu bagus (misal: "membersihkan stok" atau "memperkenalkan produk baru").
+6.  **Format Output**: Setiap rekomendasi harus memiliki 'title' (judul menarik), 'description' (deskripsi jelas untuk pelanggan), 'justification' (alasan strategis), 'pointsRequired' (angka yang masuk akal), dan 'value' (nilai promo dalam Rupiah).
 `;
 
 
