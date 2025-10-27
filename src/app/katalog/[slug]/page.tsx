@@ -10,7 +10,7 @@ import Image from 'next/image';
 import { UtensilsCrossed, PackageX, MessageCircle, Sparkles, Send, Loader, Gift, ShoppingCart, PlusCircle, MinusCircle, XCircle, LogIn, UserCircle, LogOut, Crown, Coins, Receipt, Percent, HandCoins, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetTrigger, SheetClose } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -764,7 +764,12 @@ export default function CatalogPage() {
                             <UtensilsCrossed className="h-4 w-4" />
                             <AlertTitle>Langkah Berikutnya</AlertTitle>
                             <AlertDescription>
-                                Tunjukkan pesanan ini di kasir, atau <Button variant="link" className="p-0 h-auto" onClick={() => setIsAuthDialogOpen(true)}>masuk/daftar</Button> untuk memesan langsung.
+                                Tunjukkan pesanan ini di kasir, atau <Button variant="link" className="p-0 h-auto" onClick={() => {
+                                    // Close the sheet before opening the dialog
+                                    const closeButton = document.querySelector('button[aria-label="Close"]');
+                                    if(closeButton instanceof HTMLElement) closeButton.click();
+                                    setIsAuthDialogOpen(true)
+                                }}>masuk/daftar</Button> untuk memesan langsung.
                             </AlertDescription>
                         </Alert>
                     )}
@@ -800,3 +805,4 @@ export default function CatalogPage() {
 }
 
     
+
