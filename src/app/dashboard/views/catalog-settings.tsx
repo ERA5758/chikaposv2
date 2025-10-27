@@ -192,17 +192,17 @@ export default function CatalogSettings() {
                     <p className="text-muted-foreground text-sm">
                         Pelanggan dapat memindai QR Code untuk langsung membuka katalog Anda.
                     </p>
-                    <div className="flex items-center gap-2 mt-4">
-                        <Button variant="outline" onClick={handleOpenCatalog} disabled={!isSubscriptionActive}>
-                            <ExternalLink className="mr-2 h-4 w-4" />
-                            Pratinjau
-                        </Button>
+                    <div className="flex flex-col items-stretch w-full max-w-xs gap-2 mt-4">
                         <QrCodeDialog catalogUrl={catalogUrl} storeName={activeStore.name}>
-                            <Button disabled={!isSubscriptionActive}>
+                            <Button disabled={!isSubscriptionActive} className="w-full">
                                 <QrCodeIcon className="mr-2 h-4 w-4" />
                                 Tampilkan QR Code
                             </Button>
                         </QrCodeDialog>
+                        <Button variant="outline" onClick={handleOpenCatalog} disabled={!isSubscriptionActive} className="w-full">
+                            <ExternalLink className="mr-2 h-4 w-4" />
+                            Pratinjau
+                        </Button>
                     </div>
                     {!isSubscriptionActive && (
                         <p className="text-xs text-muted-foreground mt-2">Aktifkan langganan untuk memakai fitur ini.</p>
