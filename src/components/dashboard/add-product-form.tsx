@@ -36,6 +36,7 @@ import { Textarea } from '../ui/textarea';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ImageSearchResponse } from '@/ai/flows/image-search-flow';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Label } from '@/components/ui/label';
 
 const FormSchema = z.object({
   name: z.string().min(2, {
