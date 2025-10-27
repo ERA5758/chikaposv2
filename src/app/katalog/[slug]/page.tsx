@@ -3,7 +3,7 @@
 'use client';
 
 import * as React from 'react';
-import type { Store, Product, ProductCategory, RedemptionOption, Customer, OrderPayload, CartItem, TableOrder } from '@/lib/types';
+import type { Store, Product, ProductCategory, RedemptionOption, Customer, OrderPayload, CartItem, TableOrder, ProductInfo } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Image from 'next/image';
@@ -85,7 +85,7 @@ type ChatMessage = {
   text: string;
 };
 
-function CatalogAIChat({ store, products, open, onOpenChange, initialQuestion }: { store: Store, products: Product[], open: boolean, onOpenChange: (open: boolean) => void, initialQuestion: string | null }) {
+function CatalogAIChat({ store, productContext, open, onOpenChange, initialQuestion }: { store: Store, productContext: ProductInfo, open: boolean, onOpenChange: (open: boolean) => void, initialQuestion: string | null }) {
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
   const [input, setInput] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
@@ -103,13 +103,7 @@ function CatalogAIChat({ store, products, open, onOpenChange, initialQuestion }:
     try {
         const payload: CatalogAssistantInput = {
             userQuestion: question,
-            productContext: products.map(p => ({
-                name: p.name,
-                category: p.category,
-                description: p.description || '',
-                price: p.price,
-                stock: p.stock,
-            })),
+            productContext: productContext,
             storeName: store.name,
         };
 
@@ -132,17 +126,17 @@ function CatalogAIChat({ store, products, open, onOpenChange, initialQuestion }:
     } finally {
         setIsLoading(false);
     }
-  }, [initialQuestion, products, store.name]);
+  }, [initialQuestion, productContext, store.name]);
 
   React.useEffect(() => {
     if (open) {
-      const introMessage = { sender: 'ai' as const, text: `Halo! Saya asisten AI dari ${store.name}. Ada yang bisa saya bantu terkait menu kami?` };
+      const introMessage = { sender: 'ai' as const, text: `Halo! Saya asisten AI dari ${store.name}. Ada yang bisa saya bantu terkait produk ${productContext.name}?` };
       setMessages([introMessage]);
       if (initialQuestion) {
         sendMessage(initialQuestion);
       }
     }
-  }, [open, initialQuestion, store.name, sendMessage]);
+  }, [open, initialQuestion, store.name, productContext.name, sendMessage]);
   
   React.useEffect(() => {
     if (scrollAreaRef.current) {
@@ -195,7 +189,7 @@ function CatalogAIChat({ store, products, open, onOpenChange, initialQuestion }:
         </ScrollArea>
         <DialogFooter>
             <form onSubmit={handleFormSubmit} className="flex w-full items-center space-x-2">
-                <Input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Tanya tentang menu..." disabled={isLoading} />
+                <Input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Tanya tentang produk ini..." disabled={isLoading} />
                 <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
                     <Send className="h-4 w-4" />
                 </Button>
@@ -304,8 +298,12 @@ export default function CatalogPage() {
     const [promotions, setPromotions] = React.useState<RedemptionOption[]>([]);
     const [error, setError] = React.useState<string | undefined>(undefined);
     const [isLoading, setIsLoading] = React.useState(true);
+    
+    // --- AI Chat State ---
     const [isChatOpen, setIsChatOpen] = React.useState(false);
     const [initialChatQuestion, setInitialChatQuestion] = React.useState<string | null>(null);
+    const [currentProductContext, setCurrentProductContext] = React.useState<ProductInfo | null>(null);
+
     const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null);
     const [cart, setCart] = React.useState<CartItem[]>([]);
     const [isSubmittingOrder, setIsSubmittingOrder] = React.useState(false);
@@ -326,11 +324,19 @@ export default function CatalogPage() {
         // This effect runs only on the client
         const savedSession = localStorage.getItem(sessionKey);
         if (savedSession) {
-            setLoggedInCustomer(JSON.parse(savedSession));
+            try {
+                setLoggedInCustomer(JSON.parse(savedSession));
+            } catch {
+                localStorage.removeItem(sessionKey);
+            }
         }
         const savedOrder = localStorage.getItem(activeOrderKey);
         if (savedOrder) {
-            setActiveOrder(JSON.parse(savedOrder));
+            try {
+                setActiveOrder(JSON.parse(savedOrder));
+            } catch {
+                localStorage.removeItem(activeOrderKey);
+            }
         }
     }, [sessionKey, activeOrderKey]);
 
@@ -442,8 +448,13 @@ export default function CatalogPage() {
         );
     };
 
-    const handleAskAI = (productName: string) => {
-        setInitialChatQuestion(`Jelaskan tentang ${productName}`);
+    const handleAskAI = (product: Product) => {
+        setCurrentProductContext({
+            name: product.name,
+            description: product.description,
+            price: product.price,
+        });
+        setInitialChatQuestion(`Jelaskan tentang ${product.name}`);
         setIsChatOpen(true);
     };
 
@@ -654,7 +665,7 @@ export default function CatalogPage() {
                                                         Catatan: {itemInCart.notes}
                                                     </Button>
                                                 )}
-                                                <Button variant="secondary" size="sm" className="w-full" onClick={() => handleAskAI(product.name)}>
+                                                <Button variant="secondary" size="sm" className="w-full" onClick={() => handleAskAI(product)}>
                                                     <Sparkles className="mr-2 h-4 w-4" /> Tanya Chika AI
                                                 </Button>
                                                 {product.stock > 0 ? (
@@ -698,10 +709,10 @@ export default function CatalogPage() {
           </div>
         )}
         
-        {store && products.length > 0 && (
+        {store && currentProductContext && (
             <CatalogAIChat 
                 store={store}
-                products={products}
+                productContext={currentProductContext}
                 open={isChatOpen}
                 onOpenChange={setIsChatOpen}
                 initialQuestion={initialChatQuestion}
@@ -709,9 +720,9 @@ export default function CatalogPage() {
         )}
         
         <SheetContent className="flex flex-col">
-            <SheetHeader>
-                <SheetTitle className="font-headline tracking-wider text-2xl">Pesanan Anda</SheetTitle>
-            </SheetHeader>
+          <SheetHeader>
+            <SheetTitle className="font-headline tracking-wider text-2xl">Pesanan Anda</SheetTitle>
+          </SheetHeader>
             {cart.length > 0 ? (
                 <>
                 <ScrollArea className="flex-grow my-4 pr-4 -mr-6">
@@ -814,5 +825,6 @@ export default function CatalogPage() {
 }
 
     
+
 
 

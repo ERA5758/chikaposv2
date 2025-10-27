@@ -1,4 +1,5 @@
 
+
 'use client';
 import type { PointEarningSettings } from './point-earning-settings';
 
@@ -253,11 +254,15 @@ export type WhatsappSettings = {
 };
 
 // Types for Catalog AI Assistant
-export type ProductInfo = Pick<Product, 'name' | 'category' | 'description' | 'price' | 'stock'>;
+export type ProductInfo = {
+    name: string;
+    description?: string;
+    price: number;
+};
 
 export type CatalogAssistantInput = {
   userQuestion: string;
-  productContext: ProductInfo[];
+  productContext: ProductInfo;
   storeName: string;
 };
 export type CatalogAssistantOutput = {

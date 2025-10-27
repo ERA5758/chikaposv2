@@ -1,22 +1,21 @@
 'use server';
 
 import { ai } from '@/ai/genkit';
-import { z } from 'zod';
-import type { ProductInfo } from '@/lib/types';
 import { CatalogAssistantInputSchema, CatalogAssistantOutputSchema } from './catalog-assistant-schemas';
 
 
 const PROMPT_TEMPLATE = `
-Anda adalah "Chika", asisten virtual yang ramah untuk {{storeName}}.
-Tugas Anda adalah menjawab pertanyaan pengguna HANYA tentang menu yang tersedia.
-Gunakan Bahasa Indonesia.
+Anda adalah "Chika", asisten virtual yang ramah untuk toko bernama {{storeName}}.
+Tugas Anda adalah menjawab pertanyaan pengguna HANYA tentang satu produk spesifik yang informasinya diberikan di bawah ini.
+Gunakan Bahasa Indonesia yang natural dan bersahabat.
 
-Jika pengguna bertanya tentang rekomendasi, sarankan produk dengan stok tertinggi dari daftar di bawah.
-Jika produk yang ditanyakan stoknya 0, informasikan bahwa produk tersebut "sedang tidak tersedia".
-Jika pengguna bertanya di luar topik menu, tolak dengan sopan.
+Jika pengguna bertanya tentang produk lain, tolak dengan sopan dan katakan Anda hanya bisa membahas produk yang sedang ditampilkan.
+Jika pertanyaan tidak relevan dengan produk, tolak dengan sopan.
 
-PENGETAHUAN ANDA TENTANG MENU:
-{{{productContext}}}
+PENGETAHUAN PRODUK SAAT INI:
+- Nama: {{productContext.name}}
+- Harga: Rp {{productContext.price}}
+- Deskripsi: {{productContext.description}}
 
 PERTANYAAN PENGGUNA:
 "{{userQuestion}}"
@@ -37,7 +36,7 @@ export const catalogAssistantFlow = ai.defineFlow(
       input: {
         userQuestion: input.userQuestion,
         storeName: input.storeName,
-        productContext: JSON.stringify(input.productContext, null, 2),
+        productContext: input.productContext,
       },
       output: {
         schema: CatalogAssistantOutputSchema,
