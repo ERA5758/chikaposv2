@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -178,7 +177,7 @@ export function EditProductForm({ setDialogOpen, userRole, onProductUpdated, act
               <FormItem>
                 <FormLabel>Nama Produk</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., Kopi Susu" {...field} />
+                  <Input placeholder="e.g., T-Shirt Polos" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -191,7 +190,7 @@ export function EditProductForm({ setDialogOpen, userRole, onProductUpdated, act
               <FormItem>
                 <FormLabel>Merek</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., Chika Coffee" {...field} />
+                  <Input placeholder="e.g., Merek Anda" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -228,7 +227,7 @@ export function EditProductForm({ setDialogOpen, userRole, onProductUpdated, act
                 <FormItem>
                   <FormLabel>Deskripsi (Opsional)</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Contoh: Perpaduan kopi dan susu yang nikmat..." {...field} />
+                    <Textarea placeholder="Contoh: T-shirt katun berkualitas tinggi, nyaman dipakai sehari-hari." {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
