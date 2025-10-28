@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/lib/server/firebase-admin';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -41,6 +42,7 @@ export async function POST(req: NextRequest) {
                 const newCustomerData = {
                     name,
                     phone: formattedPhone,
+                    address: '', // Initialize address as empty
                     joinDate: new Date().toISOString(),
                     birthDate: birthDate || new Date(0).toISOString().split('T')[0], // Use provided or default date
                     loyaltyPoints: 0,
@@ -58,7 +60,37 @@ export async function POST(req: NextRequest) {
         }
 
     } catch (error) {
-        console.error('Error in customer-auth API:', error);
+        console.error('Error in customer-auth API (POST):', error);
         return NextResponse.json({ error: 'Terjadi kesalahan pada server.' }, { status: 500 });
+    }
+}
+
+
+export async function PUT(req: NextRequest) {
+    const { db } = getFirebaseAdmin();
+    try {
+        const { storeId, customerId, address } = await req.json();
+
+        if (!storeId || !customerId || typeof address !== 'string') {
+            return NextResponse.json({ error: 'Data tidak lengkap untuk memperbarui alamat.' }, { status: 400 });
+        }
+
+        const customerRef = db.collection('stores').doc(storeId).collection('customers').doc(customerId);
+        
+        // Verify customer exists before updating
+        const customerDoc = await customerRef.get();
+        if (!customerDoc.exists) {
+            return NextResponse.json({ error: 'Pelanggan tidak ditemukan.' }, { status: 404 });
+        }
+
+        await customerRef.update({ address: address });
+
+        const updatedCustomerData = { id: customerDoc.id, ...customerDoc.data(), address };
+
+        return NextResponse.json({ success: true, message: 'Alamat berhasil diperbarui.', customer: updatedCustomerData });
+
+    } catch (error) {
+        console.error('Error in customer-auth API (PUT):', error);
+        return NextResponse.json({ error: 'Terjadi kesalahan pada server saat memperbarui alamat.' }, { status: 500 });
     }
 }

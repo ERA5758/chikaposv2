@@ -93,6 +93,7 @@ export type Customer = {
   id: string;
   name: string;
   phone: string;
+  address: string;
   birthDate: string; // YYYY-MM-DD
   joinDate: string; // ISO 8601
   loyaltyPoints: number;
@@ -143,7 +144,6 @@ export type OrderPayload = {
     serviceFeeAmount: number;
     totalAmount: number;
     deliveryMethod: 'Ambil Sendiri' | 'Dikirim Toko';
-    deliveryAddress?: string;
     notes?: string;
 };
 
@@ -157,7 +157,6 @@ export type PendingOrder = {
   serviceFeeAmount: number;
   totalAmount: number;
   deliveryMethod: 'Ambil Sendiri' | 'Dikirim Toko';
-  deliveryAddress?: string;
   notes?: string;
   status: 'Baru';
   createdAt: string; // ISO 8601

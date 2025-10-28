@@ -28,7 +28,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { collection, onSnapshot, query, where, Unsubscribe, doc, deleteDoc, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, query, Unsubscribe, doc, deleteDoc, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context';
@@ -72,10 +72,10 @@ function OrderDetailsDialog({ order, open, onOpenChange }: { order: PendingOrder
                     </DialogDescription>
                 </DialogHeader>
                  <div className="py-4 space-y-4 max-h-[60vh] overflow-y-auto pr-4 -mr-4">
-                    {order.deliveryMethod === 'Dikirim Toko' && order.deliveryAddress && (
+                    {order.deliveryMethod === 'Dikirim Toko' && order.customer.address && (
                         <div className="p-3 rounded-md bg-secondary border border-primary/20">
                             <h4 className="font-semibold text-primary flex items-center gap-2 mb-1"><Car /> Alamat Pengiriman</h4>
-                            <p className="text-sm whitespace-pre-wrap">{order.deliveryAddress}</p>
+                            <p className="text-sm whitespace-pre-wrap">{order.customer.address}</p>
                         </div>
                     )}
                     {order.notes && (
