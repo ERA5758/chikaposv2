@@ -49,8 +49,8 @@ function OrderDetailsDialog({ order, open, onOpenChange }: { order: PendingOrder
     const { activeStore } = useAuth();
     if (!order || !activeStore) return null;
 
-    const itemsText = order.items.map(item => `- ${item.quantity}x ${item.productName}`).join('\n');
-    const confirmationMessage = `Halo ${order.customer.name}, pesanan Anda di *${activeStore.name}* sudah kami terima dan sedang diproses.\n\n*Rincian Pesanan:*\n${itemsText}\n\n*Total: Rp ${order.totalAmount.toLocaleString('id-ID')}*\n\nMohon ditunggu ya. Terima kasih!`;
+    const itemsText = order.items.map(item => `- ${item.quantity}x ${item.productName}`).join('\\n');
+    const confirmationMessage = `Halo ${order.customer.name}, pesanan Anda di *${activeStore.name}* sudah kami terima dan sedang diproses.\\n\\n*Rincian Pesanan:*\\n${itemsText}\\n\\n*Total: Rp ${order.totalAmount.toLocaleString('id-ID')}*\\n\\nMohon ditunggu ya. Terima kasih!`;
     const whatsappUrl = `https://wa.me/${formatWhatsappNumber(order.customer.phone)}?text=${encodeURIComponent(confirmationMessage)}`;
     
     const handleProcessToPos = () => {
@@ -136,16 +136,20 @@ export default function PendingOrders() {
         return;
     };
 
-    const q = query(collection(db, "pendingOrders"), where("storeId", "==", currentStoreId), orderBy("createdAt", "desc"));
+    const q = query(collection(db, "pendingOrders"), orderBy("createdAt", "desc"));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
-        const updatedOrders: PendingOrder[] = [];
+        const allOrders: PendingOrder[] = [];
         snapshot.forEach((doc) => {
-            updatedOrders.push({ id: doc.id, ...doc.data() } as PendingOrder);
+            allOrders.push({ id: doc.id, ...doc.data() } as PendingOrder);
         });
-        setRealtimeOrders(updatedOrders);
+
+        // Filter on the client-side
+        const storeOrders = allOrders.filter(order => order.storeId === currentStoreId);
+        setRealtimeOrders(storeOrders);
+
         setIsLoading(false);
-        if (snapshot.docChanges().some(change => change.type === 'added')) {
+        if (snapshot.docChanges().some(change => change.type === 'added' && change.doc.data().storeId === currentStoreId)) {
              toast({
               title: "Ada Pesanan Baru!",
               description: "Pesanan baru dari katalog publik telah masuk.",
