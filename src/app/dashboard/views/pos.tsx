@@ -120,7 +120,6 @@ export default function POS({ onPrintRequest }: POSProps) {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   
-  const [pointSettings, setPointSettings] = React.useState<PointEarningSettings | null>(null);
   const [isProcessingCheckout, setIsProcessingCheckout] = React.useState(false);
   const [cart, setCart] = React.useState<CartItem[]>([]);
   const [selectedCustomer, setSelectedCustomer] = React.useState<Customer | undefined>(undefined);
@@ -314,7 +313,10 @@ export default function POS({ onPrintRequest }: POSProps) {
     };
   }, [cart, discountType, discountValue, activeStore?.financialSettings]);
 
-  const pointsEarned = (selectedCustomer && pointSettings) ? Math.floor(totalAmount / pointSettings.rpPerPoint) : 0;
+  const pointSettings = activeStore?.pointEarningSettings || { rpPerPoint: 10000 };
+  const pointsEarned = (selectedCustomer && pointSettings.rpPerPoint > 0)
+    ? Math.floor(totalAmount / pointSettings.rpPerPoint)
+    : 0;
 
   const transactionFee = React.useMemo(() => {
     if (!feeSettings) return 0;
@@ -572,7 +574,7 @@ export default function POS({ onPrintRequest }: POSProps) {
           <Card>
             <CardHeader>
               <CardTitle className="font-headline tracking-wider">
-                Pesanan Baru untuk {tableName || 'Take Away'}
+                Pesanan Baru
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
