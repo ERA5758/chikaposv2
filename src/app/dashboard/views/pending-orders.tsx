@@ -5,6 +5,8 @@ import * as React from 'react';
 import type { PendingOrder } from '@/lib/types';
 import {
   Search,
+  MessageSquare,
+  ClipboardCheck,
 } from 'lucide-react';
 import {
   Table,
@@ -22,6 +24,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { collection, onSnapshot, query, where, Unsubscribe, doc, deleteDoc, orderBy } from 'firebase/firestore';
@@ -36,9 +39,27 @@ import { MoreHorizontal } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { formatWhatsappNumber } from '@/lib/utils';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 
 function OrderDetailsDialog({ order, open, onOpenChange }: { order: PendingOrder, open: boolean, onOpenChange: (open: boolean) => void }) {
+    const router = useRouter();
+    const { activeStore } = useAuth();
+    if (!order || !activeStore) return null;
+
+    const confirmationMessage = `Halo ${order.customer.name}, pesanan Anda di ${activeStore.name} sudah kami terima dan sedang diproses. Mohon ditunggu ya. Terima kasih!`;
+    const whatsappUrl = `https://wa.me/${formatWhatsappNumber(order.customer.phone)}?text=${encodeURIComponent(confirmationMessage)}`;
+    
+    const handleProcessToPos = () => {
+        onOpenChange(false);
+        const params = new URLSearchParams();
+        params.set('view', 'pos');
+        params.set('pendingOrderId', order.id);
+        router.push(`/dashboard?${params.toString()}`);
+    }
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
@@ -64,12 +85,36 @@ function OrderDetailsDialog({ order, open, onOpenChange }: { order: PendingOrder
                             <span>Subtotal</span>
                             <span>Rp {order.subtotal.toLocaleString('id-ID')}</span>
                         </div>
+                         {order.taxAmount > 0 && (
+                            <div className="flex justify-between text-sm text-muted-foreground">
+                                <span>Pajak</span>
+                                <span>Rp {order.taxAmount.toLocaleString('id-ID')}</span>
+                            </div>
+                        )}
+                        {order.serviceFeeAmount > 0 && (
+                            <div className="flex justify-between text-sm text-muted-foreground">
+                                <span>Biaya Layanan</span>
+                                <span>Rp {order.serviceFeeAmount.toLocaleString('id-ID')}</span>
+                            </div>
+                        )}
                         <div className="flex justify-between font-bold text-base">
                             <span>Total</span>
                             <span>Rp {order.totalAmount.toLocaleString('id-ID')}</span>
                         </div>
                     </div>
                  </div>
+                 <DialogFooter className="flex-col sm:flex-col sm:space-x-0 gap-2">
+                    <Button onClick={handleProcessToPos} className="w-full">
+                        <ClipboardCheck className="mr-2 h-4 w-4" />
+                        Proses ke Kasir
+                    </Button>
+                    <Button variant="secondary" className="w-full" asChild>
+                       <Link href={whatsappUrl} target="_blank">
+                           <MessageSquare className="mr-2 h-4 w-4" />
+                           Konfirmasi via WhatsApp
+                       </Link>
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     )

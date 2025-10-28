@@ -133,42 +133,25 @@ export default function POS({ onPrintRequest }: POSProps) {
   const [isCheckoutConfirmationOpen, setIsCheckoutConfirmationOpen] = React.useState(false);
   const [noteProduct, setNoteProduct] = React.useState<CartItem | null>(null);
 
-  const tableId = searchParams.get('tableId');
-  const tableName = searchParams.get('tableName');
+  // This ref helps us track if we've already loaded a pending order
+  const processedPendingOrderId = React.useRef<string | null>(null);
   
-  // Effect to load order from table if it exists
+  // Effect to load pending order if ID is present in URL
   React.useEffect(() => {
-    if (tableId && tables.length > 0 && products.length > 0) {
-        const table = tables.find(t => t.id === tableId);
-        if (table?.currentOrder) {
-            const reconstructedCart: CartItem[] = table.currentOrder.items.map(orderItem => {
-                const product = products.find(p => p.id === orderItem.productId);
-                return {
-                    ...orderItem,
-                    productName: product?.name || orderItem.productName || 'Unknown Product',
-                    price: product?.price || orderItem.price || 0,
-                    notes: orderItem.notes || '',
-                };
-            });
-            setCart(reconstructedCart);
-
-            if (table.currentOrder.customer) {
-                const customerFromOrder = customers.find(c => c.id === table.currentOrder.customer?.id);
-                if (customerFromOrder) {
-                    setSelectedCustomer(customerFromOrder);
-                }
-            }
-            toast({
-                title: 'Pesanan Dimuat',
-                description: `Pesanan dari meja ${table.name} telah dimuat ke keranjang.`
-            });
-        }
-    } else if (!tableId) { 
-        setCart([]);
-        setSelectedCustomer(undefined);
+    const pendingOrderId = searchParams.get('pendingOrderId');
+    const order = dashboardData.pendingOrders.find(p => p.id === pendingOrderId);
+    
+    // Only process if the order exists and hasn't been processed yet
+    if (order && processedPendingOrderId.current !== pendingOrderId) {
+        setCart(order.items);
+        setSelectedCustomer(order.customer);
+        toast({
+            title: "Pesanan Dimuat",
+            description: `Pesanan dari ${order.customer.name} siap diproses.`,
+        });
+        processedPendingOrderId.current = pendingOrderId;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tableId, tables, products, customers]);
+  }, [searchParams, dashboardData.pendingOrders, toast]);
 
 
   const customerOptions = (customers || []).map((c) => ({
@@ -368,13 +351,11 @@ export default function POS({ onPrintRequest }: POSProps) {
     setIsProcessingCheckout(true);
 
     const storeId = activeStore.id;
+    const pendingOrderId = searchParams.get('pendingOrderId');
 
     try {
       let finalTransactionData: Transaction | null = null;
       
-      const currentTable = tables.find(t => t.id === tableId);
-      const isVirtualTable = currentTable?.isVirtual ?? false;
-
       await runTransaction(db, async (transaction) => {
 
         const storeRef = doc(db, 'stores', storeId);
@@ -452,20 +433,13 @@ export default function POS({ onPrintRequest }: POSProps) {
           pointsRedeemed: pointsToRedeem,
           items: cart,
           status: 'Selesai Dibayar',
-          tableId: tableId ?? undefined,
         };
         transaction.set(newTransactionRef, transactionData);
         
-        if (tableId) {
-            const tableRef = doc(db, 'stores', storeId, 'tables', tableId);
-            if (isVirtualTable) {
-                transaction.delete(tableRef);
-            } else {
-                transaction.update(tableRef, {
-                    status: 'Menunggu Dibersihkan',
-                    currentOrder: null
-                });
-            }
+        // If this was a pending order, delete it
+        if (pendingOrderId) {
+            const pendingOrderRef = doc(db, "pendingOrders", pendingOrderId);
+            transaction.delete(pendingOrderRef);
         }
 
         finalTransactionData = transactionData;
