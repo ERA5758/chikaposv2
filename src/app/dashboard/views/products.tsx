@@ -65,30 +65,50 @@ import { AIConfirmationDialog } from '@/components/dashboard/ai-confirmation-dia
 import { DescriptionGeneratorOutput } from '@/ai/flows/description-generator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-function StockToggle({ product, onStockChange, isUpdating }: { product: Product; onStockChange: (productId: string, newStock: number) => void; isUpdating: boolean; }) {
-  const isAvailable = product.stock > 0;
+function StockInput({ product, onStockChange, isUpdating }: { product: Product; onStockChange: (productId: string, newStock: number) => void; isUpdating: boolean; }) {
+  const [currentStock, setCurrentStock] = React.useState(product.stock);
 
-  const handleToggle = (checked: boolean) => {
-    // If turning on, set stock to 1 (or a default value). If turning off, set to 0.
-    const newStock = checked ? 1 : 0;
-    onStockChange(product.id, newStock);
+  React.useEffect(() => {
+    // Sync with external changes
+    setCurrentStock(product.stock);
+  }, [product.stock]);
+
+  const handleBlur = () => {
+    if (currentStock !== product.stock) {
+      onStockChange(product.id, currentStock);
+    }
   };
-  
-  if (isUpdating) {
-    return <Loader2 className="h-4 w-4 animate-spin mx-auto text-muted-foreground" />;
-  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      if (currentStock !== product.stock) {
+        onStockChange(product.id, currentStock);
+      }
+      (e.target as HTMLInputElement).blur();
+    }
+  };
+
+  const getStockColorClass = (stock: number): string => {
+    if (stock < 3) return 'text-destructive';
+    if (stock < 10) return 'text-yellow-500';
+    if (stock < 20) return '';
+    return 'text-green-600';
+  };
 
   return (
-    <div className="flex items-center justify-center space-x-2">
-      <Switch
-        id={`stock-switch-${product.id}`}
-        checked={isAvailable}
-        onCheckedChange={handleToggle}
-        aria-label="Toggle stock availability"
-      />
-      <Label htmlFor={`stock-switch-${product.id}`} className={cn(isAvailable ? "text-green-600" : "text-destructive")}>
-        {isAvailable ? 'Tersedia' : 'Habis'}
-      </Label>
+    <div className="flex items-center justify-center">
+      {isUpdating ?
+        <Loader2 className="h-4 w-4 animate-spin mx-auto" /> :
+        <Input
+          type="number"
+          value={currentStock}
+          onBlur={handleBlur}
+          onChange={(e) => setCurrentStock(Number(e.target.value))}
+          onKeyDown={handleKeyDown}
+          onFocus={(e) => e.target.select()}
+          className={cn('w-20 h-7 text-center', getStockColorClass(currentStock))}
+        />
+      }
     </div>
   );
 }
@@ -117,7 +137,7 @@ export default function Products() {
 
 
   const handleStockChange = async (productId: string, newStock: number) => {
-    if (!currentStoreId) return;
+    if (!currentStoreId || newStock < 0) return;
     
     setUpdatingStock(productId);
     const productRef = doc(db, 'stores', currentStoreId, 'products', productId);
@@ -333,7 +353,7 @@ export default function Products() {
               <TableRow>
                 <TableHead>Nama</TableHead>
                 <TableHead>Kategori</TableHead>
-                <TableHead className="text-center w-[180px]">Status Ketersediaan</TableHead>
+                <TableHead className="text-center">Stok</TableHead>
                 <TableHead className="text-right">Harga</TableHead>
                 {isAdmin && <TableHead className="w-[100px] text-right">Aksi</TableHead>}
               </TableRow>
@@ -356,17 +376,15 @@ export default function Products() {
                     <TableCell>
                       <Badge variant="outline">{product.category}</Badge>
                     </TableCell>
-                    <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                    <TableCell className="text-center font-mono" onClick={(e) => e.stopPropagation()}>
                        {isAdmin ? (
-                         <StockToggle 
-                          product={product} 
+                         <StockInput
+                          product={product}
                           onStockChange={handleStockChange}
                           isUpdating={updatingStock === product.id}
                          />
                        ) : (
-                         <Badge variant={product.stock > 0 ? 'secondary' : 'destructive'} className={product.stock > 0 ? 'border-green-500/50 text-green-700' : ''}>
-                           {product.stock > 0 ? 'Tersedia' : 'Habis'}
-                         </Badge>
+                         product.stock
                        )}
                     </TableCell>
                     <TableCell className="text-right">
