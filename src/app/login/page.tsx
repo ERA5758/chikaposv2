@@ -229,11 +229,11 @@ export default function LoginPage() {
             </CardContent>
         </Card>
 
-        <Link href="https://chikapos.vercel.app" target="_blank" className="block">
+        <Link href="https://chikafnb.vercel.app" target="_blank" className="block">
             <Card className="text-center hover:bg-muted">
                 <CardHeader>
-                    <CardTitle className="text-lg font-headline tracking-wider">APLIKASI POS RETAIL</CardTitle>
-                    <CardDescription>Coba aplikasi POS retail kami yang baru!</CardDescription>
+                    <CardTitle className="text-lg font-headline tracking-wider">APLIKASI POS F&B</CardTitle>
+                    <CardDescription>Coba aplikasi POS F&B kami yang baru!</CardDescription>
                 </CardHeader>
                 <CardContent className="flex justify-center items-center p-4">
                     <Store className="h-12 w-12 text-primary" />

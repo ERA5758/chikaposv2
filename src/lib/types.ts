@@ -1,16 +1,18 @@
 
-
 'use client';
 import type { PointEarningSettings } from './point-earning-settings';
 
 // Untuk menambah kategori produk baru, tambahkan nama kategori di dalam daftar di bawah ini.
 // Pastikan untuk mengapitnya dengan tanda kutip tunggal (') dan menambahkan koma di akhir.
 export const productCategories = [
-  'Kopi',
-  'Non-Kopi',
-  'Makanan Utama',
-  'Makanan Ringan',
-  'Dessert',
+  'Pakaian',
+  'Elektronik',
+  'Aksesoris',
+  'Perawatan Diri',
+  'Kebutuhan Rumah Tangga',
+  'Makanan & Minuman',
+  'Mainan & Hobi',
+  'Buku & Alat Tulis',
   'Lainnya',
 ] as const;
 
@@ -32,6 +34,7 @@ export type NotificationSettings = {
 
 export type FinancialSettings = {
   taxPercentage: number;
+  serviceFeePercentage: number;
   serviceFeePercentage: number;
 };
 
