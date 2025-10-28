@@ -24,7 +24,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { collection, onSnapshot, query, where, Unsubscribe, doc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, Unsubscribe, doc, deleteDoc, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context';
@@ -34,6 +34,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 
 function OrderDetailsDialog({ order, open, onOpenChange }: { order: PendingOrder, open: boolean, onOpenChange: (open: boolean) => void }) {
@@ -155,55 +156,58 @@ export default function PendingOrders() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                {isLoading ? (
-                    Array.from({length: 5}).map((_, i) => (
-                        <TableRow key={i}>
-                            <TableCell><Skeleton className="h-10 w-40" /></TableCell>
-                            <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                            <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                            <TableCell><Skeleton className="h-6 w-24" /></TableCell>
-                            <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
-                        </TableRow>
+                  {isLoading ? (
+                      Array.from({length: 5}).map((_, i) => (
+                          <TableRow key={i}>
+                              <TableCell><Skeleton className="h-10 w-40" /></TableCell>
+                              <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                              <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                              <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                              <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
+                          </TableRow>
+                      ))
+                  ) : realtimeOrders.length > 0 ? (
+                    realtimeOrders.map((order) => (
+                      <TableRow key={order.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                              <Avatar className="h-9 w-9">
+                                  <AvatarImage src={order.customer.avatarUrl} alt={order.customer.name} />
+                                  <AvatarFallback>{order.customer.name.charAt(0)}</AvatarFallback>
+                              </Avatar>
+                              <div className="font-medium">{order.customer.name}</div>
+                          </div>
+                        </TableCell>
+                         <TableCell>{formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: idLocale })}</TableCell>
+                         <TableCell className="font-mono">Rp {order.totalAmount.toLocaleString('id-ID')}</TableCell>
+                         <TableCell>{getDeliveryBadge(order.deliveryMethod)}</TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent>
+                                  <DropdownMenuLabel>Aksi</DropdownMenuLabel>
+                                  <DropdownMenuItem onClick={() => setSelectedOrder(order)}>Lihat Detail</DropdownMenuItem>
+                                  <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(order.id)}>Hapus Pesanan</DropdownMenuItem>
+                              </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
                     ))
-                ) : realtimeOrders.map((order) => (
-                  <TableRow key={order.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                          <Avatar className="h-9 w-9">
-                              <AvatarImage src={order.customer.avatarUrl} alt={order.customer.name} />
-                              <AvatarFallback>{order.customer.name.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                          <div className="font-medium">{order.customer.name}</div>
-                      </div>
-                    </TableCell>
-                     <TableCell>{formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: idLocale })}</TableCell>
-                     <TableCell className="font-mono">Rp {order.totalAmount.toLocaleString('id-ID')}</TableCell>
-                     <TableCell>{getDeliveryBadge(order.deliveryMethod)}</TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                  <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent>
-                              <DropdownMenuLabel>Aksi</DropdownMenuLabel>
-                              <DropdownMenuItem onClick={() => setSelectedOrder(order)}>Lihat Detail</DropdownMenuItem>
-                              <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(order.id)}>Hapus Pesanan</DropdownMenuItem>
-                          </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={5} className="py-10 text-center text-sm text-muted-foreground">
+                        Belum ada pesanan yang tertunda.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
               </Table>
-               {!isLoading && realtimeOrders.length === 0 && (
-                <div className="py-10 text-center text-sm text-muted-foreground">
-                  Belum ada pesanan yang tertunda.
-                </div>
-              )}
-            </CardContent>
-          </ScrollArea>
+            </ScrollArea>
+          </CardContent>
       </Card>
       {selectedOrder && (
           <OrderDetailsDialog order={selectedOrder} open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)} />
