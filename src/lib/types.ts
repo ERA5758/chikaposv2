@@ -143,6 +143,8 @@ export type OrderPayload = {
     serviceFeeAmount: number;
     totalAmount: number;
     deliveryMethod: 'Ambil Sendiri' | 'Dikirim Toko';
+    deliveryAddress?: string;
+    notes?: string;
 };
 
 export type PendingOrder = {
@@ -155,6 +157,8 @@ export type PendingOrder = {
   serviceFeeAmount: number;
   totalAmount: number;
   deliveryMethod: 'Ambil Sendiri' | 'Dikirim Toko';
+  deliveryAddress?: string;
+  notes?: string;
   status: 'Baru';
   createdAt: string; // ISO 8601
 };

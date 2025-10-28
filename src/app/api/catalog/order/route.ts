@@ -7,13 +7,16 @@ export async function POST(req: NextRequest) {
     const { db } = getFirebaseAdmin();
     try {
         const payload: OrderPayload = await req.json();
-        const { storeId, customer, cart, subtotal, taxAmount, serviceFeeAmount, totalAmount, deliveryMethod } = payload;
+        const { storeId, customer, cart, subtotal, taxAmount, serviceFeeAmount, totalAmount, deliveryMethod, deliveryAddress, notes } = payload;
 
         if (!storeId || !customer || !cart || !cart.length || !deliveryMethod) {
             return NextResponse.json({ error: 'Data pesanan tidak lengkap.' }, { status: 400 });
         }
+        
+        if (deliveryMethod === 'Dikirim Toko' && !deliveryAddress) {
+             return NextResponse.json({ error: 'Alamat pengiriman harus diisi untuk metode "Dikirim Toko".' }, { status: 400 });
+        }
 
-        // The entire order is now one document
         const newPendingOrder: Omit<PendingOrder, 'id'> = {
             storeId,
             customer,
@@ -23,6 +26,8 @@ export async function POST(req: NextRequest) {
             serviceFeeAmount,
             totalAmount,
             deliveryMethod,
+            deliveryAddress: deliveryAddress || '',
+            notes: notes || '',
             status: 'Baru', // Initial status
             createdAt: new Date().toISOString(),
         };

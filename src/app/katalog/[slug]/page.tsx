@@ -322,8 +322,11 @@ export default function CatalogPage() {
     const [activeOrder, setActiveOrder] = React.useState<PendingOrder | null>(null);
     const activeOrderKey = `chika-active-order-${slug}`;
 
-    // --- Delivery Method ---
+    // --- Delivery Method & Address ---
     const [deliveryMethod, setDeliveryMethod] = React.useState<'Ambil Sendiri' | 'Dikirim Toko'>('Ambil Sendiri');
+    const [deliveryAddress, setDeliveryAddress] = React.useState('');
+    const [orderNotes, setOrderNotes] = React.useState('');
+
 
     React.useEffect(() => {
         // This effect runs only on the client
@@ -465,6 +468,16 @@ export default function CatalogPage() {
 
     const handleCreateOrder = async () => {
         if (!loggedInCustomer || !store || cart.length === 0) return;
+        
+        if (deliveryMethod === 'Dikirim Toko' && !deliveryAddress.trim()) {
+            toast({
+                variant: 'destructive',
+                title: 'Alamat Pengiriman Diperlukan',
+                description: 'Mohon isi alamat pengiriman lengkap Anda.',
+            });
+            return;
+        }
+
         setIsSubmittingOrder(true);
         try {
             const payload: OrderPayload = {
@@ -482,6 +495,8 @@ export default function CatalogPage() {
                 serviceFeeAmount: serviceFeeAmount,
                 totalAmount: totalAmount,
                 deliveryMethod: deliveryMethod,
+                deliveryAddress: deliveryAddress,
+                notes: orderNotes,
             };
             const response = await fetch('/api/catalog/order', {
                 method: 'POST',
@@ -506,6 +521,8 @@ export default function CatalogPage() {
                     serviceFeeAmount: serviceFeeAmount,
                     totalAmount: totalAmount,
                     deliveryMethod: deliveryMethod,
+                    deliveryAddress: deliveryAddress,
+                    notes: orderNotes,
                     status: 'Baru',
                     createdAt: new Date().toISOString(),
                 };
@@ -518,6 +535,9 @@ export default function CatalogPage() {
                 description: 'Pesanan Anda sedang diproses oleh kasir. Mohon tunggu notifikasi selanjutnya.',
             });
             setCart([]);
+            setDeliveryAddress('');
+            setOrderNotes('');
+
         } catch (error) {
             toast({
                 variant: 'destructive',
@@ -758,6 +778,10 @@ export default function CatalogPage() {
                     </div>
                 </ScrollArea>
                 <SheetFooter className="flex-col space-y-4 pt-4 border-t">
+                    <div className="space-y-2">
+                        <Label htmlFor="order-notes">Catatan Pesanan (Opsional)</Label>
+                        <Textarea id="order-notes" value={orderNotes} onChange={(e) => setOrderNotes(e.target.value)} placeholder="Contoh: Tolong bungkus terpisah." />
+                    </div>
                     <div className="space-y-1 text-sm">
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">Subtotal</span>
@@ -802,6 +826,19 @@ export default function CatalogPage() {
                             </div>
                         </RadioGroup>
                     </div>
+
+                    {deliveryMethod === 'Dikirim Toko' && (
+                        <div className="space-y-2">
+                            <Label htmlFor="delivery-address">Alamat Pengiriman Lengkap</Label>
+                            <Textarea 
+                                id="delivery-address" 
+                                value={deliveryAddress}
+                                onChange={(e) => setDeliveryAddress(e.target.value)}
+                                placeholder="Masukkan nama jalan, nomor rumah, RT/RW, kelurahan, kecamatan, kota, dan kode pos."
+                                rows={3}
+                            />
+                        </div>
+                    )}
 
 
                     {loggedInCustomer ? (

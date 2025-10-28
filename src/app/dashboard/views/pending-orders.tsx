@@ -7,6 +7,7 @@ import {
   Search,
   MessageSquare,
   ClipboardCheck,
+  Car,
 } from 'lucide-react';
 import {
   Table,
@@ -49,8 +50,8 @@ function OrderDetailsDialog({ order, open, onOpenChange }: { order: PendingOrder
     const { activeStore } = useAuth();
     if (!order || !activeStore) return null;
 
-    const itemsText = order.items.map(item => `- ${item.quantity}x ${item.productName}`).join('\\n');
-    const confirmationMessage = `Halo ${order.customer.name}, pesanan Anda di *${activeStore.name}* sudah kami terima dan sedang diproses.\\n\\n*Rincian Pesanan:*\\n${itemsText}\\n\\n*Total: Rp ${order.totalAmount.toLocaleString('id-ID')}*\\n\\nMohon ditunggu ya. Terima kasih!`;
+    const itemsText = order.items.map(item => `- ${item.quantity}x ${item.productName}`).join('\n');
+    const confirmationMessage = `Halo ${order.customer.name}, pesanan Anda di *${activeStore.name}* sudah kami terima dan sedang diproses.\n\n*Rincian Pesanan:*\n${itemsText}\n\n*Total: Rp ${order.totalAmount.toLocaleString('id-ID')}*\n\nMohon ditunggu ya. Terima kasih!`;
     const whatsappUrl = `https://wa.me/${formatWhatsappNumber(order.customer.phone)}?text=${encodeURIComponent(confirmationMessage)}`;
     
     const handleProcessToPos = () => {
@@ -70,7 +71,19 @@ function OrderDetailsDialog({ order, open, onOpenChange }: { order: PendingOrder
                         Pesanan dari {order.customer.name} via Katalog Publik.
                     </DialogDescription>
                 </DialogHeader>
-                 <div className="py-4 space-y-4">
+                 <div className="py-4 space-y-4 max-h-[60vh] overflow-y-auto pr-4 -mr-4">
+                    {order.deliveryMethod === 'Dikirim Toko' && order.deliveryAddress && (
+                        <div className="p-3 rounded-md bg-secondary border border-primary/20">
+                            <h4 className="font-semibold text-primary flex items-center gap-2 mb-1"><Car /> Alamat Pengiriman</h4>
+                            <p className="text-sm whitespace-pre-wrap">{order.deliveryAddress}</p>
+                        </div>
+                    )}
+                    {order.notes && (
+                         <div className="p-3 rounded-md bg-secondary">
+                            <h4 className="font-semibold flex items-center gap-2 mb-1"><MessageSquare /> Catatan Pesanan</h4>
+                            <p className="text-sm italic">&quot;{order.notes}&quot;</p>
+                        </div>
+                    )}
                     {order.items.map(item => (
                         <div key={item.productId} className="flex justify-between items-start text-sm">
                             <div>
