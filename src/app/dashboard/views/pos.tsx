@@ -125,13 +125,13 @@ export default function POS({ onPrintRequest }: POSProps) {
   const [cart, setCart] = React.useState<CartItem[]>([]);
   const [selectedCustomer, setSelectedCustomer] = React.useState<Customer | undefined>(undefined);
   const [searchTerm, setSearchTerm] = React.useState('');
-  const [paymentMethod, setPaymentMethod] = React.useState<'Cash' | 'Card' | 'QRIS' | 'Belum Dibayar'>('Cash');
+  const [paymentMethod, setPaymentMethod] = React.useState<'Cash' | 'Card' | 'QRIS'>('Cash');
   const [isMemberDialogOpen, setIsMemberDialogOpen] = React.useState(false);
   const [isScannerOpen, setIsScannerOpen] = React.useState(false);
   const [discountType, setDiscountType] = React.useState<'percent' | 'nominal'>('percent');
   const [discountValue, setDiscountValue] = React.useState(0);
   const [pointsToRedeem, setPointsToRedeem] = React.useState(0);
-  const [confirmationAction, setConfirmationAction] = React.useState<{isPaid: boolean} | null>(null);
+  const [isCheckoutConfirmationOpen, setIsCheckoutConfirmationOpen] = React.useState(false);
   const [noteProduct, setNoteProduct] = React.useState<CartItem | null>(null);
 
   const tableId = searchParams.get('tableId');
@@ -343,8 +343,8 @@ export default function POS({ onPrintRequest }: POSProps) {
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleCheckout = async (isPaid: boolean) => {
-    setConfirmationAction(null);
+  const handleCheckout = async () => {
+    setIsCheckoutConfirmationOpen(false);
     if (cart.length === 0) {
       toast({ variant: 'destructive', title: 'Keranjang Kosong', description: 'Silakan tambahkan produk ke keranjang.' });
       return;
@@ -366,8 +366,6 @@ export default function POS({ onPrintRequest }: POSProps) {
     setIsProcessingCheckout(true);
 
     const storeId = activeStore.id;
-    const finalPaymentMethod = isPaid ? paymentMethod : 'Belum Dibayar';
-    const finalStatus = isPaid ? 'Selesai Dibayar' : 'Diproses';
 
     try {
       let finalTransactionData: Transaction | null = null;
@@ -447,23 +445,20 @@ export default function POS({ onPrintRequest }: POSProps) {
           taxAmount: taxAmount,
           serviceFeeAmount: serviceFeeAmount,
           totalAmount: totalAmount,
-          paymentMethod: finalPaymentMethod,
+          paymentMethod: paymentMethod,
           pointsEarned: pointsEarned,
           pointsRedeemed: pointsToRedeem,
           items: cart,
-          status: finalStatus,
+          status: 'Selesai Dibayar',
           tableId: tableId ?? undefined,
         };
         transaction.set(newTransactionRef, transactionData);
         
-        // If it's a table order, handle table state change
         if (tableId) {
             const tableRef = doc(db, 'stores', storeId, 'tables', tableId);
-            // If it's a paid transaction for a virtual table, delete the table.
-            if (isPaid && isVirtualTable) {
+            if (isVirtualTable) {
                 transaction.delete(tableRef);
             } else {
-                // Otherwise, update its status.
                 transaction.update(tableRef, {
                     status: 'Menunggu Dibersihkan',
                     currentOrder: null
@@ -476,7 +471,7 @@ export default function POS({ onPrintRequest }: POSProps) {
 
       toast({ title: "Transaksi Berhasil!", description: "Transaksi telah disimpan dan stok produk diperbarui." });
 
-      if (finalTransactionData && isPaid) {
+      if (finalTransactionData) {
         onPrintRequest(finalTransactionData);
       }
 
@@ -803,16 +798,6 @@ export default function POS({ onPrintRequest }: POSProps) {
               )}
               
               <div className="space-y-2 pt-4">
-                <Button 
-                    size="lg" 
-                    className="w-full font-headline text-lg tracking-wider" 
-                    onClick={() => setConfirmationAction({ isPaid: false })} 
-                    disabled={isProcessingCheckout || isLoading || cart.length === 0}
-                >
-                    <ClipboardCheck className="mr-2 h-5 w-5"/>
-                    Buat Transaksi (Bayar Nanti)
-                </Button>
-                
                 <div className="grid grid-cols-3 gap-2">
                     <Button variant={paymentMethod === 'Cash' ? 'default' : 'secondary'} onClick={() => setPaymentMethod('Cash')}>Tunai</Button>
                     <Button variant={paymentMethod === 'Card' ? 'default' : 'secondary'} onClick={() => setPaymentMethod('Card')}>Kartu</Button>
@@ -821,7 +806,7 @@ export default function POS({ onPrintRequest }: POSProps) {
                 <Button 
                     size="lg" 
                     className="w-full font-headline text-lg tracking-wider" 
-                    onClick={() => setConfirmationAction({ isPaid: true })}
+                    onClick={() => setIsCheckoutConfirmationOpen(true)}
                     disabled={isProcessingCheckout || isLoading || cart.length === 0}
                 >
                     <CreditCard className="mr-2 h-5 w-5"/>
@@ -846,22 +831,19 @@ export default function POS({ onPrintRequest }: POSProps) {
         </DialogContent>
       </Dialog>
       
-      <AlertDialog open={!!confirmationAction} onOpenChange={() => setConfirmationAction(null)}>
+      <AlertDialog open={isCheckoutConfirmationOpen} onOpenChange={setIsCheckoutConfirmationOpen}>
         <AlertDialogContent>
             <AlertDialogHeader>
                 <AlertDialogTitle>Konfirmasi Transaksi</AlertDialogTitle>
                 <AlertDialogDescription>
-                    {confirmationAction?.isPaid 
-                        ? `Anda akan menyelesaikan transaksi dengan total Rp ${totalAmount.toLocaleString('id-ID')} menggunakan metode pembayaran ${paymentMethod}.`
-                        : `Anda akan membuat transaksi 'Bayar Nanti' dengan total Rp ${totalAmount.toLocaleString('id-ID')}.`
-                    }
+                    Anda akan menyelesaikan transaksi dengan total Rp {totalAmount.toLocaleString('id-ID')} menggunakan metode pembayaran {paymentMethod}.
                     <br/><br/>
                     Pastikan detail pesanan sudah benar. Lanjutkan?
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
                 <AlertDialogCancel>Batal</AlertDialogCancel>
-                <AlertDialogAction onClick={() => handleCheckout(confirmationAction?.isPaid ?? false)}>
+                <AlertDialogAction onClick={handleCheckout}>
                     Ya, Lanjutkan
                 </AlertDialogAction>
             </AlertDialogFooter>
