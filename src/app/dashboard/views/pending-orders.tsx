@@ -35,6 +35,7 @@ import { Button } from '@/components/ui/button';
 import { MoreHorizontal } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 
 
 function OrderDetailsDialog({ order, open, onOpenChange }: { order: PendingOrder, open: boolean, onOpenChange: (open: boolean) => void }) {
@@ -49,7 +50,7 @@ function OrderDetailsDialog({ order, open, onOpenChange }: { order: PendingOrder
                 </DialogHeader>
                  <div className="py-4 space-y-4">
                     {order.items.map(item => (
-                        <div key={item.productId} className="flex justify-between items-center text-sm">
+                        <div key={item.productId} className="flex justify-between items-start text-sm">
                             <div>
                                 <p>{item.quantity}x {item.productName}</p>
                                 {item.notes && <p className="text-xs italic text-gray-600 pl-2"> &#x21B3; {item.notes}</p>}
@@ -57,6 +58,7 @@ function OrderDetailsDialog({ order, open, onOpenChange }: { order: PendingOrder
                             <p className="font-mono">Rp {(item.quantity * item.price).toLocaleString('id-ID')}</p>
                         </div>
                     ))}
+                    <Separator className="my-2"/>
                     <div className="border-t pt-2 mt-2 space-y-1">
                         <div className="flex justify-between text-sm">
                             <span>Subtotal</span>
@@ -168,7 +170,7 @@ export default function PendingOrders() {
                       ))
                   ) : realtimeOrders.length > 0 ? (
                     realtimeOrders.map((order) => (
-                      <TableRow key={order.id}>
+                      <TableRow key={order.id} className="cursor-pointer" onClick={() => setSelectedOrder(order)}>
                         <TableCell>
                           <div className="flex items-center gap-3">
                               <Avatar className="h-9 w-9">
@@ -184,11 +186,11 @@ export default function PendingOrders() {
                         <TableCell className="text-right">
                           <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
                                       <MoreHorizontal className="h-4 w-4" />
                                   </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent>
+                              <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
                                   <DropdownMenuLabel>Aksi</DropdownMenuLabel>
                                   <DropdownMenuItem onClick={() => setSelectedOrder(order)}>Lihat Detail</DropdownMenuItem>
                                   <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(order.id)}>Hapus Pesanan</DropdownMenuItem>
