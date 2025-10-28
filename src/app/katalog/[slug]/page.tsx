@@ -3,11 +3,11 @@
 'use client';
 
 import * as React from 'react';
-import type { Store as StoreType, Product, ProductCategory, RedemptionOption, Customer, OrderPayload, CartItem, TableOrder, ProductInfo } from '@/lib/types';
+import type { Store as StoreType, Product, ProductCategory, RedemptionOption, Customer, OrderPayload, CartItem, ProductInfo, PendingOrder } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Image from 'next/image';
-import { Store, PackageX, MessageCircle, Sparkles, Send, Loader, Gift, ShoppingCart, PlusCircle, MinusCircle, XCircle, LogIn, UserCircle, LogOut, Crown, Coins, Receipt, Percent, HandCoins, MessageSquare } from 'lucide-react';
+import { Store, PackageX, MessageCircle, Sparkles, Send, Loader, Gift, ShoppingCart, PlusCircle, MinusCircle, XCircle, LogIn, UserCircle, LogOut, Crown, Coins, Receipt, Percent, HandCoins, MessageSquare, Car, Walking, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetTrigger, SheetClose } from '@/components/ui/sheet';
@@ -31,6 +31,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 
 
 function NoteDialog({ open, onOpenChange, note, onSave }: { open: boolean, onOpenChange: (open: boolean) => void, note: string, onSave: (newNote: string) => void }) {
@@ -252,14 +254,14 @@ function PromotionSection({ promotions }: { promotions: RedemptionOption[] }) {
     );
 }
 
-function OrderStatusCard({ order, onComplete }: { order: TableOrder, onComplete: () => void }) {
+function OrderStatusCard({ order, onComplete }: { order: PendingOrder, onComplete: () => void }) {
     return (
         <Card className="mb-8 bg-amber-500/10 border-amber-500/30">
             <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-amber-700">
                     <Loader className="animate-spin"/> Pesanan Anda Sedang Diproses
                 </CardTitle>
-                <CardDescription>Pesanan Anda telah diterima oleh dapur. Mohon tunggu panggilan dari kasir untuk pengambilan.</CardDescription>
+                <CardDescription>Pesanan Anda telah diterima oleh kasir. Mohon tunggu notifikasi selanjutnya.</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="space-y-2">
@@ -317,8 +319,11 @@ export default function CatalogPage() {
     const sessionKey = `chika-customer-session-${slug}`;
     
     // --- Order Status State ---
-    const [activeOrder, setActiveOrder] = React.useState<TableOrder | null>(null);
+    const [activeOrder, setActiveOrder] = React.useState<PendingOrder | null>(null);
     const activeOrderKey = `chika-active-order-${slug}`;
+
+    // --- Delivery Method ---
+    const [deliveryMethod, setDeliveryMethod] = React.useState<'Ambil Sendiri' | 'Dikirim Toko'>('Ambil Sendiri');
 
     React.useEffect(() => {
         // This effect runs only on the client
@@ -476,6 +481,7 @@ export default function CatalogPage() {
                 taxAmount: taxAmount,
                 serviceFeeAmount: serviceFeeAmount,
                 totalAmount: totalAmount,
+                deliveryMethod: deliveryMethod,
             };
             const response = await fetch('/api/catalog/order', {
                 method: 'POST',
@@ -489,15 +495,27 @@ export default function CatalogPage() {
             }
             const result = await response.json();
             
-            if (result.success && result.table?.currentOrder) {
-                const newOrder = result.table.currentOrder as TableOrder;
+            if (result.success) {
+                const newOrder: PendingOrder = {
+                    id: result.orderId,
+                    storeId: store.id,
+                    customer: loggedInCustomer,
+                    items: cart,
+                    subtotal: cartSubtotal,
+                    taxAmount: taxAmount,
+                    serviceFeeAmount: serviceFeeAmount,
+                    totalAmount: totalAmount,
+                    deliveryMethod: deliveryMethod,
+                    status: 'Baru',
+                    createdAt: new Date().toISOString(),
+                };
                 setActiveOrder(newOrder);
                 localStorage.setItem(activeOrderKey, JSON.stringify(newOrder));
             }
             
             toast({
                 title: 'Pesanan Berhasil Dibuat!',
-                description: 'Pesanan Anda sedang diproses oleh dapur. Silakan tunggu notifikasi selanjutnya.',
+                description: 'Pesanan Anda sedang diproses oleh kasir. Mohon tunggu notifikasi selanjutnya.',
             });
             setCart([]);
         } catch (error) {
@@ -764,22 +782,44 @@ export default function CatalogPage() {
                         <span>Total</span>
                         <span>Rp {totalAmount.toLocaleString('id-ID')}</span>
                     </div>
+
+                    <div className="space-y-2">
+                        <Label>Metode Pengambilan</Label>
+                        <RadioGroup defaultValue="Ambil Sendiri" value={deliveryMethod} onValueChange={(value: 'Ambil Sendiri' | 'Dikirim Toko') => setDeliveryMethod(value)} className="grid grid-cols-2 gap-4">
+                            <div>
+                                <RadioGroupItem value="Ambil Sendiri" id="pickup" className="peer sr-only" />
+                                <Label htmlFor="pickup" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                                    <ShoppingBag className="mb-3 h-6 w-6" />
+                                    Ambil Sendiri
+                                </Label>
+                            </div>
+                             <div>
+                                <RadioGroupItem value="Dikirim Toko" id="delivery" className="peer sr-only" />
+                                <Label htmlFor="delivery" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                                     <Car className="mb-3 h-6 w-6" />
+                                    Dikirim Toko
+                                </Label>
+                            </div>
+                        </RadioGroup>
+                    </div>
+
+
                     {loggedInCustomer ? (
                          <Button className="w-full" onClick={handleCreateOrder} disabled={isSubmittingOrder}>
                            {isSubmittingOrder ? <Loader className="animate-spin" /> : <Receipt className="mr-2 h-4 w-4"/>}
-                           Konfirmasi & Buat Pesanan
+                           Konfirmasi & Kirim Pesanan
                          </Button>
                     ) : (
                          <Alert>
                             <Store className="h-4 w-4" />
                             <AlertTitle>Langkah Berikutnya</AlertTitle>
                             <AlertDescription>
-                                Tunjukkan pesanan ini di kasir, atau <Button variant="link" className="p-0 h-auto" onClick={() => {
+                                <Button variant="link" className="p-0 h-auto" onClick={() => {
                                     // Close the sheet before opening the dialog
                                     const closeButton = document.querySelector('button[aria-label="Close"]');
                                     if(closeButton instanceof HTMLElement) closeButton.click();
                                     setIsAuthDialogOpen(true)
-                                }}>masuk/daftar</Button> untuk memesan langsung.
+                                }}>Masuk atau daftar</Button> untuk mengirim pesanan ini ke kasir.
                             </AlertDescription>
                         </Alert>
                     )}
@@ -823,5 +863,3 @@ export default function CatalogPage() {
         </>
     );
 }
-
-    

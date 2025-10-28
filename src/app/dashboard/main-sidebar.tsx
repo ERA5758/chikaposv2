@@ -28,13 +28,13 @@ import {
   Receipt,
   UserCircle,
   BarChart4,
-  Armchair,
   Store,
   Wallet,
   TrendingUp,
   Map,
   Newspaper,
   ChefHat,
+  ShoppingBasket,
 } from 'lucide-react';
 import * as React from 'react';
 import { Separator } from '@/components/ui/separator';
@@ -59,10 +59,6 @@ export function MainSidebar({ pradanaTokenBalance }: MainSidebarProps) {
 
   const navigate = (view: string) => {
     const newParams = new URLSearchParams(searchParams.toString());
-    if (view !== 'pos') {
-      newParams.delete('tableId');
-      newParams.delete('tableName');
-    }
     newParams.set('view', view);
     router.push(`${pathname}?${newParams.toString()}`);
   };
@@ -79,7 +75,7 @@ export function MainSidebar({ pradanaTokenBalance }: MainSidebarProps) {
         roles: ['admin', 'cashier', 'kitchen'],
         items: [
             { view: 'overview', label: 'Overview', icon: <LayoutGrid />, roles: ['admin', 'cashier'] },
-            { view: 'pos', label: 'Kasir POS', icon: <Armchair />, roles: ['admin', 'cashier'] },
+            { view: 'pos', label: 'Kasir POS', icon: <ShoppingBasket />, roles: ['admin', 'cashier'] },
             { view: 'kitchen', label: 'Dapur', icon: <ChefHat />, roles: ['admin', 'kitchen'] },
             { view: 'transactions', label: 'Transaksi', icon: <History />, roles: ['admin', 'cashier'] },
         ]

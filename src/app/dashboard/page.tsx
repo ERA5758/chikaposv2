@@ -20,7 +20,6 @@ import Promotions from '@/app/dashboard/views/promotions';
 import ReceiptSettings from '@/app/dashboard/views/receipt-settings';
 import AIBusinessPlan from '@/app/dashboard/views/ai-business-plan';
 import CatalogSettings from '@/app/dashboard/views/catalog-settings';
-import Tables from '@/app/dashboard/views/tables';
 import Kitchen from '@/app/dashboard/views/kitchen';
 import { Suspense } from 'react';
 import type { User, Transaction, Customer } from '@/lib/types';
@@ -104,7 +103,7 @@ function DashboardContent() {
     const kitchenViews = ['kitchen'];
 
     if (currentUser?.role === 'cashier' && !cashierViews.includes(view)) {
-        return <Tables />; // Default view for cashier
+        return <POS {...commonProps} />;
     }
     if (currentUser?.role === 'kitchen' && !kitchenViews.includes(view)) {
         return <Kitchen onFollowUpRequest={setTransactionForFollowUp} onPrintStickerRequest={setTransactionForSticker}/>; // Default for kitchen
@@ -115,7 +114,7 @@ function DashboardContent() {
 
     switch (view) {
       case 'overview': return isAdmin ? <AdminOverview /> : <Overview />;
-      case 'pos': return searchParams.get('tableId') ? <POS {...commonProps} /> : <Tables />;
+      case 'pos': return <POS {...commonProps} />;
       case 'products': return <Products />;
       case 'customers': return <Customers />;
       case 'customer-analytics': return <CustomerAnalytics />;
@@ -128,16 +127,11 @@ function DashboardContent() {
       case 'receipt-settings': return <ReceiptSettings />;
       case 'ai-business-plan': return <AIBusinessPlan />;
       case 'catalog': return <CatalogSettings />;
-      default: return <Tables />;
+      default: return <POS {...commonProps} />;
     }
   };
 
   const getTitle = () => {
-    const tableId = searchParams.get('tableId');
-    const tableName = searchParams.get('tableName');
-    if (view === 'pos' && tableId) {
-        return `Pesanan: ${tableName || ''}`;
-    }
     const baseTitle = {
       'overview': 'Dashboard Overview', 'pos': 'Kasir POS', 'kitchen': 'Monitor Dapur', 'products': 'Inventaris Produk', 'customers': 'Manajemen Pelanggan',
       'customer-analytics': 'Analisis Pelanggan', 'employees': 'Manajemen Karyawan', 'transactions': 'Riwayat Transaksi', 'settings': 'Pengaturan',

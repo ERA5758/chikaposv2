@@ -1,6 +1,6 @@
 
 'use client';
-import type { PointEarningSettings } from './point-earning-settings';
+import type { PointEarningSettings } from './server/point-earning-settings';
 
 // Untuk menambah kategori produk baru, tambahkan nama kategori di dalam daftar di bawah ini.
 // Pastikan untuk mengapitnya dengan tanda kutip tunggal (') dan menambahkan koma di akhir.
@@ -34,7 +34,6 @@ export type NotificationSettings = {
 
 export type FinancialSettings = {
   taxPercentage: number;
-  serviceFeePercentage: number;
   serviceFeePercentage: number;
 };
 
@@ -146,17 +145,20 @@ export type OrderPayload = {
     taxAmount: number;
     serviceFeeAmount: number;
     totalAmount: number;
+    deliveryMethod: 'Ambil Sendiri' | 'Dikirim Toko';
 };
 
 export type PendingOrder = {
   id: string;
   storeId: string;
-  customerId: string;
-  customerName: string;
-  customerAvatarUrl: string;
-  productId: string;
-  productName: string;
-  quantity: number;
+  customer: Customer;
+  items: CartItem[];
+  subtotal: number;
+  taxAmount: number;
+  serviceFeeAmount: number;
+  totalAmount: number;
+  deliveryMethod: 'Ambil Sendiri' | 'Dikirim Toko';
+  status: 'Baru' | 'Diproses' | 'Selesai';
   createdAt: string; // ISO 8601
 };
 
