@@ -1,4 +1,3 @@
-
 'use client';
 import type { PointEarningSettings } from './server/point-earning-settings';
 
@@ -62,7 +61,7 @@ export type Store = {
   description?: string;
 };
 
-export type UserRole = 'admin' | 'cashier' | 'superadmin' | 'kitchen';
+export type UserRole = 'admin' | 'cashier' | 'superadmin';
 
 export type User = {
   id: string;

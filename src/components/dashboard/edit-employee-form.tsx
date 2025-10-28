@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -32,7 +31,7 @@ const FormSchema = z.object({
     name: z.string().min(2, {
       message: 'Nama minimal 2 karakter.',
     }),
-    role: z.enum(['admin', 'cashier', 'kitchen'], {
+    role: z.enum(['admin', 'cashier'], {
         required_error: "Silakan pilih peran."
     }),
   });
@@ -114,7 +113,6 @@ export function EditEmployeeForm({ setDialogOpen, employee, onEmployeeUpdated }:
                   </FormControl>
                   <SelectContent>
                       <SelectItem value="cashier">Kasir</SelectItem>
-                      <SelectItem value="kitchen">Dapur</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
                   </SelectContent>
               </Select>

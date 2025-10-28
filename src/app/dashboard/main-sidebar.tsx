@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
@@ -33,8 +32,8 @@ import {
   TrendingUp,
   Map,
   Newspaper,
-  ChefHat,
   ShoppingBasket,
+  ClipboardList,
 } from 'lucide-react';
 import * as React from 'react';
 import { Separator } from '@/components/ui/separator';
@@ -52,7 +51,7 @@ export function MainSidebar({ pradanaTokenBalance }: MainSidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const defaultView = currentUser?.role === 'kitchen' ? 'kitchen' : (currentUser?.role === 'admin' ? 'overview' : 'pos');
+  const defaultView = currentUser?.role === 'admin' ? 'overview' : 'pos';
   const currentView = searchParams.get('view') || defaultView;
   
   const [isTopUpOpen, setIsTopUpOpen] = React.useState(false);
@@ -72,11 +71,11 @@ export function MainSidebar({ pradanaTokenBalance }: MainSidebarProps) {
     {
         group: 'Operasional',
         icon: <Store />,
-        roles: ['admin', 'cashier', 'kitchen'],
+        roles: ['admin', 'cashier'],
         items: [
             { view: 'overview', label: 'Overview', icon: <LayoutGrid />, roles: ['admin', 'cashier'] },
             { view: 'pos', label: 'Kasir POS', icon: <ShoppingBasket />, roles: ['admin', 'cashier'] },
-            { view: 'kitchen', label: 'Dapur', icon: <ChefHat />, roles: ['admin', 'kitchen'] },
+            { view: 'pending-orders', label: 'Pending Orders', icon: <ClipboardList />, roles: ['admin', 'cashier'] },
             { view: 'transactions', label: 'Transaksi', icon: <History />, roles: ['admin', 'cashier'] },
         ]
     },

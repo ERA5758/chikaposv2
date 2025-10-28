@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import * as React from 'react';
@@ -20,7 +18,7 @@ import Promotions from '@/app/dashboard/views/promotions';
 import ReceiptSettings from '@/app/dashboard/views/receipt-settings';
 import AIBusinessPlan from '@/app/dashboard/views/ai-business-plan';
 import CatalogSettings from '@/app/dashboard/views/catalog-settings';
-import Kitchen from '@/app/dashboard/views/kitchen';
+import PendingOrders from '@/app/dashboard/views/pending-orders';
 import { Suspense } from 'react';
 import type { User, Transaction, Customer } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-context';
@@ -83,7 +81,7 @@ function DashboardContent() {
   const [transactionForSticker, setTransactionForSticker] = React.useState<Transaction | null>(null);
   
   const isAdmin = currentUser?.role === 'admin';
-  const defaultView = currentUser?.role === 'kitchen' ? 'kitchen' : (isAdmin ? 'overview' : 'pos');
+  const defaultView = isAdmin ? 'overview' : 'pos';
   const view = searchParams.get('view') || defaultView;
   
   if (isLoading || !dashboardData) {
@@ -99,17 +97,10 @@ function DashboardContent() {
 
   const renderView = () => {
     const commonProps = { onPrintRequest: setTransactionToPrint, onDetailRequest: setTransactionForDetail };
-    const cashierViews = ['overview', 'pos', 'transactions', 'products', 'customers', 'promotions'];
-    const kitchenViews = ['kitchen'];
+    const cashierViews = ['overview', 'pos', 'pending-orders', 'transactions', 'products', 'customers', 'promotions'];
 
     if (currentUser?.role === 'cashier' && !cashierViews.includes(view)) {
         return <POS {...commonProps} />;
-    }
-    if (currentUser?.role === 'kitchen' && !kitchenViews.includes(view)) {
-        return <Kitchen onFollowUpRequest={setTransactionForFollowUp} onPrintStickerRequest={setTransactionForSticker}/>; // Default for kitchen
-    }
-    if (currentUser?.role === 'admin' && view === 'kitchen') {
-        return <Kitchen onFollowUpRequest={setTransactionForFollowUp} onPrintStickerRequest={setTransactionForSticker} />;
     }
 
     switch (view) {
@@ -120,7 +111,7 @@ function DashboardContent() {
       case 'customer-analytics': return <CustomerAnalytics />;
       case 'employees': return <Employees />;
       case 'transactions': return <Transactions onDetailRequest={setTransactionForDetail} onPrintRequest={setTransactionToPrint} />;
-      case 'kitchen': return <Kitchen onFollowUpRequest={setTransactionForFollowUp} onPrintStickerRequest={setTransactionForSticker} />;
+      case 'pending-orders': return <PendingOrders />;
       case 'settings': return <Settings />;
       case 'challenges': return <Challenges />;
       case 'promotions': return <Promotions />;
@@ -133,10 +124,10 @@ function DashboardContent() {
 
   const getTitle = () => {
     const baseTitle = {
-      'overview': 'Dashboard Overview', 'pos': 'Kasir POS', 'kitchen': 'Monitor Dapur', 'products': 'Inventaris Produk', 'customers': 'Manajemen Pelanggan',
+      'overview': 'Dashboard Overview', 'pos': 'Kasir POS', 'products': 'Inventaris Produk', 'customers': 'Manajemen Pelanggan',
       'customer-analytics': 'Analisis Pelanggan', 'employees': 'Manajemen Karyawan', 'transactions': 'Riwayat Transaksi', 'settings': 'Pengaturan',
       'challenges': 'Tantangan Karyawan', 'promotions': 'Manajemen Promosi', 'receipt-settings': 'Pengaturan Struk', 'ai-business-plan': 'AI Business Plan',
-      'catalog': 'Pengaturan Katalog Publik',
+      'catalog': 'Pengaturan Katalog Publik', 'pending-orders': 'Pesanan Tertunda',
     }[view] || 'Kasir POS';
     return isAdmin && view === 'overview' ? `Admin Overview` : baseTitle;
   };
