@@ -1,25 +1,10 @@
+
 'use client';
 
 import * as React from 'react';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import type { Product, Customer, CartItem, PendingOrder } from '@/lib/types';
+import type { PendingOrder } from '@/lib/types';
 import {
   Search,
-  PlusCircle,
-  MinusCircle,
-  XCircle,
-  UserPlus,
-  Crown,
-  ClipboardList,
-  Plus,
 } from 'lucide-react';
 import {
   Table,
@@ -29,7 +14,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -38,39 +22,72 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
-import { AddCustomerForm } from '@/components/dashboard/add-customer-form';
-import { Combobox } from '@/components/ui/combobox';
 import { useToast } from '@/hooks/use-toast';
-import { collection, addDoc, onSnapshot, query, where, Unsubscribe } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, Unsubscribe, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context';
+import { formatDistanceToNow } from 'date-fns';
+import { id as idLocale } from 'date-fns/locale';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { MoreHorizontal } from 'lucide-react';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 
-type PendingOrdersProps = {
-    products: Product[];
-    customers: Customer[];
-    onDataChange: () => void;
-    isLoading: boolean;
-};
 
-export default function PendingOrders({ products = [], customers = [], onDataChange, isLoading }: PendingOrdersProps) {
+function OrderDetailsDialog({ order, open, onOpenChange }: { order: PendingOrder, open: boolean, onOpenChange: (open: boolean) => void }) {
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Detail Pesanan #{order.id.substring(0, 6)}</DialogTitle>
+                    <DialogDescription>
+                        Pesanan dari {order.customer.name} via Katalog Publik.
+                    </DialogDescription>
+                </DialogHeader>
+                 <div className="py-4 space-y-4">
+                    {order.items.map(item => (
+                        <div key={item.productId} className="flex justify-between items-center text-sm">
+                            <div>
+                                <p>{item.quantity}x {item.productName}</p>
+                                {item.notes && <p className="text-xs italic text-gray-600 pl-2"> &#x21B3; {item.notes}</p>}
+                            </div>
+                            <p className="font-mono">Rp {(item.quantity * item.price).toLocaleString('id-ID')}</p>
+                        </div>
+                    ))}
+                    <div className="border-t pt-2 mt-2 space-y-1">
+                        <div className="flex justify-between text-sm">
+                            <span>Subtotal</span>
+                            <span>Rp {order.subtotal.toLocaleString('id-ID')}</span>
+                        </div>
+                        <div className="flex justify-between font-bold text-base">
+                            <span>Total</span>
+                            <span>Rp {order.totalAmount.toLocaleString('id-ID')}</span>
+                        </div>
+                    </div>
+                 </div>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
+export default function PendingOrders() {
   const { activeStore } = useAuth();
-  const [pendingList, setPendingList] = React.useState<CartItem[]>([]);
   const [realtimeOrders, setRealtimeOrders] = React.useState<PendingOrder[]>([]);
-  const [selectedCustomer, setSelectedCustomer] = React.useState<Customer | undefined>(undefined);
-  const [searchTerm, setSearchTerm] = React.useState('');
-  const [manualItemName, setManualItemName] = React.useState('');
-  const [isMemberDialogOpen, setIsMemberDialogOpen] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [selectedOrder, setSelectedOrder] = React.useState<PendingOrder | null>(null);
   const { toast } = useToast();
   
   const currentStoreId = activeStore?.id || '';
 
   React.useEffect(() => {
-    if (!currentStoreId) return;
+    if (!currentStoreId) {
+        setIsLoading(false);
+        return;
+    };
 
-    const q = query(collection(db, "pendingOrders"), where("storeId", "==", currentStoreId));
+    const q = query(collection(db, "pendingOrders"), where("storeId", "==", currentStoreId), orderBy("createdAt", "desc"));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const updatedOrders: PendingOrder[] = [];
@@ -78,332 +95,119 @@ export default function PendingOrders({ products = [], customers = [], onDataCha
             updatedOrders.push({ id: doc.id, ...doc.data() } as PendingOrder);
         });
         setRealtimeOrders(updatedOrders);
-        toast({
-          title: "Pesanan Diperbarui",
-          description: "Daftar pesanan tertunda telah diperbarui secara real-time.",
-        });
+        setIsLoading(false);
+        if (snapshot.docChanges().some(change => change.type === 'added')) {
+             toast({
+              title: "Ada Pesanan Baru!",
+              description: "Pesanan baru dari katalog publik telah masuk.",
+            });
+        }
     }, (error) => {
         console.error("Error listening to pending orders:", error);
         toast({
             variant: 'destructive',
-            title: 'Gagal Memperbarui Pesanan',
-            description: 'Tidak dapat memuat pembaruan pesanan secara real-time.'
+            title: 'Gagal Memuat Pesanan',
+            description: 'Tidak dapat memuat pesanan secara real-time.'
         });
+        setIsLoading(false);
     });
 
     return () => unsubscribe();
   }, [currentStoreId, toast]);
 
-  const customerOptions = customers.map((c) => ({
-    value: c.id,
-    label: c.name,
-  }));
-  
-  const outOfStockProducts = products.filter((product) => {
-    return product.stock === 0 && product.name.toLowerCase().includes(searchTerm.toLowerCase());
-  });
-
-  const addToPendingList = (product: Product) => {
-    setPendingList((prevList) => {
-      const existingItem = prevList.find(
-        (item) => item.productId === product.id
-      );
-      if (existingItem) {
-        return prevList.map((item) =>
-          item.productId === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
+  const handleDelete = async (orderId: string) => {
+      try {
+        await deleteDoc(doc(db, "pendingOrders", orderId));
+        toast({ title: "Pesanan Dihapus", description: "Pesanan tertunda telah dihapus dari daftar."});
+      } catch (error) {
+        toast({ variant: "destructive", title: "Gagal Menghapus", description: "Terjadi kesalahan saat menghapus pesanan."});
       }
-      return [
-        ...prevList,
-        {
-          productId: product.id,
-          productName: product.name,
-          quantity: 1,
-          price: product.price,
-          notes: '',
-        },
-      ];
-    });
-  };
+  }
 
-  const handleAddManualItem = () => {
-    if (!manualItemName.trim()) {
-      toast({
-        variant: 'destructive',
-        title: 'Nama Item Kosong',
-        description: 'Silakan masukkan nama produk yang ingin ditambahkan.',
-      });
-      return;
-    }
-    const manualProductId = `manual-${Date.now()}`;
-    const newItem: CartItem = {
-      productId: manualProductId,
-      productName: manualItemName.trim(),
-      quantity: 1,
-      price: 0,
-      notes: '',
-    };
-    setPendingList((prevList) => [...prevList, newItem]);
-    setManualItemName('');
-    toast({
-      title: 'Item Manual Ditambahkan',
-      description: `${newItem.productName} telah ditambahkan ke daftar tunggu.`,
-    });
-  };
-
-
-  const updateQuantity = (productId: string, quantity: number) => {
-    if (quantity <= 0) {
-      removeFromPendingList(productId);
-      return;
-    }
-    setPendingList((prevList) =>
-      prevList.map((item) =>
-        item.productId === productId ? { ...item, quantity } : item
-      )
-    );
-  };
-
-  const removeFromPendingList = (productId: string) => {
-    setPendingList((prevList) =>
-      prevList.filter((item) => item.productId !== productId)
-    );
-  };
-
-  const handleCreatePendingOrder = async () => {
-    if (pendingList.length === 0) {
-      toast({ variant: 'destructive', title: 'List Kosong', description: 'Tambahkan produk ke daftar tunggu.' });
-      return;
-    }
-    if (!selectedCustomer) {
-      toast({ variant: 'destructive', title: 'Pelanggan Belum Dipilih', description: 'Pilih pelanggan untuk membuat pesanan tertunda.' });
-      return;
-    }
-
-    try {
-        const batchPromises = pendingList.map(item => {
-            return addDoc(collection(db, 'pendingOrders'), {
-                storeId: currentStoreId,
-                customerId: selectedCustomer.id,
-                customerName: selectedCustomer.name,
-                customerAvatarUrl: selectedCustomer.avatarUrl,
-                productId: item.productId,
-                productName: item.productName,
-                quantity: item.quantity,
-                createdAt: new Date().toISOString(),
-            });
-        });
-        
-        await Promise.all(batchPromises);
-
-        toast({
-        title: 'Pesanan Tertunda Dibuat!',
-        description: `Pesanan untuk ${pendingList.length} item telah dibuat untuk ${selectedCustomer.name}.`,
-        });
-        setPendingList([]);
-        onDataChange();
-
-    } catch (error) {
-        console.error("Error creating pending order:", error);
-        toast({ variant: 'destructive', title: 'Gagal Membuat Pesanan', description: 'Terjadi kesalahan saat menyimpan data.' });
-    }
-  };
-
-  const handleCustomerAdded = () => {
-      onDataChange();
+  const getDeliveryBadge = (method: 'Ambil Sendiri' | 'Dikirim Toko') => {
+      switch(method) {
+          case 'Ambil Sendiri':
+            return <Badge variant="secondary">Ambil Sendiri</Badge>;
+          case 'Dikirim Toko':
+            return <Badge variant="default" className="bg-blue-500/20 text-blue-800 border-blue-500/50">Dikirim Toko</Badge>;
+          default:
+            return <Badge variant="outline">{method}</Badge>;
+      }
   }
 
   return (
-    <div className="grid flex-1 items-start gap-4 lg:grid-cols-3 xl:grid-cols-5">
-      <div className="lg:col-span-2 xl:col-span-3">
-        <Card>
-          <CardHeader className="border-b">
-             <CardTitle className="font-headline tracking-wider">Produk Habis & Manual</CardTitle>
-             <CardDescription>Pilih produk yang habis atau tambahkan item baru ke daftar tunggu.</CardDescription>
-            <div className="relative flex items-center gap-2 pt-2">
-              <Search className="absolute left-2.5 top-4 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Cari produk yang habis..."
-                className="w-full rounded-lg bg-secondary pl-8"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <div className="flex items-center gap-2 pt-2">
-              <Input
-                placeholder="Tambah item manual (e.g., 'Baju edisi terbatas')"
-                value={manualItemName}
-                onChange={(e) => setManualItemName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAddManualItem()}
-              />
-              <Button onClick={handleAddManualItem} className="gap-1 whitespace-nowrap">
-                <Plus className="h-4 w-4" />
-                <span>Tambah Manual</span>
-              </Button>
-            </div>
+    <>
+      <Card>
+          <CardHeader>
+             <CardTitle className="font-headline tracking-wider">Pesanan Tertunda</CardTitle>
+             <CardDescription>Daftar pesanan yang masuk dari Katalog Publik dan perlu diproses.</CardDescription>
           </CardHeader>
-          <ScrollArea className="h-[calc(100vh-320px)]">
-            <CardContent className="p-0">
+          <CardContent>
+            <ScrollArea className="h-[calc(100vh-220px)]">
                <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Produk</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
+                    <TableHead>Pelanggan</TableHead>
+                    <TableHead>Waktu</TableHead>
+                    <TableHead>Total</TableHead>
+                    <TableHead>Metode</TableHead>
+                    <TableHead className="text-right">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                 {isLoading ? (
-                    Array.from({length: 10}).map((_, i) => (
+                    Array.from({length: 5}).map((_, i) => (
                         <TableRow key={i}>
-                            <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
-                            <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+                            <TableCell><Skeleton className="h-10 w-40" /></TableCell>
+                            <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                            <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                            <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                            <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                         </TableRow>
                     ))
-                ) : outOfStockProducts.map((product) => (
-                  <TableRow key={product.id}>
+                ) : realtimeOrders.map((order) => (
+                  <TableRow key={order.id}>
                     <TableCell>
-                      <div className="font-medium">{product.name}</div>
-                      <div className="text-xs text-muted-foreground">{product.attributes.brand}</div>
+                      <div className="flex items-center gap-3">
+                          <Avatar className="h-9 w-9">
+                              <AvatarImage src={order.customer.avatarUrl} alt={order.customer.name} />
+                              <AvatarFallback>{order.customer.name.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <div className="font-medium">{order.customer.name}</div>
+                      </div>
                     </TableCell>
-                    <TableCell>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => addToPendingList(product)}
-                        aria-label="Add to pending list"
-                        className="h-8 w-8 p-0"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
+                     <TableCell>{formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: idLocale })}</TableCell>
+                     <TableCell className="font-mono">Rp {order.totalAmount.toLocaleString('id-ID')}</TableCell>
+                     <TableCell>{getDeliveryBadge(order.deliveryMethod)}</TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                              <DropdownMenuLabel>Aksi</DropdownMenuLabel>
+                              <DropdownMenuItem onClick={() => setSelectedOrder(order)}>Lihat Detail</DropdownMenuItem>
+                              <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(order.id)}>Hapus Pesanan</DropdownMenuItem>
+                          </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
               </Table>
-            </CardContent>
-          </ScrollArea>
-        </Card>
-      </div>
-      <div className="xl:col-span-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-headline tracking-wider">
-              Daftar Tunggu Pesanan
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            <div className="flex items-center gap-2">
-              <Combobox
-                options={customerOptions}
-                value={selectedCustomer?.id}
-                onValueChange={(value) => {
-                  setSelectedCustomer(customers.find((c) => c.id === value));
-                }}
-                placeholder="Cari pelanggan..."
-                searchPlaceholder="Cari nama pelanggan..."
-                notFoundText="Pelanggan tidak ditemukan."
-              />
-              <Dialog open={isMemberDialogOpen} onOpenChange={setIsMemberDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="icon">
-                    <UserPlus className="h-4 w-4" />
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
-                  <DialogHeader>
-                    <DialogTitle className="font-headline tracking-wider">Daftar Pelanggan Baru</DialogTitle>
-                    <DialogDescription>Tambahkan pelanggan baru ke dalam sistem.</DialogDescription>
-                  </DialogHeader>
-                  <AddCustomerForm setDialogOpen={setIsMemberDialogOpen} onCustomerAdded={handleCustomerAdded} />
-                </DialogContent>
-              </Dialog>
-            </div>
-
-            {selectedCustomer && (
-              <div className="flex items-center justify-between rounded-lg border bg-card p-3">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src={selectedCustomer.avatarUrl} />
-                    <AvatarFallback>{selectedCustomer.name.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-semibold">{selectedCustomer.name}</p>
-                    <p className="text-sm text-muted-foreground">{selectedCustomer.phone}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="flex items-center gap-1 font-semibold text-primary">
-                    <Crown className="h-4 w-4" />
-                    <span>{selectedCustomer.memberTier}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            <Separator />
-            
-            <ScrollArea className="h-[300px] w-full">
-              <div className="space-y-4 pr-4">
-              {pendingList.length > 0 ? (
-                pendingList.map((item) => (
-                  <div key={item.productId} className="flex items-center gap-4">
-                    <div className="flex-1">
-                      <p className="font-medium">{item.productName}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Jumlah Diminta
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() =>
-                          updateQuantity(item.productId, item.quantity - 1)
-                        }
-                      >
-                        <MinusCircle className="h-4 w-4" />
-                      </Button>
-                      <span className="w-4 text-center">{item.quantity}</span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() =>
-                          updateQuantity(item.productId, item.quantity + 1)
-                        }
-                      >
-                        <PlusCircle className="h-4 w-4" />
-                      </Button>
-                    </div>
-                     <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-destructive/80 hover:text-destructive"
-                        onClick={() => removeFromPendingList(item.productId)}
-                      >
-                        <XCircle className="h-4 w-4" />
-                      </Button>
-                  </div>
-                ))
-              ) : (
+               {!isLoading && realtimeOrders.length === 0 && (
                 <div className="py-10 text-center text-sm text-muted-foreground">
-                  Belum ada produk di daftar tunggu.
+                  Belum ada pesanan yang tertunda.
                 </div>
               )}
-              </div>
-            </ScrollArea>
-            <Separator />
-            <Button size="lg" className="w-full gap-2 font-headline text-lg tracking-wider" onClick={handleCreatePendingOrder}>
-                <ClipboardList className="h-5 w-5" />
-                Buat Pesanan Tertunda
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+            </CardContent>
+          </ScrollArea>
+      </Card>
+      {selectedOrder && (
+          <OrderDetailsDialog order={selectedOrder} open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)} />
+      )}
+    </>
   );
 }

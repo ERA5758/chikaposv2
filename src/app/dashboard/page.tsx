@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -111,7 +112,7 @@ function DashboardContent() {
       case 'customer-analytics': return <CustomerAnalytics />;
       case 'employees': return <Employees />;
       case 'transactions': return <Transactions onDetailRequest={setTransactionForDetail} onPrintRequest={setTransactionToPrint} />;
-      case 'pending-orders': return <PendingOrders products={products} customers={customers} onDataChange={refreshData} isLoading={isLoading} />;
+      case 'pending-orders': return <PendingOrders />;
       case 'settings': return <Settings />;
       case 'challenges': return <Challenges />;
       case 'promotions': return <Promotions />;

@@ -1,8 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/lib/server/firebase-admin';
-import type { OrderPayload } from '@/lib/types';
-import { FieldValue } from 'firebase-admin/firestore';
+import type { OrderPayload, PendingOrder } from '@/lib/types';
 
 export async function POST(req: NextRequest) {
     const { db } = getFirebaseAdmin();
@@ -14,7 +13,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Data pesanan tidak lengkap.' }, { status: 400 });
         }
 
-        const newPendingOrder = {
+        // The entire order is now one document
+        const newPendingOrder: Omit<PendingOrder, 'id'> = {
             storeId,
             customer,
             items: cart,
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
             serviceFeeAmount,
             totalAmount,
             deliveryMethod,
-            status: 'Baru' as const,
+            status: 'Baru', // Initial status
             createdAt: new Date().toISOString(),
         };
 

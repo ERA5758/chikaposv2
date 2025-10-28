@@ -1,15 +1,13 @@
+
 'use client';
 import type { PointEarningSettings } from './server/point-earning-settings';
 
-// Untuk menambah kategori produk baru, tambahkan nama kategori di dalam daftar di bawah ini.
-// Pastikan untuk mengapitnya dengan tanda kutip tunggal (') dan menambahkan koma di akhir.
 export const productCategories = [
   'Pakaian',
   'Elektronik',
   'Aksesoris',
   'Perawatan Diri',
   'Kebutuhan Rumah Tangga',
-  'Makanan & Minuman',
   'Mainan & Hobi',
   'Buku & Alat Tulis',
   'Lainnya',
@@ -157,7 +155,7 @@ export type PendingOrder = {
   serviceFeeAmount: number;
   totalAmount: number;
   deliveryMethod: 'Ambil Sendiri' | 'Dikirim Toko';
-  status: 'Baru' | 'Diproses' | 'Selesai';
+  status: 'Baru';
   createdAt: string; // ISO 8601
 };
 
