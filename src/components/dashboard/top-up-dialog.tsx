@@ -19,7 +19,7 @@ import { db } from '@/lib/firebase';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import type { TopUpRequest } from '@/lib/types';
-import { getBankAccountSettings, type BankAccountSettings } from '@/lib/bank-account-settings';
+import { getBankAccountSettings, type BankAccountSettings } from '@/lib/server/bank-account-settings';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Badge } from '../ui/badge';
 import { format } from 'date-fns';
@@ -30,6 +30,17 @@ import { useDashboard } from '@/contexts/dashboard-context';
 type TopUpDialogProps = {
   setDialogOpen: (open: boolean) => void;
 };
+
+async function fetchBankAccountSettingsClient(): Promise<BankAccountSettings> {
+    const response = await fetch('/api/app-settings?type=bank');
+    if (!response.ok) {
+        console.error("Failed to fetch bank account settings");
+        // Return a default or empty state
+        return { bankName: '', accountNumber: '', accountHolder: '' };
+    }
+    return response.json();
+}
+
 
 export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
   const { activeStore, currentUser } = useAuth();
@@ -45,7 +56,11 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
 
   React.useEffect(() => {
     setUniqueCode(Math.floor(Math.random() * 900) + 100);
-    getBankAccountSettings().then(setBankSettings);
+    // Fetch bank settings from a client-side friendly API route
+    fetch('/api/app-settings?type=bank')
+        .then(res => res.json())
+        .then(data => setBankSettings(data))
+        .catch(err => console.error("Failed to fetch bank settings on client", err));
   }, []);
 
   React.useEffect(() => {
@@ -139,7 +154,8 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
     }
   };
 
-  const copyToClipboard = (text: string) => {
+  const copyToClipboard = (text: string | undefined) => {
+    if (!text) return;
     navigator.clipboard.writeText(text).then(() => {
         toast({ title: "Nomor Rekening Disalin!" });
     }, (err) => {
@@ -279,7 +295,7 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
                     {history.slice(0, 5).map(item => (
                         <TableRow key={item.id}>
                             <TableCell>{format(new Date(item.requestedAt), 'dd/MM/yy HH:mm')}</TableCell>
-                            <TableCell className="font-mono text-right">{item.tokensToAdd.toLocaleString('id-ID')}</TableCell>
+                            <TableCell className="font-mono text-right">{(item.tokensToAdd || 0).toLocaleString('id-ID')}</TableCell>
                             <TableCell>{getStatusBadge(item.status)}</TableCell>
                         </TableRow>
                     ))}
