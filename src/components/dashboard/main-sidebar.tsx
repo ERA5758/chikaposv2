@@ -10,6 +10,8 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
 } from '@/components/ui/sidebar';
 import { Logo } from '@/components/dashboard/logo';
 import {
@@ -27,13 +29,19 @@ import {
   UserCircle,
   BarChart4,
   Armchair,
-  ShieldCheck,
+  Store,
+  Wallet,
+  TrendingUp,
+  Map,
+  Newspaper,
+  ChefHat,
 } from 'lucide-react';
 import * as React from 'react';
 import { Separator } from '@/components/ui/separator';
 import { TopUpDialog } from '@/components/dashboard/top-up-dialog';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/auth-context';
+import { ThemeSwitcher } from '@/components/dashboard/theme-switcher';
 
 type MainSidebarProps = {
   pradanaTokenBalance: number;
@@ -44,7 +52,7 @@ export function MainSidebar({ pradanaTokenBalance }: MainSidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const defaultView = currentUser?.role === 'superadmin' ? 'platform-control' : (currentUser?.role === 'admin' ? 'overview' : 'pos');
+  const defaultView = currentUser?.role === 'kitchen' ? 'kitchen' : (currentUser?.role === 'admin' ? 'overview' : 'pos');
   const currentView = searchParams.get('view') || defaultView;
   
   const [isTopUpOpen, setIsTopUpOpen] = React.useState(false);
@@ -64,80 +72,51 @@ export function MainSidebar({ pradanaTokenBalance }: MainSidebarProps) {
     router.push('/login');
   };
 
-  const allMenuItems = [
-     {
-      view: 'platform-control',
-      label: 'Kontrol Platform',
-      icon: <ShieldCheck />,
-      roles: ['superadmin'],
+  const menuGroups = [
+    {
+        group: 'Operasional',
+        icon: <Store />,
+        roles: ['admin', 'cashier', 'kitchen'],
+        items: [
+            { view: 'overview', label: 'Overview', icon: <LayoutGrid />, roles: ['admin', 'cashier'] },
+            { view: 'pos', label: 'Kasir POS', icon: <Armchair />, roles: ['admin', 'cashier'] },
+            { view: 'kitchen', label: 'Dapur', icon: <ChefHat />, roles: ['admin', 'kitchen'] },
+            { view: 'transactions', label: 'Transaksi', icon: <History />, roles: ['admin', 'cashier'] },
+        ]
     },
     {
-      view: 'overview',
-      label: 'Overview',
-      icon: <LayoutGrid />,
-      roles: ['admin', 'cashier', 'superadmin'],
+        group: 'Manajemen',
+        icon: <Wallet />,
+        roles: ['admin', 'cashier'],
+        items: [
+            { view: 'products', label: 'Produk (Menu)', icon: <BookOpenCheck />, roles: ['admin', 'cashier'] },
+            { view: 'customers', label: 'Pelanggan', icon: <Contact2 />, roles: ['admin', 'cashier'] },
+            { view: 'employees', label: 'Karyawan', icon: <Users />, roles: ['admin'] },
+        ]
     },
     {
-      view: 'pos',
-      label: 'Manajemen Meja',
-      icon: <Armchair />,
-      roles: ['admin', 'cashier'],
-    },
-    {
-      view: 'transactions',
-      label: 'Transaksi',
-      icon: <History />,
-      roles: ['admin', 'cashier'],
-    },
-    {
-      view: 'products',
-      label: 'Produk (Menu)',
-      icon: <BookOpenCheck />,
-      roles: ['admin', 'cashier'],
-    },
-    {
-      view: 'employees',
-      label: 'Karyawan',
-      icon: <Users />,
-      roles: ['admin'],
-    },
-    {
-      view: 'customers',
-      label: 'Pelanggan',
-      icon: <Contact2 />,
-      roles: ['admin', 'cashier'],
+        group: 'Analisis & Pertumbuhan',
+        icon: <TrendingUp />,
+        roles: ['admin'],
+        items: [
+            { view: 'customer-analytics', label: 'Analisis Pelanggan', icon: <BarChart4 />, roles: ['admin'] },
+            { view: 'promotions', label: 'Promosi', icon: <Gift />, roles: ['admin'] },
+            { view: 'challenges', label: 'Tantangan', icon: <Trophy />, roles: ['admin'] },
+            { view: 'ai-business-plan', label: 'AI Business Plan', icon: <Map />, roles: ['admin'] },
+        ]
     },
      {
-      view: 'customer-analytics',
-      label: 'Analisis Pelanggan',
-      icon: <BarChart4 />,
-      roles: ['admin'],
-    },
-    {
-      view: 'promotions',
-      label: 'Promosi',
-      icon: <Gift />,
-      roles: ['admin', 'cashier'],
-    },
-    {
-      view: 'challenges',
-      label: 'Tantangan',
-      icon: <Trophy />,
-      roles: ['admin'],
-    },
-    {
-      view: 'receipt-settings',
-      label: 'Pengaturan Struk',
-      icon: <Receipt />,
-      roles: ['admin'],
+        group: 'Pengaturan Toko',
+        icon: <Settings />,
+        roles: ['admin'],
+        items: [
+            { view: 'receipt-settings', label: 'Pengaturan Struk', icon: <Receipt />, roles: ['admin'] },
+            { view: 'catalog', label: 'Katalog Publik', icon: <Newspaper />, roles: ['admin'] },
+        ]
     },
   ];
-  
-  const menuItems = currentUser 
-    ? allMenuItems.filter(item => item.roles.includes(currentUser.role))
-    : [];
 
-  const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin';
+  const isAdmin = currentUser?.role === 'admin';
 
   const tokenDisplay = (
       <div className="flex items-center justify-center gap-2 text-sidebar-foreground">
@@ -173,20 +152,30 @@ export function MainSidebar({ pradanaTokenBalance }: MainSidebarProps) {
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
-          {menuItems.map((item) => {
-            const isDisabledForAdmin = currentUser?.role === 'admin' && item.roles.includes('cashier') && !item.roles.includes('admin') && item.view !== 'overview';
+          {menuGroups.map((group) => {
+            if (!currentUser) return null;
+            const visibleItems = group.items.filter(item => item.roles.includes(currentUser.role));
+            if (visibleItems.length === 0) return null;
+
             return (
-                <SidebarMenuItem key={item.view}>
-                <SidebarMenuButton
-                    onClick={() => navigate(item.view)}
-                    isActive={currentView === item.view}
-                    tooltip={item.label}
-                    disabled={isDisabledForAdmin}
-                >
-                    {item.icon}
-                    <span>{item.label}</span>
-                </SidebarMenuButton>
-                </SidebarMenuItem>
+              <SidebarGroup key={group.group}>
+                <SidebarGroupLabel className="group-data-[collapsible=icon]:justify-center">
+                  {group.icon}
+                  <span>{group.group}</span>
+                </SidebarGroupLabel>
+                {visibleItems.map((item) => (
+                  <SidebarMenuItem key={item.view}>
+                    <SidebarMenuButton
+                      onClick={() => navigate(item.view)}
+                      isActive={currentView === item.view}
+                      tooltip={item.label}
+                    >
+                      {item.icon}
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarGroup>
             );
           })}
         </SidebarMenu>
@@ -205,6 +194,7 @@ export function MainSidebar({ pradanaTokenBalance }: MainSidebarProps) {
                   </div>
                </div>
             )}
+            <ThemeSwitcher />
           <SidebarMenuItem>
             <SidebarMenuButton tooltip="Pengaturan" onClick={() => navigate('settings')} isActive={currentView === 'settings'}>
               <Settings />
