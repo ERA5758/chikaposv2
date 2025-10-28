@@ -49,7 +49,8 @@ function OrderDetailsDialog({ order, open, onOpenChange }: { order: PendingOrder
     const { activeStore } = useAuth();
     if (!order || !activeStore) return null;
 
-    const confirmationMessage = `Halo ${order.customer.name}, pesanan Anda di ${activeStore.name} sudah kami terima dan sedang diproses. Mohon ditunggu ya. Terima kasih!`;
+    const itemsText = order.items.map(item => `- ${item.quantity}x ${item.productName}`).join('\n');
+    const confirmationMessage = `Halo ${order.customer.name}, pesanan Anda di *${activeStore.name}* sudah kami terima dan sedang diproses.\n\n*Rincian Pesanan:*\n${itemsText}\n\n*Total: Rp ${order.totalAmount.toLocaleString('id-ID')}*\n\nMohon ditunggu ya. Terima kasih!`;
     const whatsappUrl = `https://wa.me/${formatWhatsappNumber(order.customer.phone)}?text=${encodeURIComponent(confirmationMessage)}`;
     
     const handleProcessToPos = () => {
