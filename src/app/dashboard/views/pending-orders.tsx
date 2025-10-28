@@ -55,7 +55,7 @@ type PendingOrdersProps = {
     isLoading: boolean;
 };
 
-export default function PendingOrders({ products, customers, onDataChange, isLoading }: PendingOrdersProps) {
+export default function PendingOrders({ products = [], customers = [], onDataChange, isLoading }: PendingOrdersProps) {
   const { activeStore } = useAuth();
   const [pendingList, setPendingList] = React.useState<CartItem[]>([]);
   const [realtimeOrders, setRealtimeOrders] = React.useState<PendingOrder[]>([]);

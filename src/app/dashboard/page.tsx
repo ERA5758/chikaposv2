@@ -88,7 +88,7 @@ function DashboardContent() {
     return <DashboardSkeleton />;
   }
 
-  const { users, customers, transactions } = dashboardData;
+  const { users, customers, transactions, products } = dashboardData;
 
   const getCustomerForTransaction = (transaction: Transaction | null): Customer | undefined => {
     if (!transaction?.customerId || transaction.customerId === 'N/A') return undefined;
@@ -111,7 +111,7 @@ function DashboardContent() {
       case 'customer-analytics': return <CustomerAnalytics />;
       case 'employees': return <Employees />;
       case 'transactions': return <Transactions onDetailRequest={setTransactionForDetail} onPrintRequest={setTransactionToPrint} />;
-      case 'pending-orders': return <PendingOrders />;
+      case 'pending-orders': return <PendingOrders products={products} customers={customers} onDataChange={refreshData} isLoading={isLoading} />;
       case 'settings': return <Settings />;
       case 'challenges': return <Challenges />;
       case 'promotions': return <Promotions />;
