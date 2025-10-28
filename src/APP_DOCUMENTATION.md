@@ -1,6 +1,6 @@
-# Chika POS F&B: Solusi Cerdas untuk Bisnis Kuliner Anda
+# Chika POS: Solusi Cerdas untuk Bisnis Kuliner Anda
 
-**Chika POS F&B** adalah sistem Point of Sale (POS) modern yang dirancang khusus untuk menyederhanakan dan mengoptimalkan operasional bisnis Makanan & Minuman, mulai dari kafe, restoran, hingga *cloud kitchen*.
+**Chika POS** adalah sistem Point of Sale (POS) modern yang dirancang khusus untuk menyederhanakan dan mengoptimalkan operasional bisnis Makanan & Minuman, mulai dari kafe, restoran, hingga *cloud kitchen*.
 
 Aplikasi ini mengintegrasikan manajemen pesanan yang efisien, analisis data penjualan yang mendalam, dan serangkaian fitur bertenaga AI untuk membantu Anda tidak hanya menjalankan bisnis, tetapi juga membangun komunitas pelanggan yang setia dan berkembang.
 
@@ -12,7 +12,7 @@ Aplikasi ini mengintegrasikan manajemen pesanan yang efisien, analisis data penj
 
 ---
 
-## ✨ Fitur Unggulan Chika POS F&B
+## ✨ Fitur Unggulan Chika POS
 
 Setiap fitur dirancang untuk meningkatkan efisiensi, memperkuat hubungan dengan pelanggan, dan memberikan data yang Anda butuhkan untuk berkembang.
 

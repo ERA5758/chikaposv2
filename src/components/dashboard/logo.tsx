@@ -13,7 +13,7 @@ export function Logo({ storeName }: LogoProps) {
         <UtensilsCrossed className="h-6 w-6 text-primary" />
       </div>
       <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-        <span className="font-headline text-xl leading-none tracking-wider text-sidebar-foreground">CHIKA POS F&B</span>
+        <span className="font-headline text-xl leading-none tracking-wider text-sidebar-foreground">CHIKA POS</span>
         {storeName && (
             <span className="text-xs font-medium text-sidebar-foreground/70">{storeName}</span>
         )}

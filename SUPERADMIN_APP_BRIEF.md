@@ -1,8 +1,8 @@
-# Project Brief: Aplikasi Superadmin untuk Platform Chika POS F&B
+# Project Brief: Aplikasi Superadmin untuk Platform Chika POS
 
 ## 1. Tujuan Utama Proyek
 
-Membangun sebuah aplikasi web internal (panel admin) yang aman dan efisien bagi **Superadmin** untuk mengelola seluruh ekosistem platform Chika POS F&B. Aplikasi ini terpisah dari aplikasi kasir yang digunakan oleh tenant (toko).
+Membangun sebuah aplikasi web internal (panel admin) yang aman dan efisien bagi **Superadmin** untuk mengelola seluruh ekosistem platform Chika POS. Aplikasi ini terpisah dari aplikasi kasir yang digunakan oleh tenant (toko).
 
 Fungsi utamanya adalah untuk melakukan manajemen tenant, memverifikasi transaksi keuangan (top-up token), mengelola fitur premium, dan memantau kesehatan platform secara keseluruhan.
 
