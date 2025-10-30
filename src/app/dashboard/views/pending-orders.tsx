@@ -28,7 +28,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { collection, onSnapshot, query, Unsubscribe, doc, deleteDoc, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, query, Unsubscribe, doc, deleteDoc, orderBy, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context';
@@ -51,7 +51,13 @@ function OrderDetailsDialog({ order, open, onOpenChange }: { order: PendingOrder
     if (!order || !activeStore) return null;
 
     const itemsText = order.items.map(item => `- ${item.quantity}x ${item.productName}`).join('\n');
-    const confirmationMessage = `Halo ${order.customer.name}, pesanan Anda di *${activeStore.name}* sudah kami terima dan sedang diproses.\n\n*Rincian Pesanan:*\n${itemsText}\n\n*Total: Rp ${order.totalAmount.toLocaleString('id-ID')}*\n\nMohon ditunggu ya. Terima kasih!`;
+    
+    let addressText = '';
+    if (order.deliveryMethod === 'Dikirim Toko' && order.customer.address) {
+        addressText = `\n\n*Alamat Pengiriman:*\n${order.customer.address}`;
+    }
+
+    const confirmationMessage = `Halo ${order.customer.name}, pesanan Anda di *${activeStore.name}* sudah kami terima dan sedang diproses.\n\n*Rincian Pesanan:*\n${itemsText}${addressText}\n\n*Total: Rp ${order.totalAmount.toLocaleString('id-ID')}*\n\nMohon ditunggu ya. Terima kasih!`;
     const whatsappUrl = `https://wa.me/${formatWhatsappNumber(order.customer.phone)}?text=${encodeURIComponent(confirmationMessage)}`;
     
     const handleProcessToPos = () => {
