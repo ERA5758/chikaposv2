@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import { getTransactionFeeSettings } from '@/lib/server/app-settings';
 import { getBankAccountSettings } from '@/lib/bank-account-settings';
@@ -9,14 +8,13 @@ export async function GET(req: NextRequest) {
 
   try {
     if (type === 'bank') {
-        const settings = await getBankAccountSettings();
-        return NextResponse.json(settings);
+      const settings = await getBankAccountSettings();
+      return NextResponse.json(settings);
     }
     
-    // Default to transaction fee settings if no type or other type is specified
+    // Default to transaction fee settings
     const settings = await getTransactionFeeSettings();
     return NextResponse.json(settings);
-
   } catch (error) {
     console.error('Error fetching app settings:', error);
     return NextResponse.json(
