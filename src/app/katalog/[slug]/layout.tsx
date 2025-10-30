@@ -48,15 +48,15 @@ export async function generateMetadata(
 
   const { storeData, products } = data;
 
-  const title = `${storeData.name} - Lihat Menu Kami`;
-  const description = storeData.description || `Jelajahi menu lengkap dari ${storeData.name}. Pesan sekarang melalui katalog digital kami.`;
+  const title = `${storeData.name} - Lihat Katalog Produk Kami`;
+  const description = storeData.description || `Jelajahi katalog lengkap dari ${storeData.name}. Pesan sekarang melalui katalog digital kami.`;
   const siteUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://kasir-pos-chika.web.app';
   const catalogUrl = `${siteUrl}/katalog/${slug}`;
 
-  // --- JSON-LD Structured Data ---
+  // --- JSON-LD Structured Data for a generic Retail Store ---
   const jsonLd = {
     '@context': 'https://schema.org',
-    '@type': 'FoodEstablishment',
+    '@type': 'Store',
     name: storeData.name,
     description: description,
     url: catalogUrl,
@@ -66,18 +66,24 @@ export async function generateMetadata(
       addressLocality: storeData.location || 'Indonesia',
       addressCountry: 'ID'
     },
-    servesCuisine: storeData.businessDescription || 'Makanan & Minuman',
-    hasMenu: {
-      '@type': 'Menu',
-      hasMenuItem: products.map((product) => ({
-        '@type': 'MenuItem',
-        name: product.name,
-        description: product.description || product.name,
-        offers: {
-          '@type': 'Offer',
-          price: product.price.toString(),
-          priceCurrency: 'IDR'
-        }
+    hasOfferCatalog: {
+      '@type': 'OfferCatalog',
+      name: `Katalog Produk ${storeData.name}`,
+      itemListElement: products.map((product) => ({
+        '@type': 'Offer',
+        itemOffered: {
+          '@type': 'Product',
+          name: product.name,
+          description: product.description || product.name,
+          image: product.imageUrl,
+          sku: product.attributes.barcode,
+          brand: {
+            '@type': 'Brand',
+            name: product.attributes.brand
+          }
+        },
+        price: product.price.toString(),
+        priceCurrency: 'IDR'
       }))
     }
   };
