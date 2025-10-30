@@ -29,6 +29,7 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { BarcodeScanner } from './barcode-scanner';
 import { useAuth } from '@/contexts/auth-context';
+import { Textarea } from '../ui/textarea';
 
 const currentYear = new Date().getFullYear();
 const years = Array.from({ length: 100 }, (_, i) =>
@@ -50,6 +51,7 @@ const FormSchema = z
     phone: z.string().min(10, {
       message: 'Nomor telepon minimal harus 10 digit.',
     }),
+    address: z.string().optional(),
     birthDay: z.string().optional(),
     birthMonth: z.string().optional(),
     birthYear: z.string().optional(),
@@ -71,6 +73,7 @@ export function AddCustomerForm({ setDialogOpen, onCustomerAdded }: AddCustomerF
     defaultValues: {
       name: '',
       phone: '',
+      address: '',
     },
   });
 
@@ -106,6 +109,7 @@ export function AddCustomerForm({ setDialogOpen, onCustomerAdded }: AddCustomerF
         await addDoc(collection(db, 'stores', activeStore.id, 'customers'), {
             name: data.name,
             phone: data.phone,
+            address: data.address || '',
             birthDate: birthDate,
             joinDate: new Date().toISOString(),
             loyaltyPoints: 0,
@@ -165,6 +169,19 @@ export function AddCustomerForm({ setDialogOpen, onCustomerAdded }: AddCustomerF
                         <span className="sr-only">Scan QR Code</span>
                     </Button>
                 </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+         <FormField
+          control={form.control}
+          name="address"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Alamat Lengkap (Opsional)</FormLabel>
+              <FormControl>
+                <Textarea placeholder="Untuk keperluan pengiriman pesanan" {...field} />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
