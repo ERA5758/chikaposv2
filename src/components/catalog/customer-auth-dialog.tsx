@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { Customer } from '@/lib/types';
 import { formatWhatsappNumber } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Textarea } from '../ui/textarea';
 
 type CustomerAuthDialogProps = {
     open: boolean;
@@ -34,6 +35,9 @@ export function CustomerAuthDialog({ open, onOpenChange, storeId, onLoginSuccess
     const [step, setStep] = React.useState<AuthStep>('PHONE_INPUT');
     const [phone, setPhone] = React.useState('');
     const [name, setName] = React.useState('');
+    const [address, setAddress] = React.useState('');
+    const [latitude, setLatitude] = React.useState<number | undefined>(undefined);
+    const [longitude, setLongitude] = React.useState<number | undefined>(undefined);
     const [birthDay, setBirthDay] = React.useState('');
     const [birthMonth, setBirthMonth] = React.useState('');
     const [birthYear, setBirthYear] = React.useState('');
@@ -46,6 +50,9 @@ export function CustomerAuthDialog({ open, onOpenChange, storeId, onLoginSuccess
             setStep('PHONE_INPUT');
             setPhone('');
             setName('');
+            setAddress('');
+            setLatitude(undefined);
+            setLongitude(undefined);
             setBirthDay('');
             setBirthMonth('');
             setBirthYear('');
@@ -99,7 +106,7 @@ export function CustomerAuthDialog({ open, onOpenChange, storeId, onLoginSuccess
             const response = await fetch('/api/customer-auth', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone: formatWhatsappNumber(phone), name, storeId, birthDate }),
+                body: JSON.stringify({ phone: formatWhatsappNumber(phone), name, storeId, birthDate, address, latitude, longitude }),
             });
             const data = await response.json();
             
@@ -123,7 +130,7 @@ export function CustomerAuthDialog({ open, onOpenChange, storeId, onLoginSuccess
                     <form onSubmit={handleRegisterSubmit} className="space-y-4">
                         <DialogTitle>Selamat Datang!</DialogTitle>
                         <DialogDescription id={descriptionId}>
-                            Nomor Anda belum terdaftar. Masukkan nama Anda untuk menjadi member.
+                            Nomor Anda belum terdaftar. Lengkapi data untuk menjadi member.
                         </DialogDescription>
                         <div className="space-y-2">
                             <Label htmlFor="name">Nama Anda</Label>
@@ -134,6 +141,20 @@ export function CustomerAuthDialog({ open, onOpenChange, storeId, onLoginSuccess
                                 placeholder="Nama Lengkap Anda"
                                 autoFocus
                             />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="address-input">Alamat Pengiriman (Opsional)</Label>
+                           <Textarea id="address-input" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Masukkan alamat lengkap untuk pengiriman" rows={3} />
+                        </div>
+                         <div className="grid grid-cols-2 gap-4">
+                           <div className="space-y-2">
+                             <Label htmlFor="lat-input">Latitude (Opsional)</Label>
+                             <Input id="lat-input" type="number" step="any" value={latitude ?? ''} onChange={(e) => setLatitude(parseFloat(e.target.value))} placeholder="-6.2088" />
+                           </div>
+                           <div className="space-y-2">
+                             <Label htmlFor="lng-input">Longitude (Opsional)</Label>
+                             <Input id="lng-input" type="number" step="any" value={longitude ?? ''} onChange={(e) => setLongitude(parseFloat(e.target.value))} placeholder="106.8456" />
+                           </div>
                         </div>
                         <div className="space-y-2">
                             <Label>Tanggal Lahir (Opsional)</Label>

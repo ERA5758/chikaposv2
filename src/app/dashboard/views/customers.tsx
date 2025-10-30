@@ -21,7 +21,7 @@ import type { Customer } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, PlusCircle } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Globe } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,9 +54,14 @@ import { useDashboard } from '@/contexts/dashboard-context';
 import { db } from '@/lib/firebase';
 import { doc, deleteDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
 function CustomerDetailsDialog({ customer, open, onOpenChange }: { customer: Customer; open: boolean; onOpenChange: (open: boolean) => void }) {
     if (!customer) return null;
+
+    const mapUrl = (customer.latitude && customer.longitude) 
+        ? `https://www.google.com/maps/search/?api=1&query=${customer.latitude},${customer.longitude}`
+        : null;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -82,6 +87,19 @@ function CustomerDetailsDialog({ customer, open, onOpenChange }: { customer: Cus
                         )}
                     </div>
                 </div>
+                 {customer.address && (
+                    <div className="space-y-1 text-sm border-t pt-4">
+                        <p className="font-semibold">Alamat Pengiriman</p>
+                        <p className="text-muted-foreground whitespace-pre-wrap">{customer.address}</p>
+                        {mapUrl && (
+                            <Button variant="link" asChild className="p-0 h-auto">
+                                <Link href={mapUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1">
+                                    <Globe className="h-3 w-3" /> Lihat di Peta
+                                </Link>
+                            </Button>
+                        )}
+                    </div>
+                 )}
             </DialogContent>
         </Dialog>
     );
@@ -147,7 +165,7 @@ export default function Customers() {
               <DialogTrigger asChild>
                 <Button size="sm" className="gap-1">
                   <PlusCircle className="h-3.5 w-3.5" />
-                  <span className="sr-only sm:not-sr-only sm:whitespace-rap">
+                  <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                     Tambah Pelanggan
                   </span>
                 </Button>

@@ -17,7 +17,7 @@ function formatPhoneNumber(phone: string): string {
 export async function POST(req: NextRequest) {
     const { db } = getFirebaseAdmin();
     try {
-        const { phone, name, storeId, birthDate } = await req.json();
+        const { phone, name, storeId, birthDate, address, latitude, longitude } = await req.json();
 
         if (!phone || !storeId) {
             return NextResponse.json({ error: 'Nomor HP dan ID Toko diperlukan.' }, { status: 400 });
@@ -42,7 +42,9 @@ export async function POST(req: NextRequest) {
                 const newCustomerData = {
                     name,
                     phone: formattedPhone,
-                    address: '', // Initialize address as empty
+                    address: address || '',
+                    latitude: latitude || null,
+                    longitude: longitude || null,
                     joinDate: new Date().toISOString(),
                     birthDate: birthDate || new Date(0).toISOString().split('T')[0], // Use provided or default date
                     loyaltyPoints: 0,
@@ -69,23 +71,31 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
     const { db } = getFirebaseAdmin();
     try {
-        const { storeId, customerId, address } = await req.json();
+        const { storeId, customerId, address, latitude, longitude } = await req.json();
 
-        if (!storeId || !customerId || typeof address !== 'string') {
+        if (!storeId || !customerId) {
             return NextResponse.json({ error: 'Data tidak lengkap untuk memperbarui alamat.' }, { status: 400 });
         }
 
         const customerRef = db.collection('stores').doc(storeId).collection('customers').doc(customerId);
         
-        // Verify customer exists before updating
         const customerDoc = await customerRef.get();
         if (!customerDoc.exists) {
             return NextResponse.json({ error: 'Pelanggan tidak ditemukan.' }, { status: 404 });
         }
+        
+        const updateData: { [key: string]: any } = {};
+        if (typeof address === 'string') updateData.address = address;
+        if (typeof latitude === 'number') updateData.latitude = latitude;
+        if (typeof longitude === 'number') updateData.longitude = longitude;
 
-        await customerRef.update({ address: address });
+        if (Object.keys(updateData).length === 0) {
+            return NextResponse.json({ error: 'Tidak ada data untuk diperbarui.' }, { status: 400 });
+        }
 
-        const updatedCustomerData = { id: customerDoc.id, ...customerDoc.data(), address };
+        await customerRef.update(updateData);
+
+        const updatedCustomerData = { id: customerDoc.id, ...customerDoc.data(), ...updateData };
 
         return NextResponse.json({ success: true, message: 'Alamat berhasil diperbarui.', customer: updatedCustomerData });
 

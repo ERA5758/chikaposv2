@@ -52,6 +52,8 @@ const FormSchema = z
       message: 'Nomor telepon minimal harus 10 digit.',
     }),
     address: z.string().optional(),
+    latitude: z.coerce.number().optional(),
+    longitude: z.coerce.number().optional(),
     birthDay: z.string().optional(),
     birthMonth: z.string().optional(),
     birthYear: z.string().optional(),
@@ -110,6 +112,8 @@ export function AddCustomerForm({ setDialogOpen, onCustomerAdded }: AddCustomerF
             name: data.name,
             phone: data.phone,
             address: data.address || '',
+            latitude: data.latitude || null,
+            longitude: data.longitude || null,
             birthDate: birthDate,
             joinDate: new Date().toISOString(),
             loyaltyPoints: 0,
@@ -186,6 +190,34 @@ export function AddCustomerForm({ setDialogOpen, onCustomerAdded }: AddCustomerF
             </FormItem>
           )}
         />
+        <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="latitude"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Latitude (Opsional)</FormLabel>
+                  <FormControl>
+                    <Input type="number" step="any" placeholder="-6.2088" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="longitude"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Longitude (Opsional)</FormLabel>
+                  <FormControl>
+                    <Input type="number" step="any" placeholder="106.8456" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+        </div>
         <div className="space-y-2">
           <FormLabel>Tanggal Lahir (Opsional)</FormLabel>
           <div className="grid grid-cols-3 gap-2">

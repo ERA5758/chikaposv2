@@ -291,6 +291,51 @@ function OrderStatusCard({ order, onComplete }: { order: PendingOrder, onComplet
     )
 }
 
+function AddressDialog({ open, onOpenChange, onSave, currentAddress, currentLat, currentLng }: { open: boolean; onOpenChange: (open: boolean) => void; onSave: (address: string, lat?: number, lng?: number) => void; currentAddress: string, currentLat?: number, currentLng?: number }) {
+    const [address, setAddress] = React.useState(currentAddress);
+    const [latitude, setLatitude] = React.useState(currentLat);
+    const [longitude, setLongitude] = React.useState(currentLng);
+    const { toast } = useToast();
+
+    const handleSave = () => {
+        if (!address.trim()) {
+            toast({ variant: 'destructive', title: 'Alamat tidak boleh kosong.' });
+            return;
+        }
+        onSave(address, latitude, longitude);
+        onOpenChange(false);
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Lengkapi Alamat Pengiriman</DialogTitle>
+                </DialogHeader>
+                <div className="py-4 space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="address-input">Alamat Lengkap</Label>
+                        <Textarea id="address-input" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Masukkan alamat lengkap Anda..." rows={4} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                       <div className="space-y-2">
+                         <Label htmlFor="lat-input">Latitude (Opsional)</Label>
+                         <Input id="lat-input" type="number" step="any" value={latitude ?? ''} onChange={(e) => setLatitude(parseFloat(e.target.value))} placeholder="-6.2088" />
+                       </div>
+                       <div className="space-y-2">
+                         <Label htmlFor="lng-input">Longitude (Opsional)</Label>
+                         <Input id="lng-input" type="number" step="any" value={longitude ?? ''} onChange={(e) => setLongitude(parseFloat(e.target.value))} placeholder="106.8456" />
+                       </div>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button onClick={handleSave}>Simpan Alamat</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 export default function CatalogPage() {
     const params = useParams();
     const slug = params?.slug as string;
@@ -324,8 +369,8 @@ export default function CatalogPage() {
 
     // --- Delivery Method & Address ---
     const [deliveryMethod, setDeliveryMethod] = React.useState<'Ambil Sendiri' | 'Dikirim Toko'>('Ambil Sendiri');
-    const [deliveryAddress, setDeliveryAddress] = React.useState('');
     const [orderNotes, setOrderNotes] = React.useState('');
+    const [isAddressDialogOpen, setIsAddressDialogOpen] = React.useState(false);
 
 
     React.useEffect(() => {
@@ -469,12 +514,13 @@ export default function CatalogPage() {
     const handleCreateOrder = async () => {
         if (!loggedInCustomer || !store || cart.length === 0) return;
         
-        if (deliveryMethod === 'Dikirim Toko' && !deliveryAddress.trim()) {
+        if (deliveryMethod === 'Dikirim Toko' && !loggedInCustomer.address) {
             toast({
                 variant: 'destructive',
                 title: 'Alamat Pengiriman Diperlukan',
-                description: 'Mohon isi alamat pengiriman lengkap Anda.',
+                description: 'Mohon lengkapi alamat Anda terlebih dahulu.',
             });
+            setIsAddressDialogOpen(true);
             return;
         }
 
@@ -495,7 +541,6 @@ export default function CatalogPage() {
                 serviceFeeAmount: serviceFeeAmount,
                 totalAmount: totalAmount,
                 deliveryMethod: deliveryMethod,
-                deliveryAddress: deliveryAddress,
                 notes: orderNotes,
             };
             const response = await fetch('/api/catalog/order', {
@@ -521,7 +566,6 @@ export default function CatalogPage() {
                     serviceFeeAmount: serviceFeeAmount,
                     totalAmount: totalAmount,
                     deliveryMethod: deliveryMethod,
-                    deliveryAddress: deliveryAddress,
                     notes: orderNotes,
                     status: 'Baru',
                     createdAt: new Date().toISOString(),
@@ -535,7 +579,6 @@ export default function CatalogPage() {
                 description: 'Pesanan Anda sedang diproses oleh kasir. Mohon tunggu notifikasi selanjutnya.',
             });
             setCart([]);
-            setDeliveryAddress('');
             setOrderNotes('');
 
         } catch (error) {
@@ -546,6 +589,33 @@ export default function CatalogPage() {
             });
         } finally {
             setIsSubmittingOrder(false);
+        }
+    };
+    
+    const handleSaveAddress = async (address: string, lat?: number, lng?: number) => {
+        if (!loggedInCustomer || !store) return;
+        
+        try {
+            const response = await fetch('/api/customer-auth', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    storeId: store.id,
+                    customerId: loggedInCustomer.id,
+                    address,
+                    latitude: lat,
+                    longitude: lng,
+                })
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Gagal menyimpan alamat.');
+
+            handleLoginSuccess(data.customer); // Update local state with new customer data
+            toast({ title: 'Alamat berhasil diperbarui!' });
+
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Error', description: (error as Error).message });
         }
     };
 
@@ -829,14 +899,15 @@ export default function CatalogPage() {
 
                     {deliveryMethod === 'Dikirim Toko' && (
                         <div className="space-y-2">
-                            <Label htmlFor="delivery-address">Alamat Pengiriman Lengkap</Label>
-                            <Textarea 
-                                id="delivery-address" 
-                                value={deliveryAddress}
-                                onChange={(e) => setDeliveryAddress(e.target.value)}
-                                placeholder="Masukkan nama jalan, nomor rumah, RT/RW, kelurahan, kecamatan, kota, dan kode pos."
-                                rows={3}
-                            />
+                            <Label htmlFor="delivery-address">Alamat Pengiriman</Label>
+                            {loggedInCustomer?.address ? (
+                                <div className="p-3 rounded-md border bg-secondary">
+                                    <p className="text-sm">{loggedInCustomer.address}</p>
+                                    <Button variant="link" size="sm" className="p-0 h-auto" onClick={() => setIsAddressDialogOpen(true)}>Ubah Alamat</Button>
+                                </div>
+                            ) : (
+                                <Button variant="outline" onClick={() => setIsAddressDialogOpen(true)}>Lengkapi Alamat Pengiriman</Button>
+                            )}
                         </div>
                     )}
 
@@ -888,6 +959,17 @@ export default function CatalogPage() {
             storeId={store.id}
             onLoginSuccess={handleLoginSuccess}
         />}
+        
+        {loggedInCustomer && (
+            <AddressDialog
+                open={isAddressDialogOpen}
+                onOpenChange={setIsAddressDialogOpen}
+                currentAddress={loggedInCustomer.address || ''}
+                currentLat={loggedInCustomer.latitude}
+                currentLng={loggedInCustomer.longitude}
+                onSave={handleSaveAddress}
+            />
+        )}
 
         {noteProduct && (
             <NoteDialog
