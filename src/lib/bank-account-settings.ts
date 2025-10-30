@@ -1,8 +1,5 @@
 
-'use client';
-
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from './firebase';
+import { getFirebaseAdmin } from './server/firebase-admin';
 
 export type BankAccountSettings = {
     bankName: string;
@@ -18,19 +15,20 @@ export const defaultBankAccountSettings: BankAccountSettings = {
 };
 
 /**
- * Fetches Bank Account settings from Firestore.
+ * Fetches Bank Account settings from Firestore using the Admin SDK.
  * @returns The bank account settings, or default settings if not found.
  */
 export async function getBankAccountSettings(): Promise<BankAccountSettings> {
-    const settingsDocRef = doc(db, 'appSettings', 'bankAccount');
+    const { db } = getFirebaseAdmin();
+    const settingsDocRef = db.collection('appSettings').doc('bankAccount');
     try {
-        const docSnap = await getDoc(settingsDocRef);
+        const docSnap = await settingsDocRef.get();
 
-        if (docSnap.exists()) {
-            return { ...defaultBankAccountSettings, ...docSnap.data() };
+        if (docSnap.exists) {
+            return { ...defaultBankAccountSettings, ...docSnap.data() as BankAccountSettings };
         } else {
             console.warn(`Bank account settings not found, creating document with default values.`);
-            await setDoc(settingsDocRef, defaultBankAccountSettings);
+            await settingsDocRef.set(defaultBankAccountSettings);
             return defaultBankAccountSettings;
         }
     } catch (error) {
