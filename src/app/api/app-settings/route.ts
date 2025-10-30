@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getTransactionFeeSettings } from '@/lib/server/app-settings';
-import { getBankAccountSettings } from '@/lib/server/bank-account-settings';
+import { getBankAccountSettings } from '@/lib/bank-account-settings';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
