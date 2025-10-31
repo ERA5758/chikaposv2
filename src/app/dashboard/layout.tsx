@@ -55,4 +55,11 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 export default function DashboardLayout({
   children,
 }: {
-  children:
+  children: React.ReactNode;
+}) {
+  return (
+    <AuthGuard>
+        {children}
+    </AuthGuard>
+  )
+}

@@ -99,7 +99,7 @@ function WelcomeTourCard() {
         <X className="h-4 w-4" />
         <span className="sr-only">Tutup</span>
       </Button>
-      <AlertTitle className="font-headline tracking-wider text-xl text-primary">Selamat Datang di Chika POS F&B!</AlertTitle>
+      <AlertTitle className="font-headline tracking-wider text-xl text-primary">Selamat Datang di Chika POS!</AlertTitle>
       <AlertDescription>
         Aplikasi Anda sudah siap. Ayo jelajahi fitur-fitur utama yang akan membantu bisnis Anda.
       </AlertDescription>
