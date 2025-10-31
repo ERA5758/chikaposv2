@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -37,6 +38,12 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     }
   }, [activeStore, tourStorageKey]);
 
+  const navigateToStep = (step: TourStep) => {
+    const newParams = new URLSearchParams(searchParams.toString());
+    newParams.set('view', step.view);
+    router.push(`/dashboard?${newParams.toString()}`);
+  };
+
   const startTour = () => {
     setCurrentStepIndex(0);
     setIsTourActive(true);
@@ -56,13 +63,9 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   const completeTour = () => {
     setIsTourActive(false);
     setIsTourCompleted(true);
-    localStorage.setItem(tourStorageKey, 'true');
-  };
-
-  const navigateToStep = (step: TourStep) => {
-    const newParams = new URLSearchParams(searchParams.toString());
-    newParams.set('view', step.view);
-    router.push(`/dashboard?${newParams.toString()}`);
+    if (activeStore) {
+      localStorage.setItem(tourStorageKey, 'true');
+    }
   };
 
   const value: TourContextType = {
