@@ -20,7 +20,7 @@ import {
   Bar,
   BarChart,
 } from 'recharts';
-import { TrendingUp, DollarSign, Sparkles, ShoppingBag, Target, CheckCircle, Calendar as CalendarIcon, TrendingDown, FileText, FileSpreadsheet, PackageX, Newspaper, PlayCircle, X } from 'lucide-react';
+import { TrendingUp, DollarSign, Sparkles, ShoppingBag, Target, CheckCircle, Calendar as CalendarIcon, TrendingDown, FileText, FileSpreadsheet, PackageX, Newspaper } from 'lucide-react';
 import { subMonths, format, startOfMonth, endOfMonth, isWithinInterval, formatISO, subDays, addDays } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -38,7 +38,6 @@ import { useAuth } from '@/contexts/auth-context';
 import { useDashboard } from '@/contexts/dashboard-context';
 import Papa from 'papaparse';
 import { AIConfirmationDialog } from '@/components/dashboard/ai-confirmation-dialog';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface AdminRecommendationInput {
   businessDescription: string;
@@ -60,59 +59,6 @@ const chartConfig = {
     color: 'hsl(var(--primary))',
   },
 };
-
-function WelcomeTourCard() {
-  const { startTour } = useDashboard();
-  const [isVisible, setIsVisible] = React.useState(false);
-
-  // Check localStorage to see if the card should be shown
-  React.useEffect(() => {
-    const dismissed = localStorage.getItem('chika-welcome-tour-dismissed') === 'true';
-    const completed = localStorage.getItem('chika-tour-viewed') === 'true';
-    if (!dismissed && !completed) {
-      setIsVisible(true);
-    }
-  }, []);
-
-  const handleDismiss = () => {
-    localStorage.setItem('chika-welcome-tour-dismissed', 'true');
-    setIsVisible(false);
-  };
-  
-  const handleStartTour = () => {
-    handleDismiss(); // Also dismiss the card when the tour starts
-    startTour();
-  }
-
-  if (!isVisible) {
-    return null;
-  }
-
-  return (
-    <Alert className="relative border-primary/30 bg-primary/10">
-      <Button
-        variant="ghost"
-        size="icon"
-        className="absolute top-2 right-2 h-6 w-6"
-        onClick={handleDismiss}
-      >
-        <X className="h-4 w-4" />
-        <span className="sr-only">Tutup</span>
-      </Button>
-      <AlertTitle className="font-headline tracking-wider text-xl text-primary">Selamat Datang di Chika POS!</AlertTitle>
-      <AlertDescription>
-        Aplikasi Anda sudah siap. Ayo jelajahi fitur-fitur utama yang akan membantu bisnis Anda.
-      </AlertDescription>
-      <div className="mt-4">
-        <Button onClick={handleStartTour}>
-          <PlayCircle className="mr-2 h-4 w-4" />
-          Mulai Tur
-        </Button>
-      </div>
-    </Alert>
-  );
-}
-
 
 export default function AdminOverview() {
   const { activeStore, updateActiveStore, refreshActiveStore } = useAuth();
@@ -461,8 +407,6 @@ export default function AdminOverview() {
 
   return (
     <div className="grid gap-6">
-      <WelcomeTourCard />
-
       {isTrialAvailable && (
         <Card className="border-primary/50 bg-primary/10">
           <CardHeader>

@@ -5,26 +5,8 @@ import { collection, getDocs, query, orderBy, onSnapshot, Unsubscribe, where } f
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import type { User, RedemptionOption, Product, Store, Customer, Transaction, PendingOrder, Table, ChallengePeriod, TransactionFeeSettings } from '@/lib/types';
+import { defaultFeeSettings } from '@/lib/server/app-settings';
 
-// Default settings, defined on the client-side to avoid server imports.
-const defaultFeeSettings: TransactionFeeSettings = {
-  tokenValueRp: 1000,
-  feePercentage: 0.005,
-  minFeeRp: 500,
-  maxFeeRp: 2500,
-  aiUsageFee: 1,
-  newStoreBonusTokens: 50,
-  aiBusinessPlanFee: 25,
-  aiSessionFee: 5,
-  aiSessionDurationMinutes: 30,
-  catalogMonthlyFee: 250,
-  catalogSixMonthFee: 1400,
-  catalogYearlyFee: 2500,
-  catalogTrialFee: 0,
-  catalogTrialDurationMonths: 1,
-  taxPercentage: 0,
-  serviceFeePercentage: 0,
-};
 
 interface DashboardContextType {
   dashboardData: {
@@ -269,7 +251,4 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 export function useDashboard() {
   const context = useContext(DashboardContext);
   if (context === undefined) {
-    throw new Error('useDashboard must be used within a DashboardProvider');
-  }
-  return context;
-}
+    throw new Error
