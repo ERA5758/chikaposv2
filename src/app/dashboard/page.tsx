@@ -198,4 +198,10 @@ function DashboardSkeleton() {
         <div className="flex min-h-screen w-full items-center justify-center bg-background">
             <div className="flex flex-col items-center gap-4">
                 <Store className="h-16 w-16 animate-pulse-slow text-primary/50" />
-                <p className="font-headline text-xl tracking-wider text-
+                <p className="font-headline text-xl tracking-wider text-muted-foreground">
+                    Loading Dashboard...
+                </p>
+            </div>
+        </div>
+    )
+}
