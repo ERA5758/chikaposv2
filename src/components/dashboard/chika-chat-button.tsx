@@ -19,7 +19,7 @@ export function ChikaChatButton() {
 
   return (
     <>
-      <div className="fixed bottom-16 right-4 z-50 non-printable">
+      <div className="fixed bottom-16 right-4 z-50 non-printable" data-tour="chika-chat">
         <Tooltip>
           <TooltipTrigger asChild>
             <Button

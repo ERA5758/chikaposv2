@@ -74,7 +74,7 @@ export function MainSidebar({ pradanaTokenBalance }: MainSidebarProps) {
         roles: ['admin', 'cashier'],
         items: [
             { view: 'overview', label: 'Overview', icon: <LayoutGrid />, roles: ['admin', 'cashier'] },
-            { view: 'pos', label: 'Kasir POS', icon: <ShoppingBasket />, roles: ['admin', 'cashier'] },
+            { view: 'pos', label: 'Kasir POS', icon: <ShoppingBasket />, roles: ['admin', 'cashier'], tourId: 'pos' },
             { view: 'pending-orders', label: 'Pending Orders', icon: <ClipboardList />, roles: ['admin', 'cashier'] },
             { view: 'transactions', label: 'Transaksi', icon: <History />, roles: ['admin', 'cashier'] },
         ]
@@ -84,7 +84,7 @@ export function MainSidebar({ pradanaTokenBalance }: MainSidebarProps) {
         icon: <Wallet />,
         roles: ['admin', 'cashier'],
         items: [
-            { view: 'products', label: 'Produk (Menu)', icon: <BookOpenCheck />, roles: ['admin', 'cashier'] },
+            { view: 'products', label: 'Produk (Menu)', icon: <BookOpenCheck />, roles: ['admin', 'cashier'], tourId: 'products' },
             { view: 'customers', label: 'Pelanggan', icon: <Contact2 />, roles: ['admin', 'cashier'] },
             { view: 'employees', label: 'Karyawan', icon: <Users />, roles: ['admin'] },
         ]
@@ -95,7 +95,7 @@ export function MainSidebar({ pradanaTokenBalance }: MainSidebarProps) {
         roles: ['admin'],
         items: [
             { view: 'customer-analytics', label: 'Analisis Pelanggan', icon: <BarChart4 />, roles: ['admin'] },
-            { view: 'promotions', label: 'Promosi', icon: <Gift />, roles: ['admin'] },
+            { view: 'promotions', label: 'Promosi', icon: <Gift />, roles: ['admin'], tourId: 'promotions' },
             { view: 'challenges', label: 'Tantangan', icon: <Trophy />, roles: ['admin'] },
             { view: 'ai-business-plan', label: 'AI Business Plan', icon: <Map />, roles: ['admin'] },
         ]
@@ -106,7 +106,7 @@ export function MainSidebar({ pradanaTokenBalance }: MainSidebarProps) {
         roles: ['admin'],
         items: [
             { view: 'receipt-settings', label: 'Pengaturan Struk', icon: <Receipt />, roles: ['admin'] },
-            { view: 'catalog', label: 'Katalog Publik', icon: <Newspaper />, roles: ['admin'] },
+            { view: 'catalog', label: 'Katalog Publik', icon: <Newspaper />, roles: ['admin'], tourId: 'catalog' },
         ]
     },
   ];
@@ -164,6 +164,7 @@ export function MainSidebar({ pradanaTokenBalance }: MainSidebarProps) {
                       onClick={() => navigate(item.view)}
                       isActive={currentView === item.view}
                       tooltip={item.label}
+                      data-view={item.view}
                     >
                       {item.icon}
                       <span>{item.label}</span>
