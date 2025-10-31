@@ -17,33 +17,16 @@ interface WhatsappSettings {
 }
 
 /**
- * Fetches WhatsApp settings. 
- * If storeId is 'platform', it fetches global settings from appSettings.
- * Otherwise, it fetches store-specific settings (if any).
+ * Returns hardcoded WhatsApp settings to improve reliability.
+ * This avoids a Firestore fetch which can fail due to network issues.
  */
 async function getWhatsappSettings(storeId: string = 'platform'): Promise<WhatsappSettings> {
-  const defaultSettings: WhatsappSettings = { deviceId: '', adminGroup: '' };
-  
-  let settingsDocRef;
-  if (storeId === 'platform') {
-      settingsDocRef = db.collection('appSettings').doc('whatsappConfig');
-  } else {
-      // Fallback to platform settings if store-specific settings are not the primary goal for this function.
-      settingsDocRef = db.collection('appSettings').doc('whatsappConfig');
-  }
-
-  try {
-    const docSnap = await settingsDocRef.get();
-    if (docSnap.exists) {
-      return { ...defaultSettings, ...docSnap.data() };
-    } else {
-      logger.warn(`WhatsApp settings document not found at ${settingsDocRef.path}. Returning default.`);
-      return defaultSettings;
-    }
-  } catch (error) {
-    logger.error(`Error fetching WhatsApp settings from ${settingsDocRef.path}:`, error);
-    return defaultSettings;
-  }
+  const settings: WhatsappSettings = {
+    deviceId: 'fa254b2588ad7626d647da23be4d6a08',
+    adminGroup: 'SPV ERA MMBP',
+  };
+  // The function is async to maintain compatibility with the call sites.
+  return Promise.resolve(settings);
 }
 
 export const processWhatsappQueue = onDocumentCreated("whatsappQueue/{messageId}", async (event) => {
