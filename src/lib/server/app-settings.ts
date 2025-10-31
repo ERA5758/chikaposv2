@@ -1,8 +1,9 @@
+'use server';
+
 import { getFirebaseAdmin } from './firebase-admin'; // Use server-side db
 import type { TransactionFeeSettings } from '../types';
 import { defaultFeeSettings } from '../types';
 import { doc, runTransaction, increment } from 'firebase/firestore';
-import type { useToast } from '@/hooks/use-toast';
 
 export async function getTransactionFeeSettings(): Promise<TransactionFeeSettings> {
   const { db } = getFirebaseAdmin();
