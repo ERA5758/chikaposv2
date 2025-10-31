@@ -256,9 +256,9 @@ export const defaultFeeSettings: TransactionFeeSettings = {
   aiSessionDurationMinutes: 30,
   catalogTrialFee: 0,
   catalogTrialDurationMonths: 1,
-  catalogMonthlyFee: 250,
-  catalogSixMonthFee: 1400,
-  catalogYearlyFee: 2500,
+  catalogMonthlyFee: 150,
+  catalogSixMonthFee: 800,
+  catalogYearlyFee: 1500,
   taxPercentage: 0,
   serviceFeePercentage: 0,
 };
@@ -296,4 +296,18 @@ export type CatalogAssistantInput = {
 };
 export type CatalogAssistantOutput = {
   answer: string;
+};
+
+
+export type BankAccountSettings = {
+    bankName: string;
+    accountNumber: string;
+    accountHolder: string;
+};
+
+// Default settings if the document doesn't exist in Firestore.
+export const defaultBankAccountSettings: BankAccountSettings = {
+    bankName: 'BANK BCA',
+    accountNumber: '6225089802',
+    accountHolder: 'PT. ERA MAJU MAPAN BERSAMA PRADANA',
 };

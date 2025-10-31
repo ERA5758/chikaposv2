@@ -1,19 +1,8 @@
 'use server';
 
 import { getFirebaseAdmin } from './server/firebase-admin';
-
-export type BankAccountSettings = {
-    bankName: string;
-    accountNumber: string;
-    accountHolder: string;
-};
-
-// Default settings if the document doesn't exist in Firestore.
-export const defaultBankAccountSettings: BankAccountSettings = {
-    bankName: 'BANK BCA',
-    accountNumber: '6225089802',
-    accountHolder: 'PT. ERA MAJU MAPAN BERSAMA PRADANA',
-};
+import type { BankAccountSettings } from './types';
+import { defaultBankAccountSettings } from './types';
 
 /**
  * Fetches Bank Account settings from Firestore using the Admin SDK.
@@ -25,7 +14,7 @@ export async function getBankAccountSettings(): Promise<BankAccountSettings> {
     try {
         const docSnap = await settingsDocRef.get();
 
-        if (docSnap.exists) {
+        if (docSnap.exists()) {
             return { ...defaultBankAccountSettings, ...docSnap.data() as BankAccountSettings };
         } else {
             console.warn(`Bank account settings not found, creating document with default values.`);

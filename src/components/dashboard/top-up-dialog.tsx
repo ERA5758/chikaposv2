@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -18,8 +17,8 @@ import { useAuth } from '@/contexts/auth-context';
 import { db } from '@/lib/firebase';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
-import type { TopUpRequest } from '@/lib/types';
-import { getBankAccountSettings, type BankAccountSettings } from '@/lib/bank-account-settings';
+import type { TopUpRequest, BankAccountSettings } from '@/lib/types';
+import { getBankAccountSettings } from '@/lib/bank-account-settings';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Badge } from '../ui/badge';
 import { format } from 'date-fns';
