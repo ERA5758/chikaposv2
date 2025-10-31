@@ -39,7 +39,6 @@ import { useDashboard } from '@/contexts/dashboard-context';
 import Papa from 'papaparse';
 import { AIConfirmationDialog } from '@/components/dashboard/ai-confirmation-dialog';
 import { useRouter } from 'next/navigation';
-import { useTourGuide } from '@/contexts/tour-context';
 
 interface AdminRecommendationInput {
   businessDescription: string;
@@ -64,7 +63,7 @@ const chartConfig = {
 
 export default function AdminOverview() {
   const { activeStore, updateActiveStore } = useAuth();
-  const { dashboardData } = useDashboard();
+  const { dashboardData, setRunTour } = useDashboard();
   const { transactions, products, feeSettings } = dashboardData;
   const [recommendations, setRecommendations] = React.useState<AdminRecommendationOutput | null>(null);
   const [appliedStrategies, setAppliedStrategies] = React.useState<AppliedStrategy[]>([]);
@@ -75,7 +74,6 @@ export default function AdminOverview() {
 
   const { toast } = useToast();
   const router = useRouter();
-  const { startTour, isTourActive, isTourCompleted } = useTourGuide();
 
 
   React.useEffect(() => {
@@ -362,7 +360,7 @@ export default function AdminOverview() {
       description: `Data penjualan telah diexport ke format ${formatType}.`,
     });
   }
-
+  
   const handleClaimTrial = async (planId: 'trial') => {
     try {
         const idToken = await auth.currentUser?.getIdToken(true);
@@ -410,23 +408,7 @@ export default function AdminOverview() {
 
   return (
     <div className="grid gap-6">
-      {!isTourActive && !isTourCompleted && (
-        <Card className="bg-primary/10 border-primary/20" data-tour="start-tour">
-          <CardHeader>
-            <CardTitle className="font-headline tracking-wider text-primary">Selamat Datang di Chika POS!</CardTitle>
-            <CardDescription>
-              Aplikasi Anda sudah siap. Ayo jelajahi fitur-fitur utama yang akan membantu bisnis Anda.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={startTour}>
-              <Compass className="mr-2 h-4 w-4" />
-              Mulai Tur
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
+      
       {activeStore && !activeStore.hasUsedCatalogTrial && (
         <Card className="border-primary/50 bg-primary/10">
           <CardHeader>

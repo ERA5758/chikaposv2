@@ -17,6 +17,8 @@ const defaultFeeSettings: TransactionFeeSettings = {
   aiBusinessPlanFee: 25,
   aiSessionFee: 5,
   aiSessionDurationMinutes: 30,
+  catalogTrialFee: 0,
+  catalogTrialDurationMonths: 1,
   catalogMonthlyFee: 250,
   catalogSixMonthFee: 1400,
   catalogYearlyFee: 2500,
@@ -38,6 +40,8 @@ interface DashboardContextType {
     feeSettings: TransactionFeeSettings;
   };
   isLoading: boolean;
+  runTour: boolean;
+  setRunTour: React.Dispatch<React.SetStateAction<boolean>>;
   refreshData: () => void;
   playNotificationSound: () => void;
 }
@@ -66,6 +70,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const { currentUser, activeStore, isLoading: isAuthLoading, refreshPradanaTokenBalance } = useAuth();
   const { toast } = useToast();
   const notificationAudioRef = useRef<HTMLAudioElement>(null);
+  const [runTour, setRunTour] = useState(false);
 
   const [stores, setStores] = useState<Store[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -252,6 +257,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         feeSettings,
     },
     isLoading,
+    runTour,
+    setRunTour,
     refreshData,
     playNotificationSound,
   };
@@ -268,6 +275,3 @@ export function useDashboard() {
   const context = useContext(DashboardContext);
   if (context === undefined) {
     throw new Error('useDashboard must be used within a DashboardProvider');
-  }
-  return context;
-}
