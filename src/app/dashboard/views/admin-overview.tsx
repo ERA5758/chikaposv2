@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -21,7 +20,7 @@ import {
   Bar,
   BarChart,
 } from 'recharts';
-import { TrendingUp, DollarSign, Sparkles, ShoppingBag, Target, CheckCircle, Calendar as CalendarIcon, TrendingDown, FileText, FileSpreadsheet, PackageX, Compass, Gift } from 'lucide-react';
+import { TrendingUp, DollarSign, Sparkles, ShoppingBag, Target, CheckCircle, Calendar as CalendarIcon, TrendingDown, FileText, FileSpreadsheet, PackageX, Compass, Gift, Newspaper } from 'lucide-react';
 import { subMonths, format, startOfMonth, endOfMonth, isWithinInterval, formatISO, subDays, addDays } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -429,24 +428,24 @@ export default function AdminOverview() {
       )}
 
       {activeStore && !activeStore.hasUsedCatalogTrial && (
-        <Card>
+        <Card className="border-primary/50 bg-primary/10">
           <CardHeader>
-            <CardTitle className="font-headline tracking-wider flex items-center gap-2"><Gift className="text-primary"/> Penawaran Pengguna Baru</CardTitle>
-            <CardDescription>Aktifkan Katalog Publik untuk menampilkan menu Anda secara online dan menjangkau lebih banyak pelanggan.</CardDescription>
+            <CardTitle className="font-headline tracking-wider text-primary">Penawaran Spesial Pengguna Baru!</CardTitle>
+            <CardDescription>Aktifkan Katalog Publik digital Anda dengan harga percobaan yang sangat terjangkau.</CardDescription>
           </CardHeader>
           <CardContent>
-             <p className="mb-4">Dapatkan akses gratis selama {feeSettings?.catalogTrialDurationMonths || 1} bulan untuk mencoba fitur premium ini.</p>
+             <p className="mb-4 text-sm">Tingkatkan pengalaman pelanggan dengan menu digital modern yang dilengkapi asisten AI. Klaim sekarang hanya dengan <span className="font-bold">{feeSettings?.catalogTrialFee || 0} Pradana Token</span> untuk {feeSettings?.catalogTrialDurationMonths || 1} bulan.</p>
              <AIConfirmationDialog
-                featureName="Katalog Publik Gratis"
-                featureDescription={`Anda akan mengaktifkan langganan Katalog Publik gratis selama ${feeSettings?.catalogTrialDurationMonths || 1} bulan.`}
+                featureName="Klaim Katalog Percobaan"
+                featureDescription={`Anda akan mengaktifkan langganan Katalog Digital selama ${feeSettings?.catalogTrialDurationMonths || 1} bulan dengan harga spesial.`}
                 feeSettings={feeSettings}
                 feeToDeduct={feeSettings?.catalogTrialFee || 0}
                 onConfirm={() => handleClaimTrial('trial')}
-                skipFeeDeduction={true}
+                skipFeeDeduction={feeSettings?.catalogTrialFee === 0}
               >
-                  <Button disabled={!feeSettings}>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Klaim Sekarang (Gratis)
+                  <Button>
+                    <Newspaper className="mr-2 h-4 w-4" />
+                    Klaim Katalog Publik
                   </Button>
               </AIConfirmationDialog>
           </CardContent>
