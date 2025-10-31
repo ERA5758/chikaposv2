@@ -21,7 +21,7 @@ import {
   Bar,
   BarChart,
 } from 'recharts';
-import { TrendingUp, DollarSign, Sparkles, ShoppingBag, Target, CheckCircle, Calendar as CalendarIcon, TrendingDown, FileText, FileSpreadsheet, PackageX, Compass } from 'lucide-react';
+import { TrendingUp, DollarSign, Sparkles, ShoppingBag, Target, CheckCircle, Calendar as CalendarIcon, TrendingDown, FileText, FileSpreadsheet, PackageX, Compass, Gift } from 'lucide-react';
 import { subMonths, format, startOfMonth, endOfMonth, isWithinInterval, formatISO, subDays, addDays } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -32,7 +32,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { Label } from '@/components/ui/label';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { collection, addDoc, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import type { AppliedStrategy, TransactionItem, Transaction } from '@/lib/types';
 import { useAuth } from '@/contexts/auth-context';
@@ -40,6 +40,7 @@ import { useDashboard } from '@/contexts/dashboard-context';
 import Papa from 'papaparse';
 import { AIConfirmationDialog } from '@/components/dashboard/ai-confirmation-dialog';
 import { useTour } from '@/contexts/tour-context';
+import { useRouter } from 'next/navigation';
 
 interface AdminRecommendationInput {
   businessDescription: string;
@@ -63,8 +64,8 @@ const chartConfig = {
 };
 
 export default function AdminOverview() {
-  const { activeStore } = useAuth();
-  const { dashboardData } = useDashboard();
+  const { activeStore, updateActiveStore } = useAuth();
+  const { dashboardData, refreshData } = useDashboard();
   const { transactions, products, feeSettings } = dashboardData;
   const [recommendations, setRecommendations] = React.useState<AdminRecommendationOutput | null>(null);
   const [appliedStrategies, setAppliedStrategies] = React.useState<AppliedStrategy[]>([]);
@@ -75,6 +76,8 @@ export default function AdminOverview() {
 
   const { toast } = useToast();
   const { startTour, isTourActive, isTourCompleted } = useTour();
+  const router = useRouter();
+
 
   React.useEffect(() => {
     if (!activeStore) return;
@@ -361,6 +364,51 @@ export default function AdminOverview() {
     });
   }
 
+  const handleClaimTrial = async (planId: 'trial') => {
+    try {
+        const idToken = await auth.currentUser?.getIdToken(true);
+        if (!idToken || !activeStore) {
+            throw new Error("Sesi tidak valid atau toko tidak aktif.");
+        }
+        
+        const response = await fetch('/api/store/subscribe-catalog', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`,
+            },
+            body: JSON.stringify({ storeId: activeStore.id, planId }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `Gagal memproses langganan.`);
+        }
+        
+        const result = await response.json();
+
+        toast({
+            title: 'Klaim Berhasil!',
+            description: `Katalog Digital gratis Anda telah diaktifkan.`,
+        });
+
+        if (result.newExpiryDate) {
+            updateActiveStore({ 
+                ...activeStore, 
+                catalogSubscriptionExpiry: result.newExpiryDate,
+                pradanaTokenBalance: result.newBalance,
+                hasUsedCatalogTrial: planId === 'trial' ? true : activeStore.hasUsedCatalogTrial,
+            });
+        }
+        
+        router.push('/dashboard?view=catalog');
+
+    } catch (error) {
+        console.error(`Subscription error:`, error);
+        throw error;
+    }
+  };
+
   return (
     <div className="grid gap-6">
        {!isTourActive && !isTourCompleted && (
@@ -379,6 +427,32 @@ export default function AdminOverview() {
           </CardContent>
         </Card>
       )}
+
+      {activeStore && !activeStore.hasUsedCatalogTrial && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-headline tracking-wider flex items-center gap-2"><Gift className="text-primary"/> Penawaran Pengguna Baru</CardTitle>
+            <CardDescription>Aktifkan Katalog Digital Publik untuk menampilkan menu Anda secara online dan menjangkau lebih banyak pelanggan.</CardDescription>
+          </CardHeader>
+          <CardContent>
+             <p className="mb-4">Dapatkan akses gratis selama {feeSettings?.catalogTrialDurationMonths || 1} bulan untuk mencoba fitur premium ini.</p>
+             <AIConfirmationDialog
+                featureName="Katalog Publik Gratis"
+                featureDescription={`Anda akan mengaktifkan langganan Katalog Digital gratis selama ${feeSettings?.catalogTrialDurationMonths || 1} bulan.`}
+                feeSettings={feeSettings}
+                feeToDeduct={feeSettings?.catalogTrialFee || 0}
+                onConfirm={() => handleClaimTrial('trial')}
+                skipFeeDeduction={true}
+              >
+                  <Button disabled={!feeSettings}>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Klaim Sekarang (Gratis)
+                  </Button>
+              </AIConfirmationDialog>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle className="font-headline tracking-wider">Pertumbuhan Pendapatan Bulanan</CardTitle>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -218,30 +219,7 @@ export default function CatalogSettings() {
                     Pilih paket yang paling sesuai dengan kebutuhan bisnis Anda untuk mengaktifkan fitur ini.
                 </CardDescription>
             </CardHeader>
-            <CardContent className="grid md:grid-cols-1 lg:grid-cols-4 gap-6">
-                {!hasUsedTrial && (
-                    <Card className="lg:col-span-1">
-                        <CardHeader className="text-center">
-                            <CardTitle className="text-xl flex items-center justify-center gap-2 text-accent"><SparklesIcon /> Coba Gratis</CardTitle>
-                            <CardDescription>Penawaran Pertama Kali</CardDescription>
-                        </CardHeader>
-                        <CardContent className="text-center">
-                            <p className="text-4xl font-bold">0 <span className="text-base font-normal text-muted-foreground">Token/bln</span></p>
-                        </CardContent>
-                        <CardFooter>
-                            <AIConfirmationDialog
-                            featureName="Paket Coba Gratis"
-                            featureDescription={`Anda akan mengaktifkan langganan Katalog Digital selama ${feeSettings.catalogTrialDurationMonths} bulan tanpa biaya.`}
-                            feeSettings={feeSettings}
-                            feeToDeduct={0}
-                            onConfirm={() => handleSubscription('trial')}
-                            skipFeeDeduction={true}
-                            >
-                                <Button className="w-full" variant="secondary">Klaim Uji Coba</Button>
-                            </AIConfirmationDialog>
-                        </CardFooter>
-                    </Card>
-                )}
+            <CardContent className="grid md:grid-cols-1 lg:grid-cols-3 gap-6">
                 <Card className="lg:col-span-1">
                     <CardHeader className="text-center">
                         <CardTitle className="text-xl">Bulanan</CardTitle>
