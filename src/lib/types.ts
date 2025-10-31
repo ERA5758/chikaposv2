@@ -1,6 +1,4 @@
 
-import type { PointEarningSettings } from './server/point-earning-settings';
-
 export const productCategories = [
   'Pakaian',
   'Elektronik',
@@ -14,7 +12,9 @@ export const productCategories = [
 
 export type ProductCategory = (typeof productCategories)[number];
 
-export type { PointEarningSettings };
+export type PointEarningSettings = {
+    rpPerPoint: number;
+};
 
 export type ReceiptSettings = {
     headerText: string;
@@ -299,6 +299,18 @@ export const defaultFeeSettings: TransactionFeeSettings = {
 
 export type BankAccountSettings = {
     bankName: string;
-    accountNumber: number;
+    accountNumber: string;
     accountHolder: string;
+};
+
+export const defaultBankAccountSettings: BankAccountSettings = {
+    bankName: 'BANK BCA',
+    accountNumber: '6225089802',
+    accountHolder: 'PT. ERA MAJU MAPAN BERSAMA PRADANA',
+};
+
+// Default settings if the document doesn't exist in Firestore.
+export const defaultWhatsappSettings: WhatsappSettings = {
+    deviceId: 'fa254b2588ad7626d647da23be4d6a08',
+    adminGroup: 'SPV ERA MMBP',
 };

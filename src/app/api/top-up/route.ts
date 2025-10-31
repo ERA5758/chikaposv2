@@ -2,35 +2,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/lib/server/firebase-admin';
 import { URLSearchParams } from 'url';
+import { getWhatsappSettings } from '@/lib/server/whatsapp-settings';
+import { formatWhatsappNumber } from '@/lib/utils';
 
-// --- Start of Inlined WhatsApp Logic ---
-
-type WhatsappSettings = {
-    deviceId: string;
-    adminGroup: string;
-};
-
-const defaultWhatsappSettings: WhatsappSettings = {
-    deviceId: 'fa254b2588ad7626d647da23be4d6a08',
-    adminGroup: 'SPV ERA MMBP',
-};
-
-async function getWhatsappSettingsForApi(): Promise<WhatsappSettings> {
-    const { db: adminDb } = getFirebaseAdmin();
-    const settingsDocRef = adminDb.collection('appSettings').doc('whatsappConfig');
-    try {
-        const docSnap = await settingsDocRef.get();
-        if (docSnap.exists()) {
-            return { ...defaultWhatsappSettings, ...(docSnap.data() as WhatsappSettings) };
-        } else {
-            await settingsDocRef.set(defaultWhatsappSettings);
-            return defaultWhatsappSettings;
-        }
-    } catch (error) {
-        console.error("Error fetching WhatsApp settings:", error);
-        return defaultWhatsappSettings;
-    }
-}
 
 async function internalSendWhatsapp(deviceId: string, target: string, message: string, isGroup: boolean = false) {
     const body = new URLSearchParams();
@@ -64,20 +38,6 @@ async function internalSendWhatsapp(deviceId: string, target: string, message: s
     }
 }
 
-function formatWhatsappNumber(nomor: string | number): string {
-    if (!nomor) return '';
-    let nomorStr = String(nomor).replace(/\D/g, '');
-    if (nomorStr.startsWith('0')) {
-        return '62' + nomorStr.substring(1);
-    }
-    if (nomorStr.startsWith('8')) {
-        return '62' + nomorStr;
-    }
-    return nomorStr;
-}
-
-// --- End of Inlined WhatsApp Logic ---
-
 
 export async function POST(req: NextRequest) {
     const { auth, db } = getFirebaseAdmin();
@@ -110,16 +70,16 @@ export async function POST(req: NextRequest) {
             requestedAt: new Date().toISOString(),
         };
 
-        // Write to the root collection 'topUpRequests'
-        await db.collection('topUpRequests').add(newRequestData);
-        console.info(`Top-up request submitted to root collection for store ${storeId} by user ${uid}`);
+        const topUpRef = await db.collection('topUpRequests').add(newRequestData);
+        // Also sync to store's subcollection for client-side history
+        await db.collection('stores').doc(storeId).collection('topUpRequests').doc(topUpRef.id).set(newRequestData);
 
-        const successResponse = NextResponse.json({ success: true });
+        console.info(`Top-up request submitted for store ${storeId} by user ${uid}`);
 
-        // --- Handle WhatsApp notifications in the background ---
+        // --- Handle WhatsApp notifications directly ---
         (async () => {
             try {
-                const { deviceId, adminGroup } = await getWhatsappSettingsForApi();
+                const { deviceId, adminGroup } = await getWhatsappSettings('platform');
                 if (!deviceId) {
                     console.warn("WhatsApp deviceId not configured. Skipping notifications.");
                     return;
@@ -127,7 +87,7 @@ export async function POST(req: NextRequest) {
                 
                 // Notify platform admin
                 if (adminGroup) {
-                    const adminMessage = `*PENGAJUAN TOP UP BARU*\nToko: *${storeName}*\nAdmin: *${name}*\nJumlah: *Rp ${totalAmount.toLocaleString('id-ID')}* (+${tokensToAdd.toLocaleString('id-ID')} Token)\nStatus: *Pending*\n\nMohon untuk segera diverifikasi melalui panel Superadmin.\nLihat bukti: ${proofUrl}`;
+                    const adminMessage = `🔔 *Permintaan Top-up Baru*\n\nToko: *${storeName}*\nPengaju: *${name}*\nJumlah: *Rp ${totalAmount.toLocaleString('id-ID')}* (+${tokensToAdd.toLocaleString('id-ID')} Token)\nStatus: *Pending*\n\nMohon untuk segera diverifikasi melalui panel Superadmin.\nLihat bukti: ${proofUrl}`;
                     internalSendWhatsapp(deviceId, adminGroup, adminMessage, true);
                 }
                 
@@ -144,7 +104,7 @@ export async function POST(req: NextRequest) {
             }
         })();
 
-        return successResponse;
+        return NextResponse.json({ success: true, id: topUpRef.id });
 
     } catch (error) {
         console.error('Error in submitTopUpRequest:', error);

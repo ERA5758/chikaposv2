@@ -2,77 +2,43 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/lib/server/firebase-admin';
 import { getOrderReadyFollowUp } from '@/ai/flows/order-ready-follow-up';
-
-// --- Start of Inlined WhatsApp Logic ---
-
-type WhatsappSettings = {
-    deviceId: string;
-    adminGroup: string;
-};
-
-const defaultWhatsappSettings: WhatsappSettings = {
-    deviceId: 'fa254b2588ad7626d647da23be4d6a08',
-    adminGroup: 'SPV ERA MMBP',
-};
-
-async function getWhatsappSettingsForApi(): Promise<WhatsappSettings> {
-    const { db: adminDb } = getFirebaseAdmin();
-    const settingsDocRef = adminDb.collection('appSettings').doc('whatsappConfig');
-    try {
-        const docSnap = await settingsDocRef.get();
-        if (docSnap.exists()) {
-            return { ...defaultWhatsappSettings, ...(docSnap.data() as WhatsappSettings) };
-        } else {
-            await settingsDocRef.set(defaultWhatsappSettings);
-            return defaultWhatsappSettings;
-        }
-    } catch (error) {
-        console.error("Error fetching WhatsApp settings:", error);
-        return defaultWhatsappSettings;
-    }
-}
+import { getWhatsappSettings } from '@/lib/server/whatsapp-settings';
+import { formatWhatsappNumber } from '@/lib/utils';
+import { URLSearchParams } from 'url';
 
 async function internalSendWhatsapp(deviceId: string, target: string, message: string, isGroup: boolean = false) {
-    const formData = new FormData();
-    formData.append('device_id', deviceId);
-    formData.append(isGroup ? 'group' : 'number', target);
-    formData.append('message', message);
+    const body = new URLSearchParams();
+    body.append('device_id', deviceId);
+    body.append(isGroup ? 'group' : 'number', target);
+    body.append('message', message);
     const endpoint = isGroup ? 'sendGroup' : 'send';
     const webhookUrl = `https://app.whacenter.com/api/${endpoint}`;
 
-    const response = await fetch(webhookUrl, {
-        method: 'POST',
-        body: formData,
-    });
+    try {
+        const response = await fetch(webhookUrl, {
+            method: 'POST',
+            body: body,
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        });
 
-    if (!response.ok) {
+        if (!response.ok) {
+            const responseJson = await response.json();
+            console.error('WhaCenter API HTTP Error:', { status: response.status, body: responseJson });
+            throw new Error(`WhaCenter API responded with status ${response.status}`);
+        }
+
         const responseJson = await response.json();
-        console.error('WhaCenter API HTTP Error:', { status: response.status, body: responseJson });
-        throw new Error(`WhaCenter API responded with status ${response.status}`);
-    }
+        if (responseJson.status === 'error') {
+            console.error('WhaCenter API Error:', responseJson.reason);
+            throw new Error(responseJson.reason || 'An error occurred with the WhatsApp service.');
+        }
 
-    const responseJson = await response.json();
-    if (responseJson.status === 'error') {
-        console.error('WhaCenter API Error:', responseJson.reason);
-        throw new Error(responseJson.reason || 'An error occurred with the WhatsApp service.');
+        return responseJson;
+    } catch(error) {
+        console.error('Failed to send WhatsApp message via internalSendWhatsapp:', error);
+        throw error;
     }
-
-    return responseJson;
 }
-
-function formatWhatsappNumber(nomor: string | number): string {
-    if (!nomor) return '';
-    let nomorStr = String(nomor).replace(/\D/g, '');
-    if (nomorStr.startsWith('0')) {
-        return '62' + nomorStr.substring(1);
-    }
-    if (nomorStr.startsWith('8')) {
-        return '62' + nomorStr;
-    }
-    return nomorStr;
-}
-
-// --- End of Inlined WhatsApp Logic ---
 
 
 export async function POST(req: NextRequest) {
@@ -106,9 +72,8 @@ export async function POST(req: NextRequest) {
             currentTime: currentTime,
             notificationStyle: store.receiptSettings?.notificationStyle || 'fakta',
         });
-
         
-        const { deviceId } = await getWhatsappSettingsForApi();
+        const { deviceId } = await getWhatsappSettings(store.id);
         if (!deviceId) {
             return NextResponse.json({ error: 'WhatsApp Device ID tidak dikonfigurasi untuk toko ini.' }, { status: 412 });
         }

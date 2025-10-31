@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/lib/server/firebase-admin';
 import { getTransactionFeeSettings } from '@/lib/server/app-settings';
 import { getWhatsappSettings } from '@/lib/server/whatsapp-settings';
+import { formatWhatsappNumber } from '@/lib/utils';
 
 async function internalSendWhatsapp(deviceId: string, target: string, message: string, isGroup: boolean = false) {
     const formData = new FormData();
@@ -30,18 +31,6 @@ async function internalSendWhatsapp(deviceId: string, target: string, message: s
     } catch (error) {
         console.error("Failed to send WhatsApp message:", error);
     }
-}
-
-function formatWhatsappNumber(nomor: string | number): string {
-    if (!nomor) return '';
-    let nomorStr = String(nomor).replace(/\D/g, '');
-    if (nomorStr.startsWith('0')) {
-        return '62' + nomorStr.substring(1);
-    }
-    if (nomorStr.startsWith('8')) {
-        return '62' + nomorStr;
-    }
-    return nomorStr;
 }
 
 export async function POST(req: NextRequest) {

@@ -1,16 +1,9 @@
 
+'use server';
+
 import { getFirebaseAdmin } from './firebase-admin';
-
-export type WhatsappSettings = {
-    deviceId: string;
-    adminGroup: string; // The group name or ID for admin notifications
-};
-
-// Default settings if the document doesn't exist in Firestore.
-export const defaultWhatsappSettings: WhatsappSettings = {
-    deviceId: 'fa254b2588ad7626d647da23be4d6a08',
-    adminGroup: 'SPV ERA MMBP',
-};
+import type { WhatsappSettings } from '../types';
+import { defaultWhatsappSettings } from '../types';
 
 /**
  * Fetches WhatsApp settings from Firestore using the Admin SDK.
