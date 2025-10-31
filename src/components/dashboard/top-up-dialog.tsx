@@ -45,14 +45,10 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
 
   React.useEffect(() => {
     setUniqueCode(Math.floor(Math.random() * 900) + 100);
-    // Fetch bank settings from the API route
+    // Fetch bank settings using the server action
     async function fetchBankSettings() {
         try {
-            const response = await fetch('/api/app-settings?type=bank');
-            if (!response.ok) {
-                throw new Error('Failed to fetch bank settings');
-            }
-            const data = await response.json();
+            const data = await getBankAccountSettings();
             setBankSettings(data);
         } catch (error) {
             console.error(error);
