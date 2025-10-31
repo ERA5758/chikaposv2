@@ -1,11 +1,12 @@
+
 'use client';
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, query, orderBy, onSnapshot, Unsubscribe, where } from 'firebase/firestore';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import type { User, RedemptionOption, Product, Store, Customer, Transaction, PendingOrder, Table, ChallengePeriod, TransactionFeeSettings } from '@/lib/types';
 import { defaultFeeSettings } from '@/lib/types';
+import type { User, RedemptionOption, Product, Store, Customer, Transaction, PendingOrder, Table, ChallengePeriod, TransactionFeeSettings } from '@/lib/types';
 import { getTransactionFeeSettings } from '@/lib/server/app-settings';
 
 interface DashboardContextType {

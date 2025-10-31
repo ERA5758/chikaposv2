@@ -1,4 +1,4 @@
-'use client';
+
 import type { PointEarningSettings } from './server/point-earning-settings';
 
 export const productCategories = [
