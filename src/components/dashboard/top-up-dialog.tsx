@@ -18,8 +18,8 @@ import { useAuth } from '@/contexts/auth-context';
 import { db } from '@/lib/firebase';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
-import type { TopUpRequest, BankAccountSettings } from '@/lib/types';
-import { getBankAccountSettings } from '@/lib/server/bank-account-settings';
+import type { TopUpRequest } from '@/lib/types';
+import { getBankAccountSettings, type BankAccountSettings } from '@/lib/bank-account-settings';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Badge } from '../ui/badge';
 import { format } from 'date-fns';
@@ -41,22 +41,12 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
   const [proofFile, setProofFile] = React.useState<File | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
   const [history, setHistory] = React.useState<TopUpRequest[]>([]);
-  const [bankSettings, setBankSettings] = React.useState<Partial<BankAccountSettings>>({});
+  const [bankSettings, setBankSettings] = React.useState<BankAccountSettings | null>(null);
 
   React.useEffect(() => {
     setUniqueCode(Math.floor(Math.random() * 900) + 100);
-    // Fetch bank settings using the server action
-    async function fetchBankSettings() {
-        try {
-            const data = await getBankAccountSettings();
-            setBankSettings(data);
-        } catch (error) {
-            console.error(error);
-            toast({ variant: 'destructive', title: 'Gagal memuat info bank.' });
-        }
-    }
-    fetchBankSettings();
-  }, [toast]);
+    getBankAccountSettings().then(setBankSettings);
+  }, []);
 
   React.useEffect(() => {
     if (!activeStore) return;
@@ -190,13 +180,13 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
             <form onSubmit={handleSubmit} className="space-y-4">
                <div>
                   <p className="text-sm text-muted-foreground mb-2">Silakan transfer ke rekening berikut:</p>
-                  {bankSettings.bankName ? (
+                  {bankSettings ? (
                     <Card className="bg-secondary/50">
                         <CardContent className="p-4 space-y-2">
                            <div className="text-lg font-bold">{bankSettings.bankName}</div>
                            <div className="flex items-center justify-between">
                              <div className="font-mono text-xl text-primary">{bankSettings.accountNumber}</div>
-                             <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => copyToClipboard(String(bankSettings.accountNumber))}>
+                             <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => copyToClipboard(bankSettings.accountNumber)}>
                                <Copy className="h-4 w-4"/>
                              </Button>
                            </div>
@@ -289,7 +279,7 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
                     {history.slice(0, 5).map(item => (
                         <TableRow key={item.id}>
                             <TableCell>{format(new Date(item.requestedAt), 'dd/MM/yy HH:mm')}</TableCell>
-                            <TableCell className="font-mono text-right">{(item.tokensToAdd ?? 0).toLocaleString('id-ID')}</TableCell>
+                            <TableCell className="font-mono text-right">{(item.tokensToAdd ?? 'N/A').toLocaleString('id-ID')}</TableCell>
                             <TableCell>{getStatusBadge(item.status)}</TableCell>
                         </TableRow>
                     ))}

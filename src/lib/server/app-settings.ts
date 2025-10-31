@@ -1,9 +1,5 @@
-
-'use server';
-
 import { getFirebaseAdmin } from './firebase-admin'; // Use server-side db
-import type { TransactionFeeSettings } from '../types';
-import { defaultFeeSettings } from '../types';
+import { defaultFeeSettings, type TransactionFeeSettings } from '../types';
 import { doc, runTransaction, increment } from 'firebase/firestore';
 
 export async function getTransactionFeeSettings(): Promise<TransactionFeeSettings> {
@@ -12,7 +8,7 @@ export async function getTransactionFeeSettings(): Promise<TransactionFeeSetting
   try {
     const docSnap = await settingsDocRef.get();
 
-    if (docSnap.exists()) {
+    if (docSnap.exists) {
       // Merge with defaults to ensure all properties are present
       return { ...defaultFeeSettings, ...docSnap.data() };
     } else {

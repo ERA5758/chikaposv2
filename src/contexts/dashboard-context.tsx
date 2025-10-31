@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { defaultFeeSettings } from '@/lib/types';
 import type { User, RedemptionOption, Product, Store, Customer, Transaction, PendingOrder, Table, ChallengePeriod, TransactionFeeSettings } from '@/lib/types';
-import { getTransactionFeeSettings } from '@/lib/server/app-settings';
+// Removed direct import of server action
 
 interface DashboardContextType {
   dashboardData: {
@@ -29,14 +29,18 @@ interface DashboardContextType {
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
 
-// A new function to fetch settings using a Server Action
+// A new function to fetch settings using the API route
 async function fetchTransactionFeeSettings(): Promise<TransactionFeeSettings> {
     try {
-        const settings = await getTransactionFeeSettings();
-        // Merge with defaults to ensure all properties are present client-side
-        return { ...defaultFeeSettings, ...settings };
+        const response = await fetch('/api/app-settings');
+        if (!response.ok) {
+            console.error("Failed to fetch app settings, using defaults.");
+            return defaultFeeSettings;
+        }
+        const data = await response.json();
+        return { ...defaultFeeSettings, ...data };
     } catch (error) {
-        console.error("Error fetching app settings via server action:", error);
+        console.error("Failed to fetch app settings, using defaults.", error);
         return defaultFeeSettings;
     }
 }
