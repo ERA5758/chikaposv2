@@ -305,3 +305,9 @@ export type BankAccountSettings = {
     accountNumber: string;
     accountHolder: string;
 };
+
+export const defaultBankAccountSettings: BankAccountSettings = {
+  bankName: "",
+  accountNumber: "",
+  accountHolder: "",
+};
