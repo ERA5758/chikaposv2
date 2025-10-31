@@ -20,7 +20,7 @@ import {
   Bar,
   BarChart,
 } from 'recharts';
-import { TrendingUp, DollarSign, Sparkles, ShoppingBag, Target, CheckCircle, Calendar as CalendarIcon, TrendingDown, FileText, FileSpreadsheet, PackageX, Compass, Gift, Newspaper } from 'lucide-react';
+import { TrendingUp, DollarSign, Sparkles, ShoppingBag, Target, CheckCircle, Calendar as CalendarIcon, TrendingDown, FileText, FileSpreadsheet, PackageX, Newspaper, PlayCircle, X } from 'lucide-react';
 import { subMonths, format, startOfMonth, endOfMonth, isWithinInterval, formatISO, subDays, addDays } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -38,7 +38,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useDashboard } from '@/contexts/dashboard-context';
 import Papa from 'papaparse';
 import { AIConfirmationDialog } from '@/components/dashboard/ai-confirmation-dialog';
-import { useRouter } from 'next/navigation';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface AdminRecommendationInput {
   businessDescription: string;
@@ -61,9 +61,62 @@ const chartConfig = {
   },
 };
 
+function WelcomeTourCard() {
+  const { startTour } = useDashboard();
+  const [isVisible, setIsVisible] = React.useState(false);
+
+  // Check localStorage to see if the card should be shown
+  React.useEffect(() => {
+    const dismissed = localStorage.getItem('chika-welcome-tour-dismissed') === 'true';
+    const completed = localStorage.getItem('chika-tour-viewed') === 'true';
+    if (!dismissed && !completed) {
+      setIsVisible(true);
+    }
+  }, []);
+
+  const handleDismiss = () => {
+    localStorage.setItem('chika-welcome-tour-dismissed', 'true');
+    setIsVisible(false);
+  };
+  
+  const handleStartTour = () => {
+    handleDismiss(); // Also dismiss the card when the tour starts
+    startTour();
+  }
+
+  if (!isVisible) {
+    return null;
+  }
+
+  return (
+    <Alert className="relative border-primary/30 bg-primary/10">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="absolute top-2 right-2 h-6 w-6"
+        onClick={handleDismiss}
+      >
+        <X className="h-4 w-4" />
+        <span className="sr-only">Tutup</span>
+      </Button>
+      <AlertTitle className="font-headline tracking-wider text-xl text-primary">Selamat Datang di Chika POS F&B!</AlertTitle>
+      <AlertDescription>
+        Aplikasi Anda sudah siap. Ayo jelajahi fitur-fitur utama yang akan membantu bisnis Anda.
+      </AlertDescription>
+      <div className="mt-4">
+        <Button onClick={handleStartTour}>
+          <PlayCircle className="mr-2 h-4 w-4" />
+          Mulai Tur
+        </Button>
+      </div>
+    </Alert>
+  );
+}
+
+
 export default function AdminOverview() {
-  const { activeStore, updateActiveStore } = useAuth();
-  const { dashboardData, setRunTour } = useDashboard();
+  const { activeStore, updateActiveStore, refreshActiveStore } = useAuth();
+  const { dashboardData } = useDashboard();
   const { transactions, products, feeSettings } = dashboardData;
   const [recommendations, setRecommendations] = React.useState<AdminRecommendationOutput | null>(null);
   const [appliedStrategies, setAppliedStrategies] = React.useState<AppliedStrategy[]>([]);
@@ -73,8 +126,6 @@ export default function AdminOverview() {
   });
 
   const { toast } = useToast();
-  const router = useRouter();
-
 
   React.useEffect(() => {
     if (!activeStore) return;
@@ -253,6 +304,51 @@ export default function AdminOverview() {
       { name: `7 Hari Sesudah`, revenue: revenueAfter, fill: "hsl(var(--primary))" },
     ];
   };
+  
+  const handleClaimTrial = async () => {
+    try {
+        const idToken = await auth.currentUser?.getIdToken(true);
+        if (!idToken || !activeStore) {
+            throw new Error("Sesi tidak valid atau toko tidak aktif.");
+        }
+        
+        const response = await fetch('/api/store/subscribe-catalog', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`,
+            },
+            body: JSON.stringify({ storeId: activeStore.id, planId: 'trial' }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `Gagal memproses langganan.`);
+        }
+        
+        const result = await response.json();
+
+        toast({
+            title: 'Katalog Percobaan Diaktifkan!',
+            description: `Katalog Digital Premium Anda aktif selama ${feeSettings?.catalogTrialDurationMonths || 1} bulan.`,
+        });
+
+        if (result.newExpiryDate) {
+            updateActiveStore({ 
+                catalogSubscriptionExpiry: result.newExpiryDate,
+                pradanaTokenBalance: result.newBalance,
+                hasUsedCatalogTrial: true,
+            });
+        } else {
+            refreshActiveStore(); 
+        }
+        return result;
+    } catch (error) {
+        console.error(`Trial claim error:`, error);
+        throw error;
+    }
+  };
+
 
   const handleExport = async (formatType: 'PDF' | 'Excel') => {
     if (!exportDate?.from || !exportDate?.to || !transactions.length) {
@@ -361,73 +457,31 @@ export default function AdminOverview() {
     });
   }
   
-  const handleClaimTrial = async (planId: 'trial') => {
-    try {
-        const idToken = await auth.currentUser?.getIdToken(true);
-        if (!idToken || !activeStore) {
-            throw new Error("Sesi tidak valid atau toko tidak aktif.");
-        }
-        
-        const response = await fetch('/api/store/subscribe-catalog', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${idToken}`,
-            },
-            body: JSON.stringify({ storeId: activeStore.id, planId }),
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || `Gagal memproses langganan.`);
-        }
-        
-        const result = await response.json();
-
-        toast({
-            title: 'Klaim Berhasil!',
-            description: `Katalog Publik gratis Anda telah diaktifkan.`,
-        });
-
-        if (result.newExpiryDate) {
-            updateActiveStore({ 
-                ...activeStore, 
-                catalogSubscriptionExpiry: result.newExpiryDate,
-                pradanaTokenBalance: result.newBalance,
-                hasUsedCatalogTrial: planId === 'trial' ? true : activeStore.hasUsedCatalogTrial,
-            });
-        }
-        
-        router.push('/dashboard?view=catalog');
-
-    } catch (error) {
-        console.error(`Subscription error:`, error);
-        throw error;
-    }
-  };
+  const isTrialAvailable = !activeStore?.hasUsedCatalogTrial && feeSettings && feeSettings.catalogTrialFee >= 0;
 
   return (
     <div className="grid gap-6">
-      
-      {activeStore && !activeStore.hasUsedCatalogTrial && (
+      <WelcomeTourCard />
+
+      {isTrialAvailable && (
         <Card className="border-primary/50 bg-primary/10">
           <CardHeader>
             <CardTitle className="font-headline tracking-wider text-primary">Penawaran Spesial Pengguna Baru!</CardTitle>
-            <CardDescription>Aktifkan Katalog Publik digital Anda secara gratis untuk bulan pertama.</CardDescription>
+            <CardDescription>Aktifkan Katalog Publik digital Anda dengan harga percobaan yang sangat terjangkau.</CardDescription>
           </CardHeader>
           <CardContent>
-             <p className="mb-4 text-sm">Tingkatkan pengalaman pelanggan dengan menu digital modern yang dilengkapi asisten AI. Klaim sekarang dengan biaya <span className="font-bold">0 Pradana Token</span> untuk {feeSettings?.catalogTrialDurationMonths || 1} bulan.</p>
+             <p className="mb-4 text-sm">Tingkatkan pengalaman pelanggan dengan menu digital modern yang dilengkapi asisten AI. Klaim sekarang hanya dengan <span className="font-bold">{feeSettings.catalogTrialFee} Pradana Token</span> untuk {feeSettings.catalogTrialDurationMonths} bulan.</p>
              <AIConfirmationDialog
                 featureName="Klaim Katalog Percobaan"
-                featureDescription={`Anda akan mengaktifkan langganan Katalog Digital gratis selama ${feeSettings?.catalogTrialDurationMonths || 1} bulan.`}
+                featureDescription={`Anda akan mengaktifkan langganan Katalog Digital selama ${feeSettings.catalogTrialDurationMonths} bulan dengan harga spesial.`}
                 feeSettings={feeSettings}
-                feeToDeduct={feeSettings?.catalogTrialFee || 0}
-                onConfirm={() => handleClaimTrial('trial')}
-                skipFeeDeduction={true}
+                feeToDeduct={feeSettings.catalogTrialFee}
+                onConfirm={handleClaimTrial}
+                skipFeeDeduction={feeSettings.catalogTrialFee === 0}
               >
                   <Button>
                     <Newspaper className="mr-2 h-4 w-4" />
-                    Klaim Katalog Publik Gratis
+                    Klaim Katalog Publik
                   </Button>
               </AIConfirmationDialog>
           </CardContent>
@@ -485,7 +539,7 @@ export default function AdminOverview() {
             </div>
           </CardContent>
         </Card>
-        <Card data-tour="ai-recommendation">
+        <Card>
           <CardHeader>
             <CardTitle className="font-headline tracking-wider">Rekomendasi Bisnis Chika AI</CardTitle>
             <CardDescription>Dapatkan saran strategis mingguan dan bulanan untuk mendorong pertumbuhan.</CardDescription>
