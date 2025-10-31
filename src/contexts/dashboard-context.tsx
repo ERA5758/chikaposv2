@@ -5,7 +5,7 @@ import { collection, getDocs, query, orderBy, onSnapshot, Unsubscribe, where } f
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import type { User, RedemptionOption, Product, Store, Customer, Transaction, PendingOrder, Table, ChallengePeriod, TransactionFeeSettings } from '@/lib/types';
-import { defaultFeeSettings } from '@/lib/server/app-settings';
+import { defaultFeeSettings } from '@/lib/types';
 
 
 interface DashboardContextType {
@@ -251,4 +251,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 export function useDashboard() {
   const context = useContext(DashboardContext);
   if (context === undefined) {
-    throw new Error
+    throw new Error('useDashboard must be used within a DashboardProvider');
+  }
+  return context;
+}

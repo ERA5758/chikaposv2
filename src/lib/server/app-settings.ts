@@ -1,27 +1,8 @@
 import { getFirebaseAdmin } from './firebase-admin'; // Use server-side db
 import type { TransactionFeeSettings } from '../types';
+import { defaultFeeSettings } from '../types';
 import { doc, runTransaction, increment } from 'firebase/firestore';
 import type { useToast } from '@/hooks/use-toast';
-
-// Default settings in case the document doesn't exist in Firestore
-export const defaultFeeSettings: TransactionFeeSettings = {
-  tokenValueRp: 1000,    // 1 token = Rp 1000
-  feePercentage: 0.005,  // Biaya 0.5% per transaksi
-  minFeeRp: 500,         // Biaya minimum Rp 500
-  maxFeeRp: 2500,        // Biaya maksimum Rp 2500
-  aiUsageFee: 1,       // Biaya 1 token per penggunaan AI tunggal
-  newStoreBonusTokens: 50, // Bonus 50 token untuk toko baru
-  aiBusinessPlanFee: 25, // Biaya 25 token untuk AI Business Plan
-  aiSessionFee: 5,        // Biaya 5 token untuk sesi chat AI
-  aiSessionDurationMinutes: 30, // Durasi sesi chat 30 menit
-  catalogTrialFee: 0,
-  catalogTrialDurationMonths: 1,
-  catalogMonthlyFee: 250,
-  catalogSixMonthFee: 1400,
-  catalogYearlyFee: 2500,
-  taxPercentage: 0,
-  serviceFeePercentage: 0,
-};
 
 export async function getTransactionFeeSettings(): Promise<TransactionFeeSettings> {
   const { db } = getFirebaseAdmin();
