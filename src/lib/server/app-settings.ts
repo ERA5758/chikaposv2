@@ -19,6 +19,8 @@ export const defaultFeeSettings: TransactionFeeSettings = {
   catalogMonthlyFee: 250,
   catalogSixMonthFee: 1400,
   catalogYearlyFee: 2500,
+  taxPercentage: 0,
+  serviceFeePercentage: 0,
 };
 
 export async function getTransactionFeeSettings(): Promise<TransactionFeeSettings> {

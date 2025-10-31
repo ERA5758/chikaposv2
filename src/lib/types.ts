@@ -58,7 +58,7 @@ export type Store = {
   description?: string;
 };
 
-export type UserRole = 'admin' | 'cashier' | 'superadmin';
+export type UserRole = 'admin' | 'cashier' | 'superadmin' | 'kitchen';
 
 export type User = {
   id: string;
@@ -240,6 +240,8 @@ export type TransactionFeeSettings = {
   catalogMonthlyFee: number;
   catalogSixMonthFee: number;
   catalogYearlyFee: number;
+  taxPercentage: number;
+  serviceFeePercentage: number;
 };
 
 export type AppliedStrategy = {
