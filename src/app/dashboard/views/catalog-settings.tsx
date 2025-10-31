@@ -142,11 +142,10 @@ export default function CatalogSettings() {
       )
   }
   
-  const originalMonthly = feeSettings.catalogMonthlyFee * 6;
-  const sixMonthSaving = originalMonthly > 0 ? originalMonthly - feeSettings.catalogSixMonthFee : 0;
+  const originalMonthly = feeSettings.catalogMonthlyFee;
+  const sixMonthSaving = (originalMonthly * 6) - feeSettings.catalogSixMonthFee;
+  const yearlySaving = (originalMonthly * 12) - feeSettings.catalogYearlyFee;
 
-  const originalYearly = feeSettings.catalogMonthlyFee * 12;
-  const yearlySaving = originalYearly > 0 ? originalYearly - feeSettings.catalogYearlyFee : 0;
 
   const expiryDate = activeStore?.catalogSubscriptionExpiry ? new Date(activeStore.catalogSubscriptionExpiry) : null;
   const isSubscriptionActive = expiryDate ? expiryDate > new Date() : false;
