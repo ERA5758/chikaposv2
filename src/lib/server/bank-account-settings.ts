@@ -19,10 +19,10 @@ export async function getBankAccountSettings(): Promise<Partial<BankAccountSetti
             return docSnap.data() as BankAccountSettings;
         } else {
             console.warn(`Bank account settings not found. Returning default empty settings.`);
-            return defaultBankAccountSettings;
+            return {};
         }
     } catch (error) {
         console.error("Error fetching bank account settings:", error);
-        return defaultBankAccountSettings;
+        return {};
     }
 }

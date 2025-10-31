@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -18,7 +19,7 @@ import { db } from '@/lib/firebase';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import type { TopUpRequest, BankAccountSettings } from '@/lib/types';
-import { getBankAccountSettings } from '@/lib/bank-account-settings';
+import { getBankAccountSettings } from '@/lib/server/bank-account-settings';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Badge } from '../ui/badge';
 import { format } from 'date-fns';
@@ -40,7 +41,7 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
   const [proofFile, setProofFile] = React.useState<File | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
   const [history, setHistory] = React.useState<TopUpRequest[]>([]);
-  const [bankSettings, setBankSettings] = React.useState<BankAccountSettings | null>(null);
+  const [bankSettings, setBankSettings] = React.useState<Partial<BankAccountSettings>>({});
 
   React.useEffect(() => {
     setUniqueCode(Math.floor(Math.random() * 900) + 100);
@@ -189,13 +190,13 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
             <form onSubmit={handleSubmit} className="space-y-4">
                <div>
                   <p className="text-sm text-muted-foreground mb-2">Silakan transfer ke rekening berikut:</p>
-                  {bankSettings ? (
+                  {bankSettings.bankName ? (
                     <Card className="bg-secondary/50">
                         <CardContent className="p-4 space-y-2">
                            <div className="text-lg font-bold">{bankSettings.bankName}</div>
                            <div className="flex items-center justify-between">
                              <div className="font-mono text-xl text-primary">{bankSettings.accountNumber}</div>
-                             <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => copyToClipboard(bankSettings.accountNumber)}>
+                             <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => copyToClipboard(String(bankSettings.accountNumber))}>
                                <Copy className="h-4 w-4"/>
                              </Button>
                            </div>

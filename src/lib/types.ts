@@ -1,5 +1,4 @@
 
-
 import type { PointEarningSettings } from './server/point-earning-settings';
 
 export const productCategories = [
@@ -245,26 +244,6 @@ export type TransactionFeeSettings = {
   serviceFeePercentage: number;
 };
 
-export const defaultFeeSettings: TransactionFeeSettings = {
-  tokenValueRp: 1000,
-  feePercentage: 0.005,
-  minFeeRp: 500,
-  maxFeeRp: 2500,
-  aiUsageFee: 1,
-  newStoreBonusTokens: 50,
-  aiBusinessPlanFee: 25,
-  aiSessionFee: 5,
-  aiSessionDurationMinutes: 30,
-  catalogTrialFee: 0,
-  catalogTrialDurationMonths: 1,
-  catalogMonthlyFee: 150,
-  catalogSixMonthFee: 800,
-  catalogYearlyFee: 1500,
-  taxPercentage: 0,
-  serviceFeePercentage: 0,
-};
-
-
 export type AppliedStrategy = {
   id: string;
   type: 'weekly' | 'monthly';
@@ -299,15 +278,27 @@ export type CatalogAssistantOutput = {
   answer: string;
 };
 
+export const defaultFeeSettings: TransactionFeeSettings = {
+  tokenValueRp: 1000,
+  feePercentage: 0.005,
+  minFeeRp: 500,
+  maxFeeRp: 2500,
+  aiUsageFee: 1,
+  newStoreBonusTokens: 50,
+  aiBusinessPlanFee: 25,
+  aiSessionFee: 5,
+  aiSessionDurationMinutes: 30,
+  catalogTrialFee: 0,
+  catalogTrialDurationMonths: 1,
+  catalogMonthlyFee: 150,
+  catalogSixMonthFee: 800,
+  catalogYearlyFee: 1500,
+  taxPercentage: 0,
+  serviceFeePercentage: 0,
+};
 
 export type BankAccountSettings = {
     bankName: string;
-    accountNumber: string;
+    accountNumber: number;
     accountHolder: string;
-};
-
-export const defaultBankAccountSettings: BankAccountSettings = {
-  bankName: "",
-  accountNumber: "",
-  accountHolder: "",
 };
