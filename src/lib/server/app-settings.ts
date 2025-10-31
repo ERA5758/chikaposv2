@@ -14,7 +14,7 @@ export const defaultFeeSettings: TransactionFeeSettings = {
   aiBusinessPlanFee: 25, // Biaya 25 token untuk AI Business Plan
   aiSessionFee: 5,        // Biaya 5 token untuk sesi chat AI
   aiSessionDurationMinutes: 30, // Durasi sesi chat 30 menit
-  catalogTrialFee: 55,
+  catalogTrialFee: 0,
   catalogTrialDurationMonths: 1,
   catalogMonthlyFee: 250,
   catalogSixMonthFee: 1400,
@@ -29,7 +29,7 @@ export async function getTransactionFeeSettings(): Promise<TransactionFeeSetting
   try {
     const docSnap = await settingsDocRef.get();
 
-    if (docSnap.exists) {
+    if (docSnap.exists()) {
       // Merge with defaults to ensure all properties are present
       return { ...defaultFeeSettings, ...docSnap.data() };
     } else {

@@ -222,22 +222,22 @@ export default function CatalogSettings() {
                 {!hasUsedTrial && (
                     <Card className="lg:col-span-1">
                         <CardHeader className="text-center">
-                            <CardTitle className="text-xl flex items-center justify-center gap-2 text-accent"><SparklesIcon /> Coba Dulu</CardTitle>
+                            <CardTitle className="text-xl flex items-center justify-center gap-2 text-accent"><SparklesIcon /> Coba Gratis</CardTitle>
                             <CardDescription>Penawaran Pertama Kali</CardDescription>
                         </CardHeader>
                         <CardContent className="text-center">
-                            <p className="text-4xl font-bold">{feeSettings.catalogTrialFee} <span className="text-base font-normal text-muted-foreground">Token/bln</span></p>
+                            <p className="text-4xl font-bold">0 <span className="text-base font-normal text-muted-foreground">Token/bln</span></p>
                         </CardContent>
                         <CardFooter>
                             <AIConfirmationDialog
-                            featureName="Paket Coba Pertama"
-                            featureDescription={`Anda akan mengaktifkan langganan Katalog Digital selama 1 bulan dengan harga spesial.`}
+                            featureName="Paket Coba Gratis"
+                            featureDescription={`Anda akan mengaktifkan langganan Katalog Digital selama ${feeSettings.catalogTrialDurationMonths} bulan tanpa biaya.`}
                             feeSettings={feeSettings}
-                            feeToDeduct={feeSettings.catalogTrialFee}
+                            feeToDeduct={0}
                             onConfirm={() => handleSubscription('trial')}
-                            skipFeeDeduction={false}
+                            skipFeeDeduction={true}
                             >
-                                <Button className="w-full" variant="secondary">Pilih Paket</Button>
+                                <Button className="w-full" variant="secondary">Klaim Uji Coba</Button>
                             </AIConfirmationDialog>
                         </CardFooter>
                     </Card>
@@ -251,7 +251,7 @@ export default function CatalogSettings() {
                         <p className="text-4xl font-bold">{feeSettings.catalogMonthlyFee} <span className="text-base font-normal text-muted-foreground">Token/bulan</span></p>
                     </CardContent>
                     <CardFooter>
-                        <AIConfirmationDialog
+                         <AIConfirmationDialog
                           featureName="Langganan Bulanan"
                           featureDescription={`Anda akan mengaktifkan atau memperpanjang langganan Katalog Digital Premium selama 1 bulan.`}
                           feeSettings={feeSettings}
