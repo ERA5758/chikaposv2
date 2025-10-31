@@ -2,9 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/lib/server/firebase-admin';
 import { URLSearchParams } from 'url';
-import { getWhatsappSettings } from '@/lib/server/whatsapp-settings';
 import { formatWhatsappNumber } from '@/lib/utils';
-
 
 async function internalSendWhatsapp(deviceId: string, target: string, message: string, isGroup: boolean = false) {
     const body = new URLSearchParams();
@@ -79,11 +77,8 @@ export async function POST(req: NextRequest) {
         // --- Handle WhatsApp notifications directly ---
         (async () => {
             try {
-                const { deviceId, adminGroup } = await getWhatsappSettings('platform');
-                if (!deviceId) {
-                    console.warn("WhatsApp deviceId not configured. Skipping notifications.");
-                    return;
-                }
+                const deviceId = 'fa254b2588ad7626d647da23be4d6a08';
+                const adminGroup = 'SPV ERA MMBP';
                 
                 // Notify platform admin
                 if (adminGroup) {

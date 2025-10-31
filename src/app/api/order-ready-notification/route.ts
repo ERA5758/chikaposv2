@@ -2,7 +2,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/lib/server/firebase-admin';
 import { getOrderReadyFollowUp } from '@/ai/flows/order-ready-follow-up';
-import { getWhatsappSettings } from '@/lib/server/whatsapp-settings';
 import { formatWhatsappNumber } from '@/lib/utils';
 import { URLSearchParams } from 'url';
 
@@ -42,7 +41,7 @@ async function internalSendWhatsapp(deviceId: string, target: string, message: s
 
 
 export async function POST(req: NextRequest) {
-    const { auth } = getFirebaseAdmin();
+    const { auth, db } = getFirebaseAdmin();
     const authorization = req.headers.get('Authorization');
     if (!authorization?.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Unauthorized: Missing or invalid token' }, { status: 401 });
@@ -73,7 +72,10 @@ export async function POST(req: NextRequest) {
             notificationStyle: store.receiptSettings?.notificationStyle || 'fakta',
         });
         
-        const { deviceId } = await getWhatsappSettings(store.id);
+        const storeDoc = await db.collection('stores').doc(store.id).get();
+        const storeData = storeDoc.data();
+        const deviceId = storeData?.whatsappSettings?.deviceId || 'fa254b2588ad7626d647da23be4d6a08';
+
         if (!deviceId) {
             return NextResponse.json({ error: 'WhatsApp Device ID tidak dikonfigurasi untuk toko ini.' }, { status: 412 });
         }

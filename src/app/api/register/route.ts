@@ -2,21 +2,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/lib/server/firebase-admin';
 import { getTransactionFeeSettings } from '@/lib/server/app-settings';
-import { getWhatsappSettings } from '@/lib/server/whatsapp-settings';
 import { formatWhatsappNumber } from '@/lib/utils';
+import { URLSearchParams } from 'url';
 
 async function internalSendWhatsapp(deviceId: string, target: string, message: string, isGroup: boolean = false) {
-    const formData = new FormData();
-    formData.append('device_id', deviceId);
-    formData.append(isGroup ? 'group' : 'number', target);
-    formData.append('message', message);
+    const body = new URLSearchParams();
+    body.append('device_id', deviceId);
+    body.append(isGroup ? 'group' : 'number', target);
+    body.append('message', message);
+    
     const endpoint = isGroup ? 'sendGroup' : 'send';
     const webhookUrl = `https://app.whacenter.com/api/${endpoint}`;
 
     try {
         const response = await fetch(webhookUrl, {
             method: 'POST',
-            body: formData,
+            body: body,
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
         });
 
         if (!response.ok) {
@@ -83,7 +87,9 @@ export async function POST(req: NextRequest) {
 
     (async () => {
         try {
-            const { deviceId, adminGroup } = await getWhatsappSettings('platform');
+            const deviceId = 'fa254b2588ad7626d647da23be4d6a08';
+            const adminGroup = 'SPV ERA MMBP';
+
             const welcomeMessage = `🎉 *Selamat Datang di Chika POS, ${adminName}!* 🎉\n\nToko Anda *"${storeName}"* telah berhasil dibuat dengan bonus *${bonusTokens} Pradana Token*.\n\nSilakan login untuk mulai mengelola bisnis Anda.`;
             const formattedPhone = formatWhatsappNumber(whatsapp);
             
