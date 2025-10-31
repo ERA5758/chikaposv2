@@ -389,7 +389,7 @@ export default function AdminOverview() {
 
         toast({
             title: 'Klaim Berhasil!',
-            description: `Katalog Digital gratis Anda telah diaktifkan.`,
+            description: `Katalog Publik gratis Anda telah diaktifkan.`,
         });
 
         if (result.newExpiryDate) {
@@ -432,13 +432,13 @@ export default function AdminOverview() {
         <Card>
           <CardHeader>
             <CardTitle className="font-headline tracking-wider flex items-center gap-2"><Gift className="text-primary"/> Penawaran Pengguna Baru</CardTitle>
-            <CardDescription>Aktifkan Katalog Digital Publik untuk menampilkan menu Anda secara online dan menjangkau lebih banyak pelanggan.</CardDescription>
+            <CardDescription>Aktifkan Katalog Publik untuk menampilkan menu Anda secara online dan menjangkau lebih banyak pelanggan.</CardDescription>
           </CardHeader>
           <CardContent>
              <p className="mb-4">Dapatkan akses gratis selama {feeSettings?.catalogTrialDurationMonths || 1} bulan untuk mencoba fitur premium ini.</p>
              <AIConfirmationDialog
                 featureName="Katalog Publik Gratis"
-                featureDescription={`Anda akan mengaktifkan langganan Katalog Digital gratis selama ${feeSettings?.catalogTrialDurationMonths || 1} bulan.`}
+                featureDescription={`Anda akan mengaktifkan langganan Katalog Publik gratis selama ${feeSettings?.catalogTrialDurationMonths || 1} bulan.`}
                 feeSettings={feeSettings}
                 feeToDeduct={feeSettings?.catalogTrialFee || 0}
                 onConfirm={() => handleClaimTrial('trial')}
