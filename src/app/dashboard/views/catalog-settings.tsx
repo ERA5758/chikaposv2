@@ -218,9 +218,9 @@ export default function CatalogSettings() {
                     Pilih paket yang paling sesuai dengan kebutuhan bisnis Anda untuk mengaktifkan fitur ini.
                 </CardDescription>
             </CardHeader>
-            <CardContent className="grid md:grid-cols-4 gap-6">
+            <CardContent className="grid md:grid-cols-1 lg:grid-cols-4 gap-6">
                 {!hasUsedTrial && (
-                    <Card>
+                    <Card className="lg:col-span-1">
                         <CardHeader className="text-center">
                             <CardTitle className="text-xl flex items-center justify-center gap-2 text-accent"><SparklesIcon /> Coba Dulu</CardTitle>
                             <CardDescription>Penawaran Pertama Kali</CardDescription>
@@ -242,7 +242,7 @@ export default function CatalogSettings() {
                         </CardFooter>
                     </Card>
                 )}
-                <Card>
+                <Card className="lg:col-span-1">
                     <CardHeader className="text-center">
                         <CardTitle className="text-xl">Bulanan</CardTitle>
                         <CardDescription>Fleksibel & Terjangkau</CardDescription>
@@ -264,7 +264,7 @@ export default function CatalogSettings() {
                     </CardFooter>
                 </Card>
 
-                 <Card className="border-primary shadow-lg relative">
+                 <Card className="border-primary shadow-lg relative lg:col-span-1">
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2">
                         <div className="flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
                             <Star className="h-3 w-3" /> Paling Populer
@@ -294,7 +294,7 @@ export default function CatalogSettings() {
                     </CardFooter>
                 </Card>
 
-                 <Card>
+                 <Card className="lg:col-span-1">
                     <CardHeader className="text-center">
                         <CardTitle className="text-xl">Tahunan</CardTitle>
                         <CardDescription>Nilai Paling Hemat</CardDescription>
