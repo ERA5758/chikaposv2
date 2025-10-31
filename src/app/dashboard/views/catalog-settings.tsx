@@ -75,7 +75,7 @@ export default function CatalogSettings() {
     }
   };
 
-  const handleSubscription = async (planId: number | 'trial') => {
+  const handleSubscription = async (planId: number) => {
     try {
         const idToken = await auth.currentUser?.getIdToken(true);
         if (!idToken || !activeStore) {
@@ -108,12 +108,11 @@ export default function CatalogSettings() {
                 ...activeStore, 
                 catalogSubscriptionExpiry: result.newExpiryDate,
                 pradanaTokenBalance: result.newBalance,
-                hasUsedCatalogTrial: planId === 'trial' ? true : activeStore.hasUsedCatalogTrial,
             });
         } else {
             refreshActiveStore(); 
         }
-
+        return result;
     } catch (error) {
         console.error(`Subscription error:`, error);
         throw error;
@@ -134,10 +133,11 @@ export default function CatalogSettings() {
       )
   }
   
-  const originalMonthly = feeSettings.catalogMonthlyFee;
-  const sixMonthSaving = (originalMonthly * 6) - feeSettings.catalogSixMonthFee;
-  const yearlySaving = (originalMonthly * 12) - feeSettings.catalogYearlyFee;
+  const originalSixMonthPrice = feeSettings.catalogMonthlyFee * 6;
+  const sixMonthSaving = originalSixMonthPrice > 0 ? originalSixMonthPrice - feeSettings.catalogSixMonthFee : 0;
 
+  const originalYearlyPrice = feeSettings.catalogMonthlyFee * 12;
+  const yearlySaving = originalYearlyPrice > 0 ? originalYearlyPrice - feeSettings.catalogYearlyFee : 0;
 
   const expiryDate = activeStore?.catalogSubscriptionExpiry ? new Date(activeStore.catalogSubscriptionExpiry) : null;
   const isSubscriptionActive = expiryDate ? expiryDate > new Date() : false;
@@ -209,8 +209,8 @@ export default function CatalogSettings() {
                     Pilih paket yang paling sesuai dengan kebutuhan bisnis Anda untuk mengaktifkan fitur ini.
                 </CardDescription>
             </CardHeader>
-            <CardContent className="grid md:grid-cols-1 lg:grid-cols-3 gap-6">
-                <Card className="lg:col-span-1">
+            <CardContent className="flex flex-col items-stretch gap-6 md:px-20 lg:px-40">
+                <Card className='flex-1'>
                     <CardHeader className="text-center">
                         <CardTitle className="text-xl">Bulanan</CardTitle>
                         <CardDescription>Fleksibel & Terjangkau</CardDescription>
@@ -219,7 +219,7 @@ export default function CatalogSettings() {
                         <p className="text-4xl font-bold">{feeSettings.catalogMonthlyFee} <span className="text-base font-normal text-muted-foreground">Token/bulan</span></p>
                     </CardContent>
                     <CardFooter>
-                         <AIConfirmationDialog
+                        <AIConfirmationDialog
                           featureName="Langganan Bulanan"
                           featureDescription={`Anda akan mengaktifkan atau memperpanjang langganan Katalog Digital Premium selama 1 bulan.`}
                           feeSettings={feeSettings}
@@ -232,7 +232,7 @@ export default function CatalogSettings() {
                     </CardFooter>
                 </Card>
 
-                 <Card className="border-primary shadow-lg relative lg:col-span-1">
+                 <Card className="border-primary shadow-lg relative flex-1">
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2">
                         <div className="flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
                             <Star className="h-3 w-3" /> Paling Populer
@@ -245,7 +245,7 @@ export default function CatalogSettings() {
                     <CardContent className="text-center">
                         <p className="text-4xl font-bold">{feeSettings.catalogSixMonthFee} <span className="text-base font-normal text-muted-foreground">Token/6 bulan</span></p>
                         {sixMonthSaving > 0 && (
-                            <p className="text-sm text-green-600 font-semibold">Hemat {sixMonthSaving} Token!</p>
+                            <p className="text-sm text-muted-foreground">Hemat {sixMonthSaving} Token!</p>
                         )}
                     </CardContent>
                     <CardFooter>
@@ -262,7 +262,7 @@ export default function CatalogSettings() {
                     </CardFooter>
                 </Card>
 
-                 <Card className="lg:col-span-1">
+                 <Card className='flex-1'>
                     <CardHeader className="text-center">
                         <CardTitle className="text-xl">Tahunan</CardTitle>
                         <CardDescription>Nilai Paling Hemat</CardDescription>
@@ -270,7 +270,7 @@ export default function CatalogSettings() {
                     <CardContent className="text-center">
                         <p className="text-4xl font-bold">{feeSettings.catalogYearlyFee} <span className="text-base font-normal text-muted-foreground">Token/tahun</span></p>
                          {yearlySaving > 0 && (
-                            <p className="text-sm text-green-600 font-semibold">Hemat {yearlySaving} Token!</p>
+                            <p className="text-sm text-muted-foreground">Hemat {yearlySaving} Token!</p>
                         )}
                     </CardContent>
                     <CardFooter>
