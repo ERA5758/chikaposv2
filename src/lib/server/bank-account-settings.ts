@@ -2,8 +2,7 @@
 'use server';
 
 import { getFirebaseAdmin } from './firebase-admin';
-import { defaultBankAccountSettings, type BankAccountSettings } from '../types';
-
+import { type BankAccountSettings } from '../types';
 
 /**
  * Fetches Bank Account settings from Firestore using the Admin SDK.
