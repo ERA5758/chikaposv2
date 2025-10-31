@@ -1,95 +1,110 @@
-
 'use client';
 
 import * as React from 'react';
 import { useAuth } from './auth-context';
-import { TourStep, tourSteps } from '@/lib/tour-steps';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { TourHighlight } from '@/components/dashboard/tour-highlight';
+import { tourSteps } from '@/lib/tour-steps';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import Joyride, { CallBackProps, STATUS, Step } from 'react-joyride';
 
-interface TourContextType {
+interface TourGuideContextType {
+  startTour: () => void;
   isTourActive: boolean;
   isTourCompleted: boolean;
-  currentStep: TourStep | null;
-  tourSteps: TourStep[];
-  startTour: () => void;
-  nextStep: () => void;
-  completeTour: () => void;
 }
 
-const TourContext = React.createContext<TourContextType | undefined>(undefined);
+const TourGuideContext = React.createContext<TourGuideContextType | undefined>(undefined);
 
-export function TourProvider({ children }: { children: React.ReactNode }) {
+export function TourGuideProvider({ children }: { children: React.ReactNode }) {
   const { activeStore } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const [isTourActive, setIsTourActive] = React.useState(false);
-  const [isTourCompleted, setIsTourCompleted] = React.useState(false);
-  const [currentStepIndex, setCurrentStepIndex] = React.useState(0);
+  const tourStorageKey = activeStore ? `chika_tour_completed_${activeStore.id}` : '';
   
-  const currentStep = isTourActive ? tourSteps[currentStepIndex] : null;
-  const tourStorageKey = `tour_completed_${activeStore?.id}`;
+  const [run, setRun] = React.useState(false);
+  const [stepIndex, setStepIndex] = React.useState(0);
+  const [isTourCompleted, setIsTourCompleted] = React.useState(true); // Default to true
 
   React.useEffect(() => {
-    if (activeStore) {
-      const completed = localStorage.getItem(tourStorageKey) === 'true';
-      setIsTourCompleted(completed);
+    if (tourStorageKey) {
+        const completed = localStorage.getItem(tourStorageKey) === 'true';
+        setIsTourCompleted(completed);
+        if (!completed) {
+          // If tour hasn't been completed, we can potentially auto-start or show a prompt
+        }
     }
-  }, [activeStore, tourStorageKey]);
-
-  const navigateToStep = (step: TourStep) => {
-    const newParams = new URLSearchParams(searchParams.toString());
-    newParams.set('view', step.view);
-    router.push(`/dashboard?${newParams.toString()}`);
-  };
+  }, [tourStorageKey]);
 
   const startTour = () => {
-    setCurrentStepIndex(0);
-    setIsTourActive(true);
-    navigateToStep(tourSteps[0]);
+    setStepIndex(0);
+    setRun(true);
   };
 
-  const nextStep = () => {
-    const nextIndex = currentStepIndex + 1;
-    if (nextIndex < tourSteps.length) {
-      setCurrentStepIndex(nextIndex);
-      navigateToStep(tourSteps[nextIndex]);
-    } else {
-      completeTour();
+  const handleJoyrideCallback = (data: CallBackProps) => {
+    const { status, step, index, type } = data;
+
+    if (([STATUS.FINISHED, STATUS.SKIPPED] as string[]).includes(status)) {
+      setRun(false);
+      setIsTourCompleted(true);
+      if(tourStorageKey) localStorage.setItem(tourStorageKey, 'true');
+    } else if (type === 'step:after') {
+      const nextIndex = index + 1;
+      const nextStep = tourSteps[nextIndex];
+      if (nextStep) {
+        const currentView = searchParams.get('view') || 'overview';
+        if (nextStep.target && typeof nextStep.target === 'string') {
+          const targetView = nextStep.target.split('-')[1]; // e.g., from 'sidebar-pos' to 'pos'
+           if (targetView && targetView !== currentView) {
+             const newParams = new URLSearchParams(searchParams.toString());
+             newParams.set('view', targetView);
+             router.push(`${pathname}?${newParams.toString()}`);
+           }
+        }
+      }
     }
   };
 
-  const completeTour = () => {
-    setIsTourActive(false);
-    setIsTourCompleted(true);
-    if (activeStore) {
-      localStorage.setItem(tourStorageKey, 'true');
-    }
-  };
-
-  const value: TourContextType = {
-    isTourActive,
-    isTourCompleted,
-    currentStep,
-    tourSteps,
+  const value: TourGuideContextType = {
     startTour,
-    nextStep,
-    completeTour,
+    isTourActive: run,
+    isTourCompleted,
   };
 
   return (
-    <TourContext.Provider value={value}>
+    <TourGuideContext.Provider value={value}>
       {children}
-      <TourHighlight />
-    </TourContext.Provider>
+      <Joyride
+        run={run}
+        stepIndex={stepIndex}
+        steps={tourSteps}
+        continuous
+        showProgress
+        showSkipButton
+        callback={handleJoyrideCallback}
+        styles={{
+          options: {
+            zIndex: 10000,
+            primaryColor: 'hsl(var(--primary))',
+          },
+          buttonClose: {
+            display: 'none',
+          },
+        }}
+        locale={{
+          last: 'Selesai',
+          next: 'Lanjutkan',
+          skip: 'Lewati',
+        }}
+      />
+    </TourGuideContext.Provider>
   );
 }
 
-export function useTour() {
-  const context = React.useContext(TourContext);
+export function useTourGuide() {
+  const context = React.useContext(TourGuideContext);
   if (context === undefined) {
-    throw new Error('useTour must be used within a TourProvider');
+    throw new Error('useTourGuide must be used within a TourGuideProvider');
   }
   return context;
 }

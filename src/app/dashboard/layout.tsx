@@ -6,10 +6,10 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/auth-context";
 import { DashboardProvider } from "@/contexts/dashboard-context";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { Store } from "lucide-react";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { TourProvider } from "@/contexts/tour-context";
+import { TourGuideProvider } from "@/contexts/tour-context";
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { currentUser, isLoading } = useAuth();
@@ -41,13 +41,13 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     <DashboardProvider>
       <SidebarProvider>
          <TooltipProvider>
-           <TourProvider>
+           <TourGuideProvider>
               <div className="flex min-h-screen w-full bg-background">
                 {children}
                 {currentUser.role === 'cashier' && <FloatingStoreIndicator />}
                 <ChikaChatButton />
               </div>
-            </TourProvider>
+            </TourGuideProvider>
          </TooltipProvider>
       </SidebarProvider>
     </DashboardProvider>

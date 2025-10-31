@@ -38,8 +38,8 @@ import { useAuth } from '@/contexts/auth-context';
 import { useDashboard } from '@/contexts/dashboard-context';
 import Papa from 'papaparse';
 import { AIConfirmationDialog } from '@/components/dashboard/ai-confirmation-dialog';
-import { useTour } from '@/contexts/tour-context';
 import { useRouter } from 'next/navigation';
+import { useTourGuide } from '@/contexts/tour-context';
 
 interface AdminRecommendationInput {
   businessDescription: string;
@@ -64,7 +64,7 @@ const chartConfig = {
 
 export default function AdminOverview() {
   const { activeStore, updateActiveStore } = useAuth();
-  const { dashboardData, refreshData } = useDashboard();
+  const { dashboardData } = useDashboard();
   const { transactions, products, feeSettings } = dashboardData;
   const [recommendations, setRecommendations] = React.useState<AdminRecommendationOutput | null>(null);
   const [appliedStrategies, setAppliedStrategies] = React.useState<AppliedStrategy[]>([]);
@@ -74,8 +74,8 @@ export default function AdminOverview() {
   });
 
   const { toast } = useToast();
-  const { startTour, isTourActive, isTourCompleted } = useTour();
   const router = useRouter();
+  const { startTour, isTourActive, isTourCompleted } = useTourGuide();
 
 
   React.useEffect(() => {
@@ -410,7 +410,7 @@ export default function AdminOverview() {
 
   return (
     <div className="grid gap-6">
-       {!isTourActive && !isTourCompleted && (
+      {!isTourActive && !isTourCompleted && (
         <Card className="bg-primary/10 border-primary/20" data-tour="start-tour">
           <CardHeader>
             <CardTitle className="font-headline tracking-wider text-primary">Selamat Datang di Chika POS!</CardTitle>
@@ -431,21 +431,21 @@ export default function AdminOverview() {
         <Card className="border-primary/50 bg-primary/10">
           <CardHeader>
             <CardTitle className="font-headline tracking-wider text-primary">Penawaran Spesial Pengguna Baru!</CardTitle>
-            <CardDescription>Aktifkan Katalog Publik digital Anda dengan harga percobaan yang sangat terjangkau.</CardDescription>
+            <CardDescription>Aktifkan Katalog Publik digital Anda secara gratis untuk bulan pertama.</CardDescription>
           </CardHeader>
           <CardContent>
-             <p className="mb-4 text-sm">Tingkatkan pengalaman pelanggan dengan menu digital modern yang dilengkapi asisten AI. Klaim sekarang hanya dengan <span className="font-bold">{feeSettings?.catalogTrialFee || 0} Pradana Token</span> untuk {feeSettings?.catalogTrialDurationMonths || 1} bulan.</p>
+             <p className="mb-4 text-sm">Tingkatkan pengalaman pelanggan dengan menu digital modern yang dilengkapi asisten AI. Klaim sekarang dengan biaya <span className="font-bold">0 Pradana Token</span> untuk {feeSettings?.catalogTrialDurationMonths || 1} bulan.</p>
              <AIConfirmationDialog
                 featureName="Klaim Katalog Percobaan"
-                featureDescription={`Anda akan mengaktifkan langganan Katalog Digital selama ${feeSettings?.catalogTrialDurationMonths || 1} bulan dengan harga spesial.`}
+                featureDescription={`Anda akan mengaktifkan langganan Katalog Digital gratis selama ${feeSettings?.catalogTrialDurationMonths || 1} bulan.`}
                 feeSettings={feeSettings}
                 feeToDeduct={feeSettings?.catalogTrialFee || 0}
                 onConfirm={() => handleClaimTrial('trial')}
-                skipFeeDeduction={feeSettings?.catalogTrialFee === 0}
+                skipFeeDeduction={true}
               >
                   <Button>
                     <Newspaper className="mr-2 h-4 w-4" />
-                    Klaim Katalog Publik
+                    Klaim Katalog Publik Gratis
                   </Button>
               </AIConfirmationDialog>
           </CardContent>

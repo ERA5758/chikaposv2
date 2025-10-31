@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
@@ -28,12 +27,13 @@ import {
   Receipt,
   UserCircle,
   BarChart4,
-  Armchair,
   Store,
   Wallet,
   TrendingUp,
   Map,
   Newspaper,
+  ShoppingBasket,
+  ClipboardList,
   ChefHat,
 } from 'lucide-react';
 import * as React from 'react';
@@ -59,10 +59,6 @@ export function MainSidebar({ pradanaTokenBalance }: MainSidebarProps) {
 
   const navigate = (view: string) => {
     const newParams = new URLSearchParams(searchParams.toString());
-    if (view !== 'pos') {
-      newParams.delete('tableId');
-      newParams.delete('tableName');
-    }
     newParams.set('view', view);
     router.push(`${pathname}?${newParams.toString()}`);
   };
@@ -78,10 +74,11 @@ export function MainSidebar({ pradanaTokenBalance }: MainSidebarProps) {
         icon: <Store />,
         roles: ['admin', 'cashier', 'kitchen'],
         items: [
-            { view: 'overview', label: 'Overview', icon: <LayoutGrid />, roles: ['admin', 'cashier'] },
-            { view: 'pos', label: 'Kasir POS', icon: <Armchair />, roles: ['admin', 'cashier'] },
-            { view: 'kitchen', label: 'Dapur', icon: <ChefHat />, roles: ['admin', 'kitchen'] },
-            { view: 'transactions', label: 'Transaksi', icon: <History />, roles: ['admin', 'cashier'] },
+            { view: 'overview', label: 'Overview', icon: <LayoutGrid />, roles: ['admin', 'cashier'], tourId: 'sidebar-overview' },
+            { view: 'pos', label: 'Kasir POS', icon: <ShoppingBasket />, roles: ['admin', 'cashier'], tourId: 'sidebar-pos' },
+            { view: 'kitchen', label: 'Dapur', icon: <ChefHat />, roles: ['admin', 'kitchen'], tourId: 'sidebar-kitchen' },
+            { view: 'pending-orders', label: 'Pending Orders', icon: <ClipboardList />, roles: ['admin', 'cashier'] },
+            { view: 'transactions', label: 'Transaksi', icon: <History />, roles: ['admin', 'cashier'], tourId: 'sidebar-transactions' },
         ]
     },
     {
@@ -89,9 +86,9 @@ export function MainSidebar({ pradanaTokenBalance }: MainSidebarProps) {
         icon: <Wallet />,
         roles: ['admin', 'cashier'],
         items: [
-            { view: 'products', label: 'Produk (Menu)', icon: <BookOpenCheck />, roles: ['admin', 'cashier'] },
-            { view: 'customers', label: 'Pelanggan', icon: <Contact2 />, roles: ['admin', 'cashier'] },
-            { view: 'employees', label: 'Karyawan', icon: <Users />, roles: ['admin'] },
+            { view: 'products', label: 'Produk (Menu)', icon: <BookOpenCheck />, roles: ['admin', 'cashier'], tourId: 'sidebar-products' },
+            { view: 'customers', label: 'Pelanggan', icon: <Contact2 />, roles: ['admin', 'cashier'], tourId: 'sidebar-customers' },
+            { view: 'employees', label: 'Karyawan', icon: <Users />, roles: ['admin'], tourId: 'sidebar-employees' },
         ]
     },
     {
@@ -99,10 +96,10 @@ export function MainSidebar({ pradanaTokenBalance }: MainSidebarProps) {
         icon: <TrendingUp />,
         roles: ['admin'],
         items: [
-            { view: 'customer-analytics', label: 'Analisis Pelanggan', icon: <BarChart4 />, roles: ['admin'] },
-            { view: 'promotions', label: 'Promosi', icon: <Gift />, roles: ['admin'] },
-            { view: 'challenges', label: 'Tantangan', icon: <Trophy />, roles: ['admin'] },
-            { view: 'ai-business-plan', label: 'AI Business Plan', icon: <Map />, roles: ['admin'] },
+            { view: 'customer-analytics', label: 'Analisis Pelanggan', icon: <BarChart4 />, roles: ['admin'], tourId: 'sidebar-customer-analytics' },
+            { view: 'promotions', label: 'Promosi', icon: <Gift />, roles: ['admin'], tourId: 'sidebar-promotions' },
+            { view: 'challenges', label: 'Tantangan', icon: <Trophy />, roles: ['admin'], tourId: 'sidebar-challenges' },
+            { view: 'ai-business-plan', label: 'AI Business Plan', icon: <Map />, roles: ['admin'], tourId: 'sidebar-ai-business-plan' },
         ]
     },
      {
@@ -110,8 +107,8 @@ export function MainSidebar({ pradanaTokenBalance }: MainSidebarProps) {
         icon: <Settings />,
         roles: ['admin'],
         items: [
-            { view: 'receipt-settings', label: 'Pengaturan Struk', icon: <Receipt />, roles: ['admin'] },
-            { view: 'catalog', label: 'Katalog Publik', icon: <Newspaper />, roles: ['admin'] },
+            { view: 'receipt-settings', label: 'Pengaturan Struk', icon: <Receipt />, roles: ['admin'], tourId: 'sidebar-receipt-settings' },
+            { view: 'catalog', label: 'Katalog Publik', icon: <Newspaper />, roles: ['admin'], tourId: 'sidebar-catalog' },
         ]
     },
   ];
@@ -134,7 +131,7 @@ export function MainSidebar({ pradanaTokenBalance }: MainSidebarProps) {
               <Dialog open={isTopUpOpen} onOpenChange={setIsTopUpOpen}>
                 {isAdmin ? (
                     <DialogTrigger asChild>
-                        <div className="cursor-pointer rounded-md p-1 hover:bg-sidebar-accent">
+                        <div className="cursor-pointer rounded-md p-1 hover:bg-sidebar-accent" data-tour="top-up-button">
                             {tokenDisplay}
                         </div>
                     </DialogTrigger>
@@ -164,11 +161,12 @@ export function MainSidebar({ pradanaTokenBalance }: MainSidebarProps) {
                   <span>{group.group}</span>
                 </SidebarGroupLabel>
                 {visibleItems.map((item) => (
-                  <SidebarMenuItem key={item.view}>
+                  <SidebarMenuItem key={item.view} data-tour={item.tourId}>
                     <SidebarMenuButton
                       onClick={() => navigate(item.view)}
                       isActive={currentView === item.view}
                       tooltip={item.label}
+                      data-view={item.view}
                     >
                       {item.icon}
                       <span>{item.label}</span>
@@ -195,7 +193,7 @@ export function MainSidebar({ pradanaTokenBalance }: MainSidebarProps) {
                </div>
             )}
             <ThemeSwitcher />
-          <SidebarMenuItem>
+          <SidebarMenuItem data-tour="sidebar-settings">
             <SidebarMenuButton tooltip="Pengaturan" onClick={() => navigate('settings')} isActive={currentView === 'settings'}>
               <Settings />
               <span>Pengaturan</span>

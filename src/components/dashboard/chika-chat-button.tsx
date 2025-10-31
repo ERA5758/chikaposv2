@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -19,7 +18,7 @@ export function ChikaChatButton() {
 
   return (
     <>
-      <div className="fixed bottom-16 right-4 z-50 non-printable" data-tour="chika-chat">
+      <div className="fixed bottom-16 right-4 z-50 non-printable" data-tour="chika-chat-button">
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
