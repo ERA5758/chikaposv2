@@ -1,4 +1,5 @@
 
+
 import type { PointEarningSettings } from './server/point-earning-settings';
 
 export const productCategories = [
@@ -303,11 +304,4 @@ export type BankAccountSettings = {
     bankName: string;
     accountNumber: string;
     accountHolder: string;
-};
-
-// Default settings if the document doesn't exist in Firestore.
-export const defaultBankAccountSettings: BankAccountSettings = {
-    bankName: 'BANK BCA',
-    accountNumber: '6225089802',
-    accountHolder: 'PT. ERA MAJU MAPAN BERSAMA PRADANA',
 };
