@@ -11,12 +11,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { AIConfirmationDialog } from '@/components/dashboard/ai-confirmation-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { auth, db } from '@/lib/firebase';
-import { doc, updateDoc, setDoc } from 'firebase/firestore'; // Import setDoc
+import { doc, updateDoc, setDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { QrCodeDialog } from '@/components/dashboard/QrCodeDialog';
-import html2canvas from 'html2canvas';
 
 const features = [
   "Tampilan menu modern & profesional yang bisa diakses dari mana saja.",
@@ -32,7 +31,6 @@ export default function CatalogSettings() {
   const { feeSettings } = dashboardData;
   const { toast } = useToast();
 
-  // Self-healing logic for missing catalogSlug
   React.useEffect(() => {
     if (activeStore && !activeStore.catalogSlug) {
       console.log("Toko lama terdeteksi, membuat catalogSlug...");
@@ -47,12 +45,8 @@ export default function CatalogSettings() {
             .replace(/-+$/, '') + '-' + Math.random().toString(36).substring(2, 7);
 
           const storeRef = doc(db, 'stores', activeStore.id);
-          const slugRef = doc(db, 'catalogSlugs', newSlug);
-
-          await Promise.all([
-            updateDoc(storeRef, { catalogSlug: newSlug }),
-            setDoc(slugRef, { storeId: activeStore.id })
-          ]);
+          
+          await updateDoc(storeRef, { catalogSlug: newSlug });
           
           toast({
             title: "Pembaruan Toko",
@@ -109,7 +103,6 @@ export default function CatalogSettings() {
             description: `Katalog Digital Premium Anda telah diperpanjang.`,
         });
 
-        // Update context immediately with the new expiry date from the API
         if (result.newExpiryDate) {
             updateActiveStore({ 
                 ...activeStore, 
@@ -118,13 +111,12 @@ export default function CatalogSettings() {
                 hasUsedCatalogTrial: planId === 'trial' ? true : activeStore.hasUsedCatalogTrial,
             });
         } else {
-            // Fallback to refresh if API response is not as expected
             refreshActiveStore(); 
         }
 
     } catch (error) {
         console.error(`Subscription error:`, error);
-        throw error; // Re-throw for AIConfirmationDialog
+        throw error;
     }
   };
 
@@ -149,7 +141,6 @@ export default function CatalogSettings() {
 
   const expiryDate = activeStore?.catalogSubscriptionExpiry ? new Date(activeStore.catalogSubscriptionExpiry) : null;
   const isSubscriptionActive = expiryDate ? expiryDate > new Date() : false;
-  const hasUsedTrial = activeStore?.hasUsedCatalogTrial ?? false;
   const catalogUrl = typeof window !== 'undefined' && activeStore.catalogSlug 
     ? `${window.location.origin}/katalog/${activeStore.catalogSlug}` 
     : '';
@@ -254,7 +245,7 @@ export default function CatalogSettings() {
                     <CardContent className="text-center">
                         <p className="text-4xl font-bold">{feeSettings.catalogSixMonthFee} <span className="text-base font-normal text-muted-foreground">Token/6 bulan</span></p>
                         {sixMonthSaving > 0 && (
-                            <p className="text-sm text-muted-foreground">Hemat {sixMonthSaving} Token!</p>
+                            <p className="text-sm text-green-600 font-semibold">Hemat {sixMonthSaving} Token!</p>
                         )}
                     </CardContent>
                     <CardFooter>
@@ -279,7 +270,7 @@ export default function CatalogSettings() {
                     <CardContent className="text-center">
                         <p className="text-4xl font-bold">{feeSettings.catalogYearlyFee} <span className="text-base font-normal text-muted-foreground">Token/tahun</span></p>
                          {yearlySaving > 0 && (
-                            <p className="text-sm text-muted-foreground">Hemat {yearlySaving} Token!</p>
+                            <p className="text-sm text-green-600 font-semibold">Hemat {yearlySaving} Token!</p>
                         )}
                     </CardContent>
                     <CardFooter>
