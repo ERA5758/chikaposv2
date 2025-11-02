@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -19,7 +20,7 @@ import {
 import type { User } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, PlusCircle, CheckCircle, XCircle } from 'lucide-react';
+import { PlusCircle, CheckCircle, XCircle, MoreHorizontal } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,6 +35,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter
 } from '@/components/ui/dialog';
 import { AddEmployeeForm } from '@/components/dashboard/add-employee-form';
 import { EditEmployeeForm } from '@/components/dashboard/edit-employee-form';
@@ -53,6 +55,49 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
+
+function EmployeeDetailsDialog({ 
+    user, 
+    open, 
+    onOpenChange,
+    onEdit,
+    onResetPassword,
+    onStatusChange
+}: { 
+    user: User; 
+    open: boolean; 
+    onOpenChange: (open: boolean) => void;
+    onEdit: (user: User) => void;
+    onResetPassword: (user: User) => void;
+    onStatusChange: (user: User) => void;
+}) {
+    if (!user) return null;
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle className="font-headline tracking-wider">{user.name}</DialogTitle>
+                    <DialogDescription>
+                        ID Karyawan: {user.id}
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-2 py-4 text-sm">
+                    <div><strong>Email:</strong> {user.email}</div>
+                    <div><strong>Peran:</strong> <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>{user.role}</Badge></div>
+                    <div><strong>Status:</strong> <Badge variant={user.status === 'active' ? 'secondary' : 'destructive'} className={user.status === 'active' ? 'border-green-500/50 text-green-700' : ''}>{user.status}</Badge></div>
+                </div>
+                <DialogFooter className="flex-col sm:flex-row sm:justify-end gap-2">
+                    <Button variant="outline" onClick={() => onEdit(user)}>Ubah</Button>
+                    <Button variant="secondary" onClick={() => onResetPassword(user)}>Atur Ulang Password</Button>
+                    <Button variant={user.status === 'active' ? 'destructive' : 'default'} onClick={() => onStatusChange(user)}>
+                        {user.status === 'active' ? 'Nonaktifkan' : 'Aktifkan'}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
 
 export default function Employees() {
   const { activeStore } = useAuth();
@@ -107,6 +152,9 @@ export default function Employees() {
     }
   }, [activeStore, fetchUsers]);
 
+  const handleRowClick = (user: User) => {
+    setSelectedUser(user);
+  };
 
   const handleEditClick = (user: User) => {
     setSelectedUser(user);
@@ -132,7 +180,7 @@ export default function Employees() {
     try {
         await updateDoc(userDocRef, { status: newStatus });
         
-        setUsers(prevUsers => prevUsers.map(u => u.id === selectedUser.id ? {...u, status: newStatus} : u));
+        fetchUsers(); // Refresh the list
 
         toast({
         title: 'Status Karyawan Diperbarui',
@@ -235,7 +283,6 @@ export default function Employees() {
                 <TableHead>Email</TableHead>
                 <TableHead>Peran</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -246,12 +293,11 @@ export default function Employees() {
                     <TableCell><Skeleton className="h-5 w-40" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-16" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-20" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                   </TableRow>
                 ))
               ) : (
                 users.map((user) => (
-                  <TableRow key={user.id} className={user.status === 'inactive' ? 'text-muted-foreground' : ''}>
+                  <TableRow key={user.id} className="cursor-pointer" onClick={() => handleRowClick(user)}>
                     <TableCell className="font-medium">{user.name}</TableCell>
                     <TableCell>{user.email}</TableCell>
                     <TableCell>
@@ -269,35 +315,6 @@ export default function Employees() {
                         {user.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button aria-haspopup="true" size="icon" variant="ghost">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Aksi</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => handleEditClick(user)}>Ubah</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleResetPasswordClick(user)}>Atur Ulang Password</DropdownMenuItem>
-                          <DropdownMenuItem 
-                            className={user.status === 'active' ? 'text-destructive' : 'text-green-600 focus:text-green-600'}
-                            onClick={() => handleStatusChangeClick(user)}
-                          >
-                            {user.status === 'active' ? (
-                                <>
-                                 <XCircle className="mr-2 h-4 w-4"/> Nonaktifkan
-                                </>
-                            ) : (
-                                <>
-                                 <CheckCircle className="mr-2 h-4 w-4"/> Aktifkan
-                                </>
-                            )}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -305,6 +322,18 @@ export default function Employees() {
           </Table>
         </CardContent>
       </Card>
+      
+      {selectedUser && (
+        <EmployeeDetailsDialog
+          user={selectedUser}
+          open={!!selectedUser && !isEditDialogOpen && !isResetPasswordDialogOpen && !isStatusChangeDialogOpen}
+          onOpenChange={() => setSelectedUser(null)}
+          onEdit={handleEditClick}
+          onResetPassword={handleResetPasswordClick}
+          onStatusChange={handleStatusChangeClick}
+        />
+      )}
+
       {selectedUser && (
         <Dialog open={isEditDialogOpen} onOpenChange={handleDialogClose}>
           <DialogContent className="sm:max-w-[425px]">
