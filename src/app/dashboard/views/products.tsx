@@ -38,6 +38,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogTrigger,
 } from '@/components/ui/dialog';
 import { AddProductForm } from '@/components/dashboard/add-product-form';
 import { EditProductForm } from '@/components/dashboard/edit-product-form';
