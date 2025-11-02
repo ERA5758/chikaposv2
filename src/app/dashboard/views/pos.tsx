@@ -385,7 +385,7 @@ export default function POS({ onPrintRequest }: POSProps) {
           transactionCounter: increment(1)
         };
         if (isFirstTransaction) {
-          updatesForStore.firstTransactionDate = serverTimestamp();
+          updatesForStore.firstTransactionDate = new Date().toISOString();
         }
 
         const currentTokenBalance = storeData.pradanaTokenBalance || 0;
@@ -837,3 +837,5 @@ export default function POS({ onPrintRequest }: POSProps) {
     </>
   );
 }
+
+    

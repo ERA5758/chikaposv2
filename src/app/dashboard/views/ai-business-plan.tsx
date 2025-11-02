@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -34,7 +35,7 @@ export default function AIBusinessPlan() {
 
   React.useEffect(() => {
     if (activeStore) {
-      const firstTxDate = activeStore.firstTransactionDate
+      const firstTxDate = (activeStore.firstTransactionDate && typeof activeStore.firstTransactionDate === 'string')
         ? new Date(activeStore.firstTransactionDate)
         : null;
       
@@ -165,3 +166,5 @@ export default function AIBusinessPlan() {
     </Card>
   );
 }
+
+    
