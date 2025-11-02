@@ -280,9 +280,9 @@ export default function Employees() {
             <TableHeader>
               <TableRow>
                 <TableHead>Nama</TableHead>
-                <TableHead>Email</TableHead>
+                <TableHead className="hidden md:table-cell">Email</TableHead>
                 <TableHead>Peran</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="hidden md:table-cell">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -290,16 +290,16 @@ export default function Employees() {
                  Array.from({ length: 3 }).map((_, i) => (
                   <TableRow key={i}>
                     <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-40" /></TableCell>
+                    <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-40" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-16" /></TableCell>
-                    <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                    <TableCell className="hidden md:table-cell"><Skeleton className="h-6 w-20" /></TableCell>
                   </TableRow>
                 ))
               ) : (
                 users.map((user) => (
                   <TableRow key={user.id} className="cursor-pointer" onClick={() => handleRowClick(user)}>
                     <TableCell className="font-medium">{user.name}</TableCell>
-                    <TableCell>{user.email}</TableCell>
+                    <TableCell className="hidden md:table-cell">{user.email}</TableCell>
                     <TableCell>
                       <Badge
                         variant={user.role === 'admin' ? 'default' : 'secondary'}
@@ -307,7 +307,7 @@ export default function Employees() {
                         {user.role}
                       </Badge>
                     </TableCell>
-                     <TableCell>
+                     <TableCell className="hidden md:table-cell">
                       <Badge
                         variant={user.status === 'active' ? 'secondary' : 'destructive'}
                         className={user.status === 'active' ? 'border-green-500/50 text-green-700' : ''}

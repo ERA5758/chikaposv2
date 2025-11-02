@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -61,6 +60,7 @@ import { format, isWithinInterval, startOfMonth, endOfMonth } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
+import { OrderReadyDialog } from '@/components/dashboard/order-ready-dialog';
 
 type TransactionsProps = {
     onPrintRequest: (transaction: Transaction) => void;
@@ -88,43 +88,14 @@ export function TransactionDetailsDialog({
     const { toast } = useToast();
     const { refreshData, dashboardData } = useDashboard();
     
-    // States for this dialog's actions
     const [isActionLoading, setIsActionLoading] = React.useState(false);
-    const [generatingTextId, setGeneratingTextId] = React.useState<string | null>(null);
-    const [sentWhatsappIds, setSentWhatsappIds] = React.useState<Set<string>>(new Set());
     const [transactionToRefund, setTransactionToRefund] = React.useState<Transaction | null>(null);
     const [transactionToPay, setTransactionToPay] = React.useState<Transaction | null>(null);
     const [paymentMethodForDialog, setPaymentMethodForDialog] = React.useState<'Cash' | 'Card' | 'QRIS'>('Cash');
 
     const staff = (users || []).find(u => u.id === transaction.staffId);
     const isRefundable = transaction.status !== 'Dibatalkan';
-    const { customers, feeSettings } = dashboardData;
-    
-    const handleGenerateFollowUp = async (transaction: Transaction) => {
-        setGeneratingTextId(transaction.id);
-        try {
-            const idToken = await auth.currentUser?.getIdToken(true);
-            if (!idToken || !activeStore) throw new Error("Sesi atau toko tidak valid.");
-
-            const customer = customers.find(c => c.id === transaction.customerId);
-
-            const response = await fetch('/api/order-ready-notification', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}`},
-                body: JSON.stringify({ transaction, customer, store: activeStore })
-            });
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || 'Gagal mengirim notifikasi.');
-            }
-            toast({ title: "Notifikasi Terkirim!", description: "Notifikasi WhatsApp telah dikirim ke pelanggan."});
-            setSentWhatsappIds(prev => new Set(prev).add(transaction.id));
-        } catch (error) {
-            toast({ variant: 'destructive', title: 'Gagal Mengirim Notifikasi', description: (error as Error).message });
-        } finally {
-            setGeneratingTextId(null);
-        }
-    };
+    const { feeSettings } = dashboardData;
 
     const handleProcessPayment = async () => {
         if (!transactionToPay || !activeStore) return;
@@ -156,7 +127,7 @@ export function TransactionDetailsDialog({
                         transactionRun.update(productRef, { stock: increment(item.quantity) });
                      }
                 }
-                if (transactionToRefund.customerId !== 'N/A' && customers.find(c => c.id === transactionToRefund.customerId)) {
+                if (transactionToRefund.customerId !== 'N/A' && dashboardData.customers.find(c => c.id === transactionToRefund.customerId)) {
                     const customerRef = doc(db, 'stores', activeStore.id, 'customers', transactionToRefund.customerId);
                     const pointsToRevert = transactionToRefund.pointsRedeemed - transactionToRefund.pointsEarned;
                     transactionRun.update(customerRef, { loyaltyPoints: increment(pointsToRevert) });
@@ -486,36 +457,33 @@ export default function Transactions({ onDetailRequest, onPrintRequest }: Transa
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nota</TableHead>
-                  <TableHead>Tanggal</TableHead>
+                  <TableHead className='hidden md:table-cell'>Nota</TableHead>
+                  <TableHead className='hidden md:table-cell'>Tanggal</TableHead>
                   <TableHead>Pelanggan</TableHead>
-                  <TableHead>Metode Pembayaran</TableHead>
                   <TableHead className="text-center">Status</TableHead>
                   <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="text-right w-[200px]">Aksi</TableHead>
+                  <TableHead className="text-right hidden sm:table-cell">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
                     Array.from({length: 10}).map((_, i) => (
                         <TableRow key={i}>
-                            <TableCell><Skeleton className="h-5 w-16"/></TableCell>
-                            <TableCell><Skeleton className="h-5 w-24"/></TableCell>
+                            <TableCell className='hidden md:table-cell'><Skeleton className="h-5 w-16"/></TableCell>
+                            <TableCell className='hidden md:table-cell'><Skeleton className="h-5 w-24"/></TableCell>
                             <TableCell><Skeleton className="h-5 w-32"/></TableCell>
-                            <TableCell><Skeleton className="h-5 w-24"/></TableCell>
                             <TableCell className="text-center"><Skeleton className="h-6 w-20 mx-auto"/></TableCell>
                             <TableCell className="text-right"><Skeleton className="h-5 w-20 ml-auto"/></TableCell>
-                            <TableCell className="text-right"><Skeleton className="h-8 w-28 ml-auto"/></TableCell>
+                            <TableCell className="text-right hidden sm:table-cell"><Skeleton className="h-8 w-8 ml-auto"/></TableCell>
                         </TableRow>
                     ))
                 ) : (
                     paginatedTransactions.map((transaction) => {
                     return (
                     <TableRow key={transaction.id} onClick={() => onDetailRequest(transaction)} className="cursor-pointer">
-                        <TableCell className="font-mono">{String(transaction.receiptNumber).padStart(6, '0')}</TableCell>
-                        <TableCell>{new Date(transaction.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</TableCell>
+                        <TableCell className="font-mono hidden md:table-cell">{String(transaction.receiptNumber).padStart(6, '0')}</TableCell>
+                        <TableCell className='hidden md:table-cell'>{new Date(transaction.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</TableCell>
                         <TableCell>{transaction.customerName}</TableCell>
-                        <TableCell>{transaction.paymentMethod}</TableCell>
                         <TableCell className="text-center">
                           <Badge 
                             variant={transaction.status === 'Selesai' || transaction.status === 'Selesai Dibayar' ? 'secondary' : 'default'}
@@ -530,7 +498,7 @@ export default function Transactions({ onDetailRequest, onPrintRequest }: Transa
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right font-mono">Rp {transaction.totalAmount.toLocaleString('id-ID')}</TableCell>
-                         <TableCell className="text-right">
+                         <TableCell className="text-right hidden sm:table-cell">
                            <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                             {transaction.paymentMethod === 'Belum Dibayar' && transaction.status !== 'Dibatalkan' && (
                                 <Button size="sm" onClick={() => setTransactionToPay(transaction)}>Bayar</Button>

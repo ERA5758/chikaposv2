@@ -220,10 +220,9 @@ export default function PendingOrders() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Pelanggan</TableHead>
-                    <TableHead>Waktu</TableHead>
-                    <TableHead>Total</TableHead>
-                    <TableHead>Metode</TableHead>
-                    <TableHead className="text-right">Aksi</TableHead>
+                    <TableHead className="hidden sm:table-cell">Waktu</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead className="hidden sm:table-cell">Metode</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -231,10 +230,9 @@ export default function PendingOrders() {
                       Array.from({length: 5}).map((_, i) => (
                           <TableRow key={i}>
                               <TableCell><Skeleton className="h-10 w-40" /></TableCell>
-                              <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                              <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                              <TableCell><Skeleton className="h-6 w-24" /></TableCell>
-                              <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
+                              <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
+                              <TableCell className="text-right"><Skeleton className="h-5 w-20 ml-auto" /></TableCell>
+                              <TableCell className="hidden sm:table-cell"><Skeleton className="h-6 w-24" /></TableCell>
                           </TableRow>
                       ))
                   ) : realtimeOrders.length > 0 ? (
@@ -249,23 +247,9 @@ export default function PendingOrders() {
                               <div className="font-medium">{order.customer.name}</div>
                           </div>
                         </TableCell>
-                         <TableCell>{formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: idLocale })}</TableCell>
-                         <TableCell className="font-mono">Rp {order.totalAmount.toLocaleString('id-ID')}</TableCell>
-                         <TableCell>{getDeliveryBadge(order.deliveryMethod)}</TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
-                                      <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
-                                  <DropdownMenuLabel>Aksi</DropdownMenuLabel>
-                                  <DropdownMenuItem onClick={() => setSelectedOrder(order)}>Lihat Detail</DropdownMenuItem>
-                                  <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(order.id)}>Hapus Pesanan</DropdownMenuItem>
-                              </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
+                         <TableCell className="hidden sm:table-cell">{formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: idLocale })}</TableCell>
+                         <TableCell className="font-mono text-right">Rp {order.totalAmount.toLocaleString('id-ID')}</TableCell>
+                         <TableCell className="hidden sm:table-cell">{getDeliveryBadge(order.deliveryMethod)}</TableCell>
                       </TableRow>
                     ))
                   ) : (

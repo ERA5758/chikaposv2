@@ -397,16 +397,16 @@ export default function Promotions() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Deskripsi</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
-                  <TableHead className="text-right">Poin Dibutuhkan</TableHead>
-                  <TableHead className="text-right">Nilai (Rp)</TableHead>
+                  <TableHead className="text-center hidden md:table-cell">Status</TableHead>
+                  <TableHead className="text-right">Poin</TableHead>
+                  <TableHead className="text-right hidden md:table-cell">Nilai (Rp)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {(redemptionOptions || []).map((option) => (
                   <TableRow key={option.id} onClick={() => setSelectedPromotion(option)} className="cursor-pointer">
                     <TableCell className="font-medium">{option.description}</TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-center hidden md:table-cell">
                       <Badge variant={option.isActive ? 'default' : 'destructive'}>
                         {option.isActive ? 'Aktif' : 'Non-Aktif'}
                       </Badge>
@@ -414,7 +414,7 @@ export default function Promotions() {
                     <TableCell className="text-right font-mono">
                       {option.pointsRequired.toLocaleString('id-ID')}
                     </TableCell>
-                    <TableCell className="text-right font-mono">
+                    <TableCell className="text-right font-mono hidden md:table-cell">
                       {option.value.toLocaleString('id-ID')}
                     </TableCell>
                   </TableRow>

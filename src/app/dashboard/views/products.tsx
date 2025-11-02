@@ -381,9 +381,9 @@ export default function Products() {
             <TableHeader>
               <TableRow>
                 <TableHead>Nama</TableHead>
-                <TableHead>Kategori</TableHead>
+                <TableHead className="hidden md:table-cell">Kategori</TableHead>
                 <TableHead className="text-center">Stok</TableHead>
-                <TableHead className="text-right">Harga</TableHead>
+                <TableHead className="text-right hidden md:table-cell">Harga</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -391,16 +391,16 @@ export default function Products() {
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
                     <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
-                    <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                    <TableCell className="hidden md:table-cell"><Skeleton className="h-6 w-20" /></TableCell>
                     <TableCell className="text-center"><Skeleton className="h-8 w-24 mx-auto" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-5 w-20 ml-auto" /></TableCell>
+                    <TableCell className="text-right hidden md:table-cell"><Skeleton className="h-5 w-20 ml-auto" /></TableCell>
                   </TableRow>
                 ))
               ) : (
                 filteredProducts.map((product) => (
                   <TableRow key={product.id} className="cursor-pointer" onClick={() => handleRowClick(product)}>
                     <TableCell className="font-medium">{product.name}</TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">
                       <Badge variant="outline">{product.category}</Badge>
                     </TableCell>
                     <TableCell className="text-center font-mono" onClick={(e) => e.stopPropagation()}>
@@ -414,7 +414,7 @@ export default function Products() {
                          product.stock
                        )}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right hidden md:table-cell">
                       Rp {product.price.toLocaleString('id-ID')}
                     </TableCell>
                   </TableRow>

@@ -206,8 +206,8 @@ export default function Customers() {
             <TableHeader>
               <TableRow>
                 <TableHead>Pelanggan</TableHead>
-                <TableHead>Telepon</TableHead>
-                <TableHead>Tier</TableHead>
+                <TableHead className="hidden md:table-cell">Telepon</TableHead>
+                <TableHead className="hidden md:table-cell">Tier</TableHead>
                 <TableHead className="text-right">Poin Loyalitas</TableHead>
               </TableRow>
             </TableHeader>
@@ -221,8 +221,8 @@ export default function Customers() {
                             <Skeleton className="h-5 w-32" />
                         </div>
                     </TableCell>
-                    <TableCell><Skeleton className="h-5 w-28" /></TableCell>
-                    <TableCell><Skeleton className="h-6 w-16" /></TableCell>
+                    <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-28" /></TableCell>
+                    <TableCell className="hidden md:table-cell"><Skeleton className="h-6 w-16" /></TableCell>
                     <TableCell className="text-right"><Skeleton className="h-5 w-12 ml-auto" /></TableCell>
                   </TableRow>
                 ))
@@ -241,8 +241,8 @@ export default function Customers() {
                         <div className="font-medium">{customer.name}</div>
                         </div>
                     </TableCell>
-                    <TableCell>{customer.phone}</TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">{customer.phone}</TableCell>
+                    <TableCell className="hidden md:table-cell">
                         <Badge
                         variant={
                             customer.memberTier === 'Gold'
