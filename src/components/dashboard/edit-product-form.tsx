@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -24,14 +25,18 @@ import { useToast } from '@/hooks/use-toast';
 import { productCategories } from '@/lib/types';
 import type { UserRole, Store, Product } from '@/lib/types';
 import * as React from 'react';
-import { Loader, ScanBarcode, Upload } from 'lucide-react';
+import { Loader, ScanBarcode, Upload, Sparkles } from 'lucide-react';
 import { BarcodeScanner } from './barcode-scanner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
-import { db, storage } from '@/lib/firebase';
+import { db, storage, auth } from '@/lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import Image from 'next/image';
 import { Textarea } from '../ui/textarea';
+import { useDashboard } from '@/contexts/dashboard-context';
+import { AIConfirmationDialog } from './ai-confirmation-dialog';
+import { DescriptionGeneratorOutput } from '@/ai/flows/description-generator';
+
 
 const FormSchema = z.object({
   name: z.string().min(2, { message: 'Nama harus minimal 2 karakter.' }),
@@ -60,6 +65,8 @@ export function EditProductForm({ setDialogOpen, userRole, onProductUpdated, act
   const [imageFile, setImageFile] = React.useState<File | null>(null);
   const [imagePreview, setImagePreview] = React.useState<string | null>(product.imageUrl);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const { dashboardData } = useDashboard();
+  const { feeSettings, products } = dashboardData;
 
   
   const form = useForm<FormValues>({
@@ -91,6 +98,31 @@ export function EditProductForm({ setDialogOpen, userRole, onProductUpdated, act
       setImagePreview(URL.createObjectURL(file));
     }
   };
+
+  const handleGenerateDescription = async (): Promise<DescriptionGeneratorOutput> => {
+    if (!auth.currentUser || !products) throw new Error("Not authenticated or products not loaded.");
+    const idToken = await auth.currentUser.getIdToken(true);
+    const topSelling = products.slice(0, 5).map(p => p.name).filter(name => name !== product.name);
+
+    const response = await fetch('/api/ai/description-generator', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${idToken}`,
+      },
+      body: JSON.stringify({
+        productName: form.getValues('name'),
+        category: form.getValues('category'),
+        topSellingProducts: topSelling,
+      }),
+    });
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'Failed to generate description.');
+    }
+    return response.json();
+  };
+
 
   async function onSubmit(data: FormValues) {
     setIsLoading(true);
@@ -226,9 +258,25 @@ export function EditProductForm({ setDialogOpen, userRole, onProductUpdated, act
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Deskripsi (Opsional)</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Contoh: T-shirt katun berkualitas tinggi, nyaman dipakai sehari-hari." {...field} />
-                  </FormControl>
+                  <div className="flex items-start gap-2">
+                    <FormControl>
+                      <Textarea placeholder="Contoh: T-shirt katun berkualitas tinggi..." {...field} />
+                    </FormControl>
+                    <AIConfirmationDialog
+                        featureName="Deskripsi Produk"
+                        featureDescription="Chika AI akan membuat deskripsi yang menarik untuk produk ini berdasarkan nama dan kategorinya."
+                        feeSettings={feeSettings}
+                        onConfirm={handleGenerateDescription}
+                        onSuccess={(result) => {
+                            form.setValue('description', result.description);
+                            toast({ title: "Deskripsi Dibuat!", description: "Deskripsi telah diisi. Jangan lupa simpan perubahan."});
+                        }}
+                    >
+                        <Button variant="outline" size="icon" type="button">
+                            <Sparkles className="h-4 w-4"/>
+                        </Button>
+                    </AIConfirmationDialog>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}

@@ -21,7 +21,7 @@ import type { Product, ProductCategory } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ListFilter, MoreHorizontal, PlusCircle, Search, Loader2, Sparkles, MessageSquare, Edit } from 'lucide-react';
+import { ListFilter, MoreHorizontal, PlusCircle, Search, Loader2, Sparkles, MessageSquare, Edit, Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -37,7 +37,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { AddProductForm } from '@/components/dashboard/add-product-form';
 import { EditProductForm } from '@/components/dashboard/edit-product-form';
@@ -113,6 +113,62 @@ function StockInput({ product, onStockChange, isUpdating }: { product: Product; 
   );
 }
 
+function ProductDetailsDialog({ 
+    product, 
+    open, 
+    onOpenChange, 
+    userRole, 
+    storeName,
+    onEdit,
+    onDelete
+}: { 
+    product: Product; 
+    open: boolean; 
+    onOpenChange: (open: boolean) => void; 
+    userRole: 'admin' | 'cashier'; 
+    storeName: string;
+    onEdit: (product: Product) => void;
+    onDelete: (product: Product) => void;
+}) {
+  if (!product) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="font-headline tracking-wider">{product.name}</DialogTitle>
+          <DialogDescription>
+            SKU: {product.attributes.barcode || 'N/A'}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 py-4 text-sm max-h-[60vh] overflow-y-auto pr-4 -mr-4">
+          <p><strong>Merek:</strong> {product.attributes.brand}</p>
+          <div className="flex items-center gap-1"><strong>Kategori:</strong> <Badge variant="outline">{product.category}</Badge></div>
+          <p><strong>Stok di {storeName}:</strong> {product.stock}</p>
+          {userRole === 'admin' && <p><strong>Harga Pokok:</strong> Rp {product.costPrice.toLocaleString('id-ID')}</p>}
+          <p><strong>Harga Jual:</strong> Rp {product.price.toLocaleString('id-ID')}</p>
+          {product.description && (
+             <div>
+                <p><strong>Deskripsi:</strong></p>
+                <p className="text-muted-foreground whitespace-pre-wrap">{product.description}</p>
+             </div>
+          )}
+        </div>
+        <DialogFooter>
+            <Button variant="outline" onClick={() => onEdit(product)}>
+                <Edit className="mr-2 h-4 w-4"/>
+                Ubah
+            </Button>
+            <Button variant="destructive" onClick={() => onDelete(product)}>
+                <Trash2 className="mr-2 h-4 w-4"/>
+                Hapus
+            </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 export default function Products() {
   const { currentUser, activeStore } = useAuth();
@@ -125,6 +181,7 @@ export default function Products() {
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = React.useState(false);
 
   const [selectedProduct, setSelectedProduct] = React.useState<Product | null>(null);
   const [updatingStock, setUpdatingStock] = React.useState<string | null>(null);
@@ -164,11 +221,13 @@ export default function Products() {
 
   const handleEditClick = (product: Product) => {
     setSelectedProduct(product);
+    setIsDetailsDialogOpen(false); // Close details dialog if open
     setIsEditDialogOpen(true);
   };
 
   const handleDeleteClick = (product: Product) => {
     setSelectedProduct(product);
+    setIsDetailsDialogOpen(false); // Close details dialog if open
     setIsDeleteDialogOpen(true);
   };
   
@@ -227,41 +286,10 @@ export default function Products() {
     return Array.from(categories).sort();
   }, [products]);
   
-  const handleGenerateDescription = async (product: Product): Promise<DescriptionGeneratorOutput> => {
-    if (!auth.currentUser || !products) throw new Error("Not authenticated or products not loaded.");
-    const idToken = await auth.currentUser.getIdToken(true);
-    const topSelling = products.slice(0, 5).map(p => p.name).filter(name => name !== product.name);
-
-    const response = await fetch('/api/ai/description-generator', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${idToken}`,
-      },
-      body: JSON.stringify({
-        productName: product.name,
-        category: product.category,
-        topSellingProducts: topSelling,
-      }),
-    });
-    if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.error || 'Failed to generate description.');
-    }
-    return response.json();
+  const handleRowClick = (product: Product) => {
+    setSelectedProduct(product);
+    setIsDetailsDialogOpen(true);
   };
-  
-  const handleDescriptionGenerated = async (product: Product, result: DescriptionGeneratorOutput) => {
-    if (!currentStoreId) return;
-    const productRef = doc(db, 'stores', currentStoreId, 'products', product.id);
-    try {
-        await updateDoc(productRef, { description: result.description });
-        refreshData();
-    } catch(e) {
-        toast({ variant: 'destructive', title: "Gagal menyimpan deskripsi"});
-    }
-  };
-
 
   return (
     <TooltipProvider>
@@ -355,7 +383,6 @@ export default function Products() {
                 <TableHead>Kategori</TableHead>
                 <TableHead className="text-center">Stok</TableHead>
                 <TableHead className="text-right">Harga</TableHead>
-                {isAdmin && <TableHead className="w-[100px] text-right">Aksi</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -366,12 +393,11 @@ export default function Products() {
                     <TableCell><Skeleton className="h-6 w-20" /></TableCell>
                     <TableCell className="text-center"><Skeleton className="h-8 w-24 mx-auto" /></TableCell>
                     <TableCell className="text-right"><Skeleton className="h-5 w-20 ml-auto" /></TableCell>
-                    {isAdmin && <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>}
                   </TableRow>
                 ))
               ) : (
                 filteredProducts.map((product) => (
-                  <TableRow key={product.id}>
+                  <TableRow key={product.id} className="cursor-pointer" onClick={() => handleRowClick(product)}>
                     <TableCell className="font-medium">{product.name}</TableCell>
                     <TableCell>
                       <Badge variant="outline">{product.category}</Badge>
@@ -390,26 +416,6 @@ export default function Products() {
                     <TableCell className="text-right">
                       Rp {product.price.toLocaleString('id-ID')}
                     </TableCell>
-                    {isAdmin && (
-                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                            <Button aria-haspopup="true" size="icon" variant="ghost">
-                                <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Toggle menu</span>
-                            </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Aksi</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => handleEditClick(product)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Ubah Produk
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteClick(product)}>Hapus</DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                        </TableCell>
-                    )}
                   </TableRow>
                 ))
               )}
@@ -417,6 +423,18 @@ export default function Products() {
           </Table>
         </CardContent>
       </Card>
+  
+      {selectedProduct && isDetailsDialogOpen && activeStore && (
+          <ProductDetailsDialog
+            product={selectedProduct}
+            open={isDetailsDialogOpen}
+            onOpenChange={setIsDetailsDialogOpen}
+            userRole={userRole}
+            storeName={activeStore.name}
+            onEdit={handleEditClick}
+            onDelete={handleDeleteClick}
+          />
+      )}
   
       {selectedProduct && isEditDialogOpen && activeStore && (
           <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
