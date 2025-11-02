@@ -20,14 +20,7 @@ import {
 import type { RedemptionOption, Transaction, Product } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, PlusCircle, CheckCircle, XCircle, Sparkles, Target } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { MoreHorizontal, PlusCircle, CheckCircle, XCircle, Sparkles, Target, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import {
@@ -49,6 +42,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogTrigger,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { AddPromotionForm } from '@/components/dashboard/add-promotion-form';
 import { useAuth } from '@/contexts/auth-context';
@@ -82,6 +76,68 @@ interface PromotionRecommendationOutput {
   }[];
 }
 
+function PromotionDetailsDialog({
+  promotion,
+  open,
+  onOpenChange,
+  onToggleStatus,
+  onDelete,
+  isProcessing,
+}: {
+  promotion: RedemptionOption | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onToggleStatus: (promotion: RedemptionOption) => void;
+  onDelete: (promotion: RedemptionOption) => void;
+  isProcessing: boolean;
+}) {
+  if (!promotion) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{promotion.description}</DialogTitle>
+          <DialogDescription>
+            ID Promo: {promotion.id}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-4 space-y-2 text-sm">
+            <div className="flex justify-between">
+                <span>Status:</span>
+                <Badge variant={promotion.isActive ? 'default' : 'destructive'}>
+                    {promotion.isActive ? 'Aktif' : 'Non-Aktif'}
+                </Badge>
+            </div>
+             <div className="flex justify-between">
+                <span>Poin Dibutuhkan:</span>
+                <span className="font-mono">{promotion.pointsRequired.toLocaleString('id-ID')}</span>
+            </div>
+             <div className="flex justify-between">
+                <span>Nilai Promo:</span>
+                <span className="font-mono">Rp {promotion.value.toLocaleString('id-ID')}</span>
+            </div>
+        </div>
+        <DialogFooter className="flex-col sm:flex-col sm:space-x-0 gap-2">
+           <Button onClick={() => onToggleStatus(promotion)} disabled={isProcessing}>
+            {promotion.isActive ? (
+                <XCircle className="mr-2 h-4 w-4" />
+            ) : (
+                <CheckCircle className="mr-2 h-4 w-4" />
+            )}
+            {promotion.isActive ? 'Non-Aktifkan' : 'Aktifkan'}
+           </Button>
+           <Button variant="destructive" onClick={() => onDelete(promotion)} disabled={isProcessing}>
+             <Trash2 className="mr-2 h-4 w-4" />
+             Hapus
+           </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
 export default function Promotions() {
   const { currentUser, activeStore } = useAuth();
   const { dashboardData, refreshData } = useDashboard();
@@ -90,48 +146,23 @@ export default function Promotions() {
   const isAdmin = currentUser?.role === 'admin';
   const [recommendations, setRecommendations] = React.useState<PromotionRecommendationOutput | null>(null);
   const { toast } = useToast();
-
+  
+  const [isProcessingAction, setIsProcessingAction] = React.useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
-
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [selectedPromotion, setSelectedPromotion] = React.useState<RedemptionOption | null>(null);
   const [promotionToDelete, setPromotionToDelete] = React.useState<RedemptionOption | null>(null);
 
 
-  const handleDeleteClick = (option: RedemptionOption) => {
-    setPromotionToDelete(option);
-    setIsDeleteDialogOpen(true);
+  const handleDeleteRequest = (promotion: RedemptionOption) => {
+    setSelectedPromotion(null);
+    setPromotionToDelete(promotion);
   };
-
-  const handleConfirmDelete = async () => {
-    if (!promotionToDelete || !activeStore) return;
-
-    try {
-      await deleteDoc(doc(db, "stores", activeStore.id, "redemptionOptions", promotionToDelete.id));
-      refreshData();
-      toast({
-        title: 'Promosi Dihapus!',
-        description: `Promo "${promotionToDelete.description}" telah berhasil dihapus.`,
-      });
-    } catch (error) {
-      console.error("Error deleting promotion: ", error);
-      toast({
-        variant: "destructive",
-        title: "Gagal menghapus",
-        description: "Terjadi kesalahan saat menghapus promosi."
-      });
-    }
-
-    setIsDeleteDialogOpen(false);
-    setPromotionToDelete(null);
-  };
-
-  const toggleStatus = async (id: string) => {
-    if (!activeStore || !redemptionOptions) return;
-    const option = redemptionOptions.find(o => o.id === id);
-    if (!option) return;
-
-    const newStatus = !option.isActive;
-    const optionRef = doc(db, 'stores', activeStore.id, 'redemptionOptions', id);
+  
+  const handleToggleStatusRequest = async (promotion: RedemptionOption) => {
+    if (!activeStore) return;
+    setIsProcessingAction(true);
+    const newStatus = !promotion.isActive;
+    const optionRef = doc(db, 'stores', activeStore.id, 'redemptionOptions', promotion.id);
 
     try {
       await updateDoc(optionRef, { isActive: newStatus });
@@ -140,15 +171,41 @@ export default function Promotions() {
         title: 'Status Diperbarui',
         description: `Status promosi telah berhasil diubah.`,
       });
+      setSelectedPromotion(prev => prev ? {...prev, isActive: newStatus} : null);
     } catch (error) {
-      console.error("Error updating promotion status: ", error);
       toast({
         variant: "destructive",
         title: "Gagal memperbarui",
         description: "Terjadi kesalahan saat mengubah status promosi."
       });
+    } finally {
+      setIsProcessingAction(false);
     }
   };
+
+  const handleConfirmDelete = async () => {
+    if (!promotionToDelete || !activeStore) return;
+
+    setIsProcessingAction(true);
+    try {
+      await deleteDoc(doc(db, "stores", activeStore.id, "redemptionOptions", promotionToDelete.id));
+      refreshData();
+      toast({
+        title: 'Promosi Dihapus!',
+        description: `Promo "${promotionToDelete.description}" telah berhasil dihapus.`,
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Gagal menghapus",
+        description: "Terjadi kesalahan saat menghapus promosi."
+      });
+    }
+
+    setPromotionToDelete(null);
+    setIsProcessingAction(false);
+  };
+
 
   const handleGenerateRecommendations = async (): Promise<PromotionRecommendationOutput> => {
     if (!activeStore || !feeSettings || !transactions || !redemptionOptions || !products) {
@@ -235,7 +292,6 @@ export default function Promotions() {
       });
 
     } catch (error) {
-      console.error("Error applying recommendation:", error);
       toast({
         variant: 'destructive',
         title: 'Gagal Menerapkan Promo',
@@ -344,12 +400,11 @@ export default function Promotions() {
                   <TableHead className="text-center">Status</TableHead>
                   <TableHead className="text-right">Poin Dibutuhkan</TableHead>
                   <TableHead className="text-right">Nilai (Rp)</TableHead>
-                  {isAdmin && <TableHead className="text-right">Aksi</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {(redemptionOptions || []).map((option) => (
-                  <TableRow key={option.id}>
+                  <TableRow key={option.id} onClick={() => setSelectedPromotion(option)} className="cursor-pointer">
                     <TableCell className="font-medium">{option.description}</TableCell>
                     <TableCell className="text-center">
                       <Badge variant={option.isActive ? 'default' : 'destructive'}>
@@ -362,33 +417,6 @@ export default function Promotions() {
                     <TableCell className="text-right font-mono">
                       {option.value.toLocaleString('id-ID')}
                     </TableCell>
-                    {isAdmin && (
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button aria-haspopup="true" size="icon" variant="ghost">
-                              <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Toggle menu</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Aksi</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => toggleStatus(option.id)}>
-                              {option.isActive ? (
-                                <XCircle className="mr-2 h-4 w-4" />
-                              ) : (
-                                <CheckCircle className="mr-2 h-4 w-4" />
-                              )}
-                              <span>{option.isActive ? 'Non-Aktifkan' : 'Aktifkan'}</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem disabled>Ubah</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteClick(option)}>
-                              Hapus
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    )}
                   </TableRow>
                 ))}
               </TableBody>
@@ -396,7 +424,17 @@ export default function Promotions() {
           </CardContent>
         </Card>
       </div>
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+
+       <PromotionDetailsDialog
+        promotion={selectedPromotion}
+        open={!!selectedPromotion}
+        onOpenChange={() => setSelectedPromotion(null)}
+        onToggleStatus={handleToggleStatusRequest}
+        onDelete={handleDeleteRequest}
+        isProcessing={isProcessingAction}
+      />
+      
+      <AlertDialog open={!!promotionToDelete} onOpenChange={() => setPromotionToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Anda Yakin?</AlertDialogTitle>
@@ -409,6 +447,7 @@ export default function Promotions() {
             <AlertDialogCancel>Batal</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDelete}
+              disabled={isProcessingAction}
               className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
             >
               Ya, Hapus
