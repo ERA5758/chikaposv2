@@ -2,42 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/lib/server/firebase-admin';
 import { getOrderReadyFollowUp } from '@/ai/flows/order-ready-follow-up';
-import { formatWhatsappNumber } from '@/lib/utils';
-import { URLSearchParams } from 'url';
-
-async function internalSendWhatsapp(deviceId: string, target: string, message: string, isGroup: boolean = false) {
-    const body = new URLSearchParams();
-    body.append('device_id', deviceId);
-    body.append(isGroup ? 'group' : 'number', target);
-    body.append('message', message);
-    const endpoint = isGroup ? 'sendGroup' : 'send';
-    const webhookUrl = `https://app.whacenter.com/api/${endpoint}`;
-
-    try {
-        const response = await fetch(webhookUrl, {
-            method: 'POST',
-            body: body,
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        });
-
-        if (!response.ok) {
-            const responseJson = await response.json();
-            console.error('WhaCenter API HTTP Error:', { status: response.status, body: responseJson });
-            throw new Error(`WhaCenter API responded with status ${response.status}`);
-        }
-
-        const responseJson = await response.json();
-        if (responseJson.status === 'error') {
-            console.error('WhaCenter API Error:', responseJson.reason);
-            throw new Error(responseJson.reason || 'An error occurred with the WhatsApp service.');
-        }
-
-        return responseJson;
-    } catch(error) {
-        console.error('Failed to send WhatsApp message via internalSendWhatsapp:', error);
-        throw error;
-    }
-}
+import { internalSendWhatsapp, formatWhatsappNumber } from '@/lib/server/whatsapp';
 
 
 export async function POST(req: NextRequest) {
@@ -72,15 +37,8 @@ export async function POST(req: NextRequest) {
             notificationStyle: store.receiptSettings?.notificationStyle || 'fakta',
         });
         
-        const deviceId = process.env.WHATSAPP_DEVICE_ID;
-
-        if (!deviceId) {
-            console.error('WhatsApp Device ID is not configured in environment variables.');
-            return NextResponse.json({ error: 'Layanan WhatsApp tidak dikonfigurasi dengan benar di server.' }, { status: 500 });
-        }
-
         const formattedPhone = formatWhatsappNumber(customer.phone);
-        await internalSendWhatsapp(deviceId, formattedPhone, text);
+        await internalSendWhatsapp(formattedPhone, text);
         return NextResponse.json({ success: true, message: 'Pesan WhatsApp terkirim.' });
 
     } catch (error) {

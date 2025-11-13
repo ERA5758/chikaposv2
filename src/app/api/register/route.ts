@@ -2,40 +2,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/lib/server/firebase-admin';
 import { getTransactionFeeSettings } from '@/lib/server/app-settings';
-import { formatWhatsappNumber } from '@/lib/utils';
-import { URLSearchParams } from 'url';
+import { getWhatsappSettings } from '@/lib/server/whatsapp-settings';
+import { internalSendWhatsapp, formatWhatsappNumber } from '@/lib/server/whatsapp';
 
-async function internalSendWhatsapp(deviceId: string, target: string, message: string, isGroup: boolean = false) {
-    const body = new URLSearchParams();
-    body.append('device_id', deviceId);
-    body.append(isGroup ? 'group' : 'number', target);
-    body.append('message', message);
-    
-    const endpoint = isGroup ? 'sendGroup' : 'send';
-    const webhookUrl = `https://app.whacenter.com/api/${endpoint}`;
-
-    try {
-        const response = await fetch(webhookUrl, {
-            method: 'POST',
-            body: body,
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            }
-        });
-
-        if (!response.ok) {
-            const responseJson = await response.json();
-            console.error('WhaCenter API HTTP Error:', { status: response.status, body: responseJson });
-        } else {
-            const responseJson = await response.json();
-            if (responseJson.status === 'error') {
-                console.error('WhaCenter API Error:', responseJson.reason);
-            }
-        }
-    } catch (error) {
-        console.error("Failed to send WhatsApp message:", error);
-    }
-}
 
 export async function POST(req: NextRequest) {
   const { auth, db } = getFirebaseAdmin();
@@ -88,24 +57,19 @@ export async function POST(req: NextRequest) {
     // --- Handle WhatsApp notifications directly ---
     (async () => {
         try {
-            const deviceId = process.env.WHATSAPP_DEVICE_ID;
-            const adminGroup = process.env.WHATSAPP_ADMIN_GROUP;
+            const { adminGroup } = await getWhatsappSettings();
 
-            if (!deviceId) {
-                console.warn('WHATSAPP_DEVICE_ID is not set. Skipping registration notifications.');
-                return;
-            }
-
+            // Notify User
             const welcomeMessage = `🎉 *Selamat Datang di Chika POS, ${adminName}!* 🎉\n\nToko Anda *"${storeName}"* telah berhasil dibuat dengan bonus *${bonusTokens} Pradana Token*.\n\nSilakan login untuk mulai mengelola bisnis Anda.`;
             const formattedPhone = formatWhatsappNumber(whatsapp);
-            
             if (formattedPhone) {
-                await internalSendWhatsapp(deviceId, formattedPhone, welcomeMessage);
+                await internalSendWhatsapp(formattedPhone, welcomeMessage);
             }
 
+            // Notify Platform Admin
             if (adminGroup) {
                 const adminMessage = `*PENDAFTARAN TOKO BARU*\n\n*Nama Toko:* ${storeName}\n*Lokasi:* ${storeLocation}\n*Admin:* ${adminName}\n*Email:* ${email}\n*WhatsApp:* ${whatsapp}\n\nBonus ${bonusTokens} token telah diberikan.`;
-                await internalSendWhatsapp(deviceId, adminGroup, adminMessage, true);
+                await internalSendWhatsapp(adminGroup, adminMessage, true);
             }
         } catch (whatsappError) {
             console.error("Error sending registration WhatsApp notifications:", whatsappError);

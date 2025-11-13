@@ -18,54 +18,19 @@ import { useAuth } from '@/contexts/auth-context';
 import { db } from '@/lib/firebase';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
-import type { TopUpRequest } from '@/lib/types';
+import type { TopUpRequest, BankAccountSettings } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Badge } from '../ui/badge';
 import { format } from 'date-fns';
 import { Skeleton } from '../ui/skeleton';
 import { auth } from '@/lib/firebase';
 import { useDashboard } from '@/contexts/dashboard-context';
-import type { BankAccountSettings } from '@/lib/types';
-import { URLSearchParams } from 'url';
+import { internalSendWhatsapp } from '@/lib/server/whatsapp';
+import { getWhatsappSettings } from '@/lib/server/whatsapp-settings';
 
 type TopUpDialogProps = {
   setDialogOpen: (open: boolean) => void;
 };
-
-async function internalSendWhatsapp(deviceId: string, target: string, message: string, isGroup: boolean = false) {
-    const body = new URLSearchParams();
-    body.append('device_id', deviceId);
-    body.append(isGroup ? 'group' : 'number', target);
-    body.append('message', message);
-    const endpoint = isGroup ? 'sendGroup' : 'send';
-    const webhookUrl = `https://app.whacenter.com/api/${endpoint}`;
-
-    try {
-        const response = await fetch(webhookUrl, {
-            method: 'POST',
-            body: body,
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        });
-
-        if (!response.ok) {
-            const responseJson = await response.json();
-            console.error('WhaCenter API HTTP Error:', { status: response.status, body: responseJson });
-            throw new Error(`WhaCenter API responded with status ${response.status}`);
-        }
-
-        const responseJson = await response.json();
-        if (responseJson.status === 'error') {
-            console.error('WhaCenter API Error:', responseJson.reason);
-            throw new Error(responseJson.reason || 'An error occurred with the WhatsApp service.');
-        }
-
-        return responseJson;
-    } catch(error) {
-        console.error('Failed to send WhatsApp message via internalSendWhatsapp:', error);
-        throw error;
-    }
-}
-
 
 export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
   const { activeStore, currentUser } = useAuth();
@@ -82,7 +47,6 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
 
   React.useEffect(() => {
     setUniqueCode(Math.floor(Math.random() * 900) + 100);
-    // Fetch bank settings from the API route
     const fetchBankSettings = async () => {
         try {
             const response = await fetch('/api/bank-settings');
@@ -199,21 +163,16 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
 
   const handleConfirmWa = async (request: TopUpRequest) => {
     setIsConfirming(true);
-    const deviceId = process.env.NEXT_PUBLIC_WHATSAPP_DEVICE_ID;
-    const adminGroup = process.env.NEXT_PUBLIC_WHATSAPP_ADMIN_GROUP;
-
-    if (!deviceId || !adminGroup) {
-      toast({ variant: 'destructive', title: 'Konfigurasi WA Tidak Ditemukan', description: 'Harap atur environment variables untuk WhatsApp.' });
-      setIsConfirming(false);
-      return;
-    }
-
     try {
+      const { adminGroup } = await getWhatsappSettings();
+      if (!adminGroup) {
+        throw new Error('Grup admin WhatsApp tidak dikonfigurasi.');
+      }
       const message = `🔔 *KONFIRMASI TOP-UP MANUAL*\n\nToko: *${request.storeName}*\nPengaju: *${request.userName}*\nJumlah: *Rp ${request.totalAmount.toLocaleString('id-ID')}*\n\nMohon untuk segera dicek dan diverifikasi. Terima kasih.`;
-      await internalSendWhatsapp(deviceId, adminGroup, message, true);
+      await internalSendWhatsapp(adminGroup, message, true);
       toast({ title: 'Konfirmasi Terkirim', description: 'Pesan konfirmasi telah dikirim ke admin platform.' });
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Gagal Mengirim Konfirmasi', description: 'Terjadi kesalahan saat mengirim pesan WhatsApp.' });
+      toast({ variant: 'destructive', title: 'Gagal Mengirim Konfirmasi', description: (error as Error).message });
     } finally {
       setIsConfirming(false);
     }
