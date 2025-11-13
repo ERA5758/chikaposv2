@@ -1,7 +1,7 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/lib/server/firebase-admin';
-import { internalSendWhatsapp, formatWhatsappNumber } from '@/lib/server/whatsapp';
+import { internalSendWhatsapp } from '@/lib/server/whatsapp';
+import { formatWhatsappNumber } from '@/lib/utils';
 
 export async function POST(req: NextRequest) {
     const { auth, db } = getFirebaseAdmin();
@@ -43,13 +43,9 @@ export async function POST(req: NextRequest) {
         // --- Handle WhatsApp notifications directly ---
         (async () => {
             try {
-                const adminGroup = process.env.WHATSAPP_ADMIN_GROUP;
-                
                 // Notify platform admin
-                if (adminGroup) {
-                    const adminMessage = `🔔 *Permintaan Top-up Baru*\n\nToko: *${storeName}*\nPengaju: *${name}*\nJumlah: *Rp ${totalAmount.toLocaleString('id-ID')}* (+${tokensToAdd.toLocaleString('id-ID')} Token)\nStatus: *Pending*\n\nMohon untuk segera diverifikasi melalui panel Superadmin.\nLihat bukti: ${proofUrl}`;
-                    await internalSendWhatsapp(adminGroup, adminMessage, true);
-                }
+                const adminMessage = `🔔 *Permintaan Top-up Baru*\n\nToko: *${storeName}*\nPengaju: *${name}*\nJumlah: *Rp ${totalAmount.toLocaleString('id-ID')}* (+${tokensToAdd.toLocaleString('id-ID')} Token)\nStatus: *Pending*\n\nMohon untuk segera diverifikasi melalui panel Superadmin.\nLihat bukti: ${proofUrl}`;
+                await internalSendWhatsapp(adminMessage, undefined, true);
                 
                 // Notify user
                 const userDoc = await db.collection('users').doc(uid).get();
@@ -57,10 +53,11 @@ export async function POST(req: NextRequest) {
                 if (userWhatsapp) {
                     const userMessage = `Halo *${name}*, pengajuan top up Pradana Token Anda untuk toko *${storeName}* sebesar *Rp ${totalAmount.toLocaleString('id-ID')}* telah berhasil kami terima dan sedang dalam proses verifikasi.`;
                     const formattedPhone = formatWhatsappNumber(userWhatsapp);
-                    await internalSendWhatsapp(formattedPhone, userMessage);
+                    await internalSendWhatsapp(userMessage, formattedPhone);
                 }
             } catch (whatsappError) {
                 console.error("Error sending top-up notifications:", whatsappError);
+                // Do not re-throw, as the main operation succeeded.
             }
         })();
 

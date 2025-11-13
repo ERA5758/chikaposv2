@@ -25,8 +25,7 @@ import { format } from 'date-fns';
 import { Skeleton } from '../ui/skeleton';
 import { auth } from '@/lib/firebase';
 import { useDashboard } from '@/contexts/dashboard-context';
-import { internalSendWhatsapp } from '@/lib/server/whatsapp';
-import { getWhatsappSettings } from '@/lib/server/whatsapp-settings';
+import { sendWaConfirmation } from '@/lib/actions';
 
 type TopUpDialogProps = {
   setDialogOpen: (open: boolean) => void;
@@ -164,12 +163,7 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
   const handleConfirmWa = async (request: TopUpRequest) => {
     setIsConfirming(true);
     try {
-      const { adminGroup } = await getWhatsappSettings();
-      if (!adminGroup) {
-        throw new Error('Grup admin WhatsApp tidak dikonfigurasi.');
-      }
-      const message = `🔔 *KONFIRMASI TOP-UP MANUAL*\n\nToko: *${request.storeName}*\nPengaju: *${request.userName}*\nJumlah: *Rp ${request.totalAmount.toLocaleString('id-ID')}*\n\nMohon untuk segera dicek dan diverifikasi. Terima kasih.`;
-      await internalSendWhatsapp(adminGroup, message, true);
+      await sendWaConfirmation(request);
       toast({ title: 'Konfirmasi Terkirim', description: 'Pesan konfirmasi telah dikirim ke admin platform.' });
     } catch (error) {
       toast({ variant: 'destructive', title: 'Gagal Mengirim Konfirmasi', description: (error as Error).message });
@@ -311,7 +305,7 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
                     {history.slice(0, 5).map(item => (
                         <TableRow key={item.id}>
                             <TableCell>{format(new Date(item.requestedAt), 'dd/MM/yy HH:mm')}</TableCell>
-                            <TableCell className="font-mono text-right">{(item.tokensToAdd ?? 'N/A').toLocaleString('id-ID')}</TableCell>
+                            <TableCell className="font-mono text-right">{(item.tokensToAdd ?? 0).toLocaleString('id-ID')}</TableCell>
                             <TableCell>{getStatusBadge(item.status)}</TableCell>
                             <TableCell className="text-right">
                                 {item.status === 'pending' && (

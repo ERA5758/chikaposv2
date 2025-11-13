@@ -1,8 +1,8 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/lib/server/firebase-admin';
 import { getOrderReadyFollowUp } from '@/ai/flows/order-ready-follow-up';
-import { internalSendWhatsapp, formatWhatsappNumber } from '@/lib/server/whatsapp';
+import { internalSendWhatsapp } from '@/lib/server/whatsapp';
+import { formatWhatsappNumber } from '@/lib/utils';
 
 
 export async function POST(req: NextRequest) {
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
         });
         
         const formattedPhone = formatWhatsappNumber(customer.phone);
-        await internalSendWhatsapp(formattedPhone, text);
+        await internalSendWhatsapp(text, formattedPhone);
         return NextResponse.json({ success: true, message: 'Pesan WhatsApp terkirim.' });
 
     } catch (error) {

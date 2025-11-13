@@ -1,8 +1,8 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/lib/server/firebase-admin';
 import { getTransactionFeeSettings } from '@/lib/server/app-settings';
-import { internalSendWhatsapp, formatWhatsappNumber } from '@/lib/server/whatsapp';
+import { internalSendWhatsapp } from '@/lib/server/whatsapp';
+import { formatWhatsappNumber } from '@/lib/utils';
 
 
 export async function POST(req: NextRequest) {
@@ -56,20 +56,16 @@ export async function POST(req: NextRequest) {
     // --- Handle WhatsApp notifications directly ---
     (async () => {
         try {
-            const adminGroup = process.env.WHATSAPP_ADMIN_GROUP;
-
             // Notify User
             const welcomeMessage = `🎉 *Selamat Datang di Chika POS, ${adminName}!* 🎉\n\nToko Anda *"${storeName}"* telah berhasil dibuat dengan bonus *${bonusTokens} Pradana Token*.\n\nSilakan login untuk mulai mengelola bisnis Anda.`;
             const formattedPhone = formatWhatsappNumber(whatsapp);
             if (formattedPhone) {
-                await internalSendWhatsapp(formattedPhone, welcomeMessage);
+                await internalSendWhatsapp(welcomeMessage, formattedPhone);
             }
 
             // Notify Platform Admin
-            if (adminGroup) {
-                const adminMessage = `*PENDAFTARAN TOKO BARU*\n\n*Nama Toko:* ${storeName}\n*Lokasi:* ${storeLocation}\n*Admin:* ${adminName}\n*Email:* ${email}\n*WhatsApp:* ${whatsapp}\n\nBonus ${bonusTokens} token telah diberikan.`;
-                await internalSendWhatsapp(adminGroup, adminMessage, true);
-            }
+            const adminMessage = `*PENDAFTARAN TOKO BARU*\n\n*Nama Toko:* ${storeName}\n*Lokasi:* ${storeLocation}\n*Admin:* ${adminName}\n*Email:* ${email}\n*WhatsApp:* ${whatsapp}\n\nBonus ${bonusTokens} token telah diberikan.`;
+            await internalSendWhatsapp(adminMessage, undefined, true);
         } catch (whatsappError) {
             console.error("Error sending registration WhatsApp notifications:", whatsappError);
         }

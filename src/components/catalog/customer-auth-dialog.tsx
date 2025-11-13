@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -72,7 +71,7 @@ export function CustomerAuthDialog({ open, onOpenChange, storeId, onLoginSuccess
             const response = await fetch('/api/customer-auth', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone: formatWhatsappNumber(phone), storeId }),
+                body: JSON.stringify({ phone, storeId }),
             });
             const data = await response.json();
 
@@ -106,7 +105,7 @@ export function CustomerAuthDialog({ open, onOpenChange, storeId, onLoginSuccess
             const response = await fetch('/api/customer-auth', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone: formatWhatsappNumber(phone), name, storeId, birthDate, address, latitude, longitude }),
+                body: JSON.stringify({ phone, name, storeId, birthDate, address, latitude, longitude }),
             });
             const data = await response.json();
             
