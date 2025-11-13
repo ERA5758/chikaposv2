@@ -1,7 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/lib/server/firebase-admin';
-import { getWhatsappSettings } from '@/lib/server/whatsapp-settings';
 import { internalSendWhatsapp, formatWhatsappNumber } from '@/lib/server/whatsapp';
 
 export async function POST(req: NextRequest) {
@@ -44,7 +43,7 @@ export async function POST(req: NextRequest) {
         // --- Handle WhatsApp notifications directly ---
         (async () => {
             try {
-                const { adminGroup } = await getWhatsappSettings();
+                const adminGroup = process.env.WHATSAPP_ADMIN_GROUP;
                 
                 // Notify platform admin
                 if (adminGroup) {

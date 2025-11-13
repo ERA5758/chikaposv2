@@ -2,7 +2,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/lib/server/firebase-admin';
 import { getTransactionFeeSettings } from '@/lib/server/app-settings';
-import { getWhatsappSettings } from '@/lib/server/whatsapp-settings';
 import { internalSendWhatsapp, formatWhatsappNumber } from '@/lib/server/whatsapp';
 
 
@@ -57,7 +56,7 @@ export async function POST(req: NextRequest) {
     // --- Handle WhatsApp notifications directly ---
     (async () => {
         try {
-            const { adminGroup } = await getWhatsappSettings();
+            const adminGroup = process.env.WHATSAPP_ADMIN_GROUP;
 
             // Notify User
             const welcomeMessage = `🎉 *Selamat Datang di Chika POS, ${adminName}!* 🎉\n\nToko Anda *"${storeName}"* telah berhasil dibuat dengan bonus *${bonusTokens} Pradana Token*.\n\nSilakan login untuk mulai mengelola bisnis Anda.`;
