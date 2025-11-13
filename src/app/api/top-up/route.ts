@@ -77,13 +77,18 @@ export async function POST(req: NextRequest) {
         // --- Handle WhatsApp notifications directly ---
         (async () => {
             try {
-                const deviceId = 'fa254b2588ad7626d647da23be4d6a08';
-                const adminGroup = 'SPV ERA MMBP';
+                const deviceId = process.env.WHATSAPP_DEVICE_ID;
+                const adminGroup = process.env.WHATSAPP_ADMIN_GROUP;
+
+                if (!deviceId) {
+                    console.warn('WHATSAPP_DEVICE_ID is not set. Skipping top-up notifications.');
+                    return;
+                }
                 
                 // Notify platform admin
                 if (adminGroup) {
                     const adminMessage = `🔔 *Permintaan Top-up Baru*\n\nToko: *${storeName}*\nPengaju: *${name}*\nJumlah: *Rp ${totalAmount.toLocaleString('id-ID')}* (+${tokensToAdd.toLocaleString('id-ID')} Token)\nStatus: *Pending*\n\nMohon untuk segera diverifikasi melalui panel Superadmin.\nLihat bukti: ${proofUrl}`;
-                    internalSendWhatsapp(deviceId, adminGroup, adminMessage, true);
+                    await internalSendWhatsapp(deviceId, adminGroup, adminMessage, true);
                 }
                 
                 // Notify user
@@ -92,7 +97,7 @@ export async function POST(req: NextRequest) {
                 if (userWhatsapp) {
                     const userMessage = `Halo *${name}*, pengajuan top up Pradana Token Anda untuk toko *${storeName}* sebesar *Rp ${totalAmount.toLocaleString('id-ID')}* telah berhasil kami terima dan sedang dalam proses verifikasi.`;
                     const formattedPhone = formatWhatsappNumber(userWhatsapp);
-                    internalSendWhatsapp(deviceId, formattedPhone, userMessage);
+                    await internalSendWhatsapp(deviceId, formattedPhone, userMessage);
                 }
             } catch (whatsappError) {
                 console.error("Error sending top-up notifications:", whatsappError);

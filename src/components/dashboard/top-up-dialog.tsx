@@ -13,23 +13,59 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader, Banknote, History, Send, Copy, Coins } from 'lucide-react';
+import { Loader, Banknote, History, Send, Copy, Coins, MessageSquare } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { db } from '@/lib/firebase';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import type { TopUpRequest } from '@/lib/types';
-import { getBankAccountSettings, type BankAccountSettings } from '@/lib/bank-account-settings';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Badge } from '../ui/badge';
 import { format } from 'date-fns';
 import { Skeleton } from '../ui/skeleton';
 import { auth } from '@/lib/firebase';
 import { useDashboard } from '@/contexts/dashboard-context';
+import type { BankAccountSettings } from '@/lib/types';
+import { URLSearchParams } from 'url';
 
 type TopUpDialogProps = {
   setDialogOpen: (open: boolean) => void;
 };
+
+async function internalSendWhatsapp(deviceId: string, target: string, message: string, isGroup: boolean = false) {
+    const body = new URLSearchParams();
+    body.append('device_id', deviceId);
+    body.append(isGroup ? 'group' : 'number', target);
+    body.append('message', message);
+    const endpoint = isGroup ? 'sendGroup' : 'send';
+    const webhookUrl = `https://app.whacenter.com/api/${endpoint}`;
+
+    try {
+        const response = await fetch(webhookUrl, {
+            method: 'POST',
+            body: body,
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        });
+
+        if (!response.ok) {
+            const responseJson = await response.json();
+            console.error('WhaCenter API HTTP Error:', { status: response.status, body: responseJson });
+            throw new Error(`WhaCenter API responded with status ${response.status}`);
+        }
+
+        const responseJson = await response.json();
+        if (responseJson.status === 'error') {
+            console.error('WhaCenter API Error:', responseJson.reason);
+            throw new Error(responseJson.reason || 'An error occurred with the WhatsApp service.');
+        }
+
+        return responseJson;
+    } catch(error) {
+        console.error('Failed to send WhatsApp message via internalSendWhatsapp:', error);
+        throw error;
+    }
+}
+
 
 export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
   const { activeStore, currentUser } = useAuth();
@@ -40,13 +76,26 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
   const [uniqueCode, setUniqueCode] = React.useState(0);
   const [proofFile, setProofFile] = React.useState<File | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
+  const [isConfirming, setIsConfirming] = React.useState(false);
   const [history, setHistory] = React.useState<TopUpRequest[]>([]);
   const [bankSettings, setBankSettings] = React.useState<BankAccountSettings | null>(null);
 
   React.useEffect(() => {
     setUniqueCode(Math.floor(Math.random() * 900) + 100);
-    getBankAccountSettings().then(setBankSettings);
-  }, []);
+    // Fetch bank settings from the API route
+    const fetchBankSettings = async () => {
+        try {
+            const response = await fetch('/api/bank-settings');
+            if (!response.ok) throw new Error('Failed to fetch bank settings');
+            const data = await response.json();
+            setBankSettings(data);
+        } catch (error) {
+            console.error(error);
+            toast({ variant: 'destructive', title: 'Gagal memuat info bank.' });
+        }
+    };
+    fetchBankSettings();
+  }, [toast]);
 
   React.useEffect(() => {
     if (!activeStore) return;
@@ -147,6 +196,29 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
         console.error('Could not copy text: ', err);
     });
   };
+
+  const handleConfirmWa = async (request: TopUpRequest) => {
+    setIsConfirming(true);
+    const deviceId = process.env.NEXT_PUBLIC_WHATSAPP_DEVICE_ID;
+    const adminGroup = process.env.NEXT_PUBLIC_WHATSAPP_ADMIN_GROUP;
+
+    if (!deviceId || !adminGroup) {
+      toast({ variant: 'destructive', title: 'Konfigurasi WA Tidak Ditemukan', description: 'Harap atur environment variables untuk WhatsApp.' });
+      setIsConfirming(false);
+      return;
+    }
+
+    try {
+      const message = `🔔 *KONFIRMASI TOP-UP MANUAL*\n\nToko: *${request.storeName}*\nPengaju: *${request.userName}*\nJumlah: *Rp ${request.totalAmount.toLocaleString('id-ID')}*\n\nMohon untuk segera dicek dan diverifikasi. Terima kasih.`;
+      await internalSendWhatsapp(deviceId, adminGroup, message, true);
+      toast({ title: 'Konfirmasi Terkirim', description: 'Pesan konfirmasi telah dikirim ke admin platform.' });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Gagal Mengirim Konfirmasi', description: 'Terjadi kesalahan saat mengirim pesan WhatsApp.' });
+    } finally {
+      setIsConfirming(false);
+    }
+  }
+
 
   const getStatusBadge = (status: TopUpRequest['status']) => {
     switch (status) {
@@ -273,6 +345,7 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
                         <TableHead>Tanggal</TableHead>
                         <TableHead className="text-right">Token</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Aksi</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -281,6 +354,14 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
                             <TableCell>{format(new Date(item.requestedAt), 'dd/MM/yy HH:mm')}</TableCell>
                             <TableCell className="font-mono text-right">{(item.tokensToAdd ?? 'N/A').toLocaleString('id-ID')}</TableCell>
                             <TableCell>{getStatusBadge(item.status)}</TableCell>
+                            <TableCell className="text-right">
+                                {item.status === 'pending' && (
+                                    <Button variant="outline" size="sm" onClick={() => handleConfirmWa(item)} disabled={isConfirming}>
+                                        {isConfirming ? <Loader className="mr-2 h-3 w-3 animate-spin"/> : <MessageSquare className="mr-2 h-3 w-3"/>}
+                                        Konfirmasi WA
+                                    </Button>
+                                )}
+                            </TableCell>
                         </TableRow>
                     ))}
                 </TableBody>

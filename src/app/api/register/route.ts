@@ -85,21 +85,27 @@ export async function POST(req: NextRequest) {
     await batch.commit();
     console.info(`New store and admin created successfully for ${email}`);
 
+    // --- Handle WhatsApp notifications directly ---
     (async () => {
         try {
-            const deviceId = 'fa254b2588ad7626d647da23be4d6a08';
-            const adminGroup = 'SPV ERA MMBP';
+            const deviceId = process.env.WHATSAPP_DEVICE_ID;
+            const adminGroup = process.env.WHATSAPP_ADMIN_GROUP;
+
+            if (!deviceId) {
+                console.warn('WHATSAPP_DEVICE_ID is not set. Skipping registration notifications.');
+                return;
+            }
 
             const welcomeMessage = `🎉 *Selamat Datang di Chika POS, ${adminName}!* 🎉\n\nToko Anda *"${storeName}"* telah berhasil dibuat dengan bonus *${bonusTokens} Pradana Token*.\n\nSilakan login untuk mulai mengelola bisnis Anda.`;
             const formattedPhone = formatWhatsappNumber(whatsapp);
             
-            if (deviceId && formattedPhone) {
-                internalSendWhatsapp(deviceId, formattedPhone, welcomeMessage);
+            if (formattedPhone) {
+                await internalSendWhatsapp(deviceId, formattedPhone, welcomeMessage);
             }
 
-            if (deviceId && adminGroup) {
+            if (adminGroup) {
                 const adminMessage = `*PENDAFTARAN TOKO BARU*\n\n*Nama Toko:* ${storeName}\n*Lokasi:* ${storeLocation}\n*Admin:* ${adminName}\n*Email:* ${email}\n*WhatsApp:* ${whatsapp}\n\nBonus ${bonusTokens} token telah diberikan.`;
-                internalSendWhatsapp(deviceId, adminGroup, adminMessage, true);
+                await internalSendWhatsapp(deviceId, adminGroup, adminMessage, true);
             }
         } catch (whatsappError) {
             console.error("Error sending registration WhatsApp notifications:", whatsappError);

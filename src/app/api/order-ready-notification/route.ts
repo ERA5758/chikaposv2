@@ -72,13 +72,13 @@ export async function POST(req: NextRequest) {
             notificationStyle: store.receiptSettings?.notificationStyle || 'fakta',
         });
         
-        const storeDoc = await db.collection('stores').doc(store.id).get();
-        const storeData = storeDoc.data();
-        const deviceId = storeData?.whatsappSettings?.deviceId || 'fa254b2588ad7626d647da23be4d6a08';
+        const deviceId = process.env.WHATSAPP_DEVICE_ID;
 
         if (!deviceId) {
-            return NextResponse.json({ error: 'WhatsApp Device ID tidak dikonfigurasi untuk toko ini.' }, { status: 412 });
+            console.error('WhatsApp Device ID is not configured in environment variables.');
+            return NextResponse.json({ error: 'Layanan WhatsApp tidak dikonfigurasi dengan benar di server.' }, { status: 500 });
         }
+
         const formattedPhone = formatWhatsappNumber(customer.phone);
         await internalSendWhatsapp(deviceId, formattedPhone, text);
         return NextResponse.json({ success: true, message: 'Pesan WhatsApp terkirim.' });
