@@ -1,21 +1,25 @@
 
+
 'use client';
 
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/auth-context';
-import { CheckCircle, ExternalLink, QrCode as QrCodeIcon, Star, Calendar, AlertCircle, Sparkles as SparklesIcon } from 'lucide-react';
+import { CheckCircle, ExternalLink, QrCode as QrCodeIcon, Star, Calendar, AlertCircle, Sparkles as SparklesIcon, Upload, Save, Loader, QrCode } from 'lucide-react';
 import { useDashboard } from '@/contexts/dashboard-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AIConfirmationDialog } from '@/components/dashboard/ai-confirmation-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { auth, db } from '@/lib/firebase';
-import { doc, updateDoc, setDoc } from 'firebase/firestore';
+import { auth, db, storage } from '@/lib/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { QrCodeDialog } from '@/components/dashboard/QrCodeDialog';
+import { Input } from '@/components/ui/input';
+import Image from 'next/image';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const features = [
   "Tampilan menu modern & profesional yang bisa diakses dari mana saja.",
@@ -30,6 +34,11 @@ export default function CatalogSettings() {
   const { dashboardData, isLoading } = useDashboard();
   const { feeSettings } = dashboardData;
   const { toast } = useToast();
+  
+  const [qrisImageFile, setQrisImageFile] = React.useState<File | null>(null);
+  const [qrisImagePreview, setQrisImagePreview] = React.useState<string | null>(activeStore?.qrisImageUrl || null);
+  const [isSavingQris, setIsSavingQris] = React.useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     if (activeStore && !activeStore.catalogSlug) {
@@ -66,6 +75,11 @@ export default function CatalogSettings() {
       };
       generateAndSaveSlug();
     }
+    
+    // Set initial QRIS preview from store data
+    if (activeStore?.qrisImageUrl) {
+        setQrisImagePreview(activeStore.qrisImageUrl);
+    }
   }, [activeStore, refreshActiveStore, toast]);
 
 
@@ -75,7 +89,7 @@ export default function CatalogSettings() {
     }
   };
 
-  const handleSubscription = async (planId: number) => {
+  const handleSubscription = async (planId: number | 'trial') => {
     try {
         const idToken = await auth.currentUser?.getIdToken(true);
         if (!idToken || !activeStore) {
@@ -105,9 +119,9 @@ export default function CatalogSettings() {
 
         if (result.newExpiryDate) {
             updateActiveStore({ 
-                ...activeStore, 
                 catalogSubscriptionExpiry: result.newExpiryDate,
                 pradanaTokenBalance: result.newBalance,
+                ...(planId === 'trial' && { hasUsedCatalogTrial: true }),
             });
         } else {
             refreshActiveStore(); 
@@ -118,7 +132,38 @@ export default function CatalogSettings() {
         throw error;
     }
   };
+  
+  const handleQrisFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setQrisImageFile(file);
+      setQrisImagePreview(URL.createObjectURL(file));
+    }
+  };
 
+  const handleSaveQris = async () => {
+    if (!qrisImageFile || !activeStore) {
+        toast({ variant: "destructive", title: "Pilih Gambar", description: "Silakan pilih file gambar QRIS untuk diunggah." });
+        return;
+    }
+    setIsSavingQris(true);
+    try {
+        const imageRef = ref(storage, `qris_images/${activeStore.id}/${Date.now()}-${qrisImageFile.name}`);
+        await uploadBytes(imageRef, qrisImageFile);
+        const downloadURL = await getDownloadURL(imageRef);
+
+        const storeRef = doc(db, 'stores', activeStore.id);
+        await updateDoc(storeRef, { qrisImageUrl: downloadURL });
+
+        updateActiveStore({ qrisImageUrl: downloadURL });
+
+        toast({ title: "QRIS Berhasil Disimpan!", description: "Gambar QRIS Anda telah diperbarui." });
+    } catch (error) {
+        toast({ variant: "destructive", title: "Gagal Menyimpan", description: (error as Error).message });
+    } finally {
+        setIsSavingQris(false);
+    }
+  };
 
   if (isLoading || !feeSettings || !activeStore) {
       return (
@@ -199,6 +244,53 @@ export default function CatalogSettings() {
                         <p className="text-xs text-muted-foreground mt-2">Aktifkan langganan untuk memakai fitur ini.</p>
                     )}
                 </div>
+            </CardContent>
+        </Card>
+        
+        <Card>
+            <CardHeader>
+                 <CardTitle className="font-headline tracking-wider">Pengaturan Pembayaran Katalog</CardTitle>
+                <CardDescription>
+                    Unggah gambar QRIS Anda agar pelanggan dapat membayar langsung melalui katalog.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="grid md:grid-cols-2 gap-6 items-start">
+                 <div className="space-y-4">
+                    <Card className="bg-secondary/50">
+                        <CardHeader>
+                            <CardTitle className="text-base">Pratinjau QRIS</CardTitle>
+                        </CardHeader>
+                        <CardContent className="flex items-center justify-center">
+                            {qrisImagePreview ? (
+                                <Image src={qrisImagePreview} alt="Pratinjau QRIS" width={200} height={200} className="rounded-md" />
+                            ) : (
+                                <div className="h-48 w-48 bg-muted rounded-md flex items-center justify-center text-muted-foreground text-sm text-center p-4">
+                                    <QrCode className="h-8 w-8 mb-2" />
+                                    Gambar QRIS akan muncul di sini.
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                 </div>
+                 <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">Pilih gambar kode QRIS (misalnya dari GoPay, OVO, DANA, dll.). Gambar ini akan ditampilkan kepada pelanggan saat mereka memilih opsi pembayaran dengan QRIS di katalog.</p>
+                     <Input
+                        id="qris-upload"
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleQrisFileChange}
+                        accept="image/png, image/jpeg, image/webp"
+                        className="hidden"
+                     />
+                    <Button variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
+                        <Upload className="mr-2 h-4 w-4" />
+                        Pilih Gambar QRIS
+                    </Button>
+                    <Button className="w-full" onClick={handleSaveQris} disabled={isSavingQris || !qrisImageFile}>
+                        {isSavingQris ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                        Simpan QRIS
+                    </Button>
+                 </div>
             </CardContent>
         </Card>
 

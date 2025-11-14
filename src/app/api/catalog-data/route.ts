@@ -57,6 +57,7 @@ export async function GET(req: NextRequest) {
         name: storeData?.name,
         description: storeData?.description,
         logoUrl: storeData?.logoUrl,
+        qrisImageUrl: storeData?.qrisImageUrl, // <-- ADDED
         theme: storeData?.theme,
         socialLinks: storeData?.socialLinks,
         location: storeData?.location,
