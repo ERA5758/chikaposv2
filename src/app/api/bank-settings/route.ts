@@ -14,11 +14,18 @@ export async function GET() {
             const settings = { ...defaultBankAccountSettings, ...docSnap.data() };
             return NextResponse.json(settings);
         } else {
-            // If it doesn't exist, it might be the first run, return defaults.
+            // If the document does not exist, create it with default values first.
+            await settingsDocRef.set(defaultBankAccountSettings);
+            console.log("Created default bank account settings document.");
+            // Then return the default settings.
             return NextResponse.json(defaultBankAccountSettings);
         }
     } catch (error) {
-        console.error("Error fetching bank account settings:", error);
-        return NextResponse.json({ error: 'Failed to fetch bank account settings' }, { status: 500 });
+        console.error("Error fetching or creating bank account settings:", error);
+        // In case of an error (e.g., permissions), still return a default to avoid client-side crashes.
+        return NextResponse.json(defaultBankAccountSettings, { 
+            status: 500,
+            statusText: "Failed to fetch settings, returning default.",
+        });
     }
 }
