@@ -8,6 +8,9 @@ import {
   MessageSquare,
   ClipboardCheck,
   Car,
+  HandCoins,
+  QrCode,
+  ShoppingBag,
 } from 'lucide-react';
 import {
   Table,
@@ -78,6 +81,22 @@ function OrderDetailsDialog({ order, open, onOpenChange }: { order: PendingOrder
                     </DialogDescription>
                 </DialogHeader>
                  <div className="py-4 space-y-4 max-h-[60vh] overflow-y-auto pr-4 -mr-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="p-3 rounded-md bg-secondary border">
+                            <h4 className="font-semibold text-sm flex items-center gap-2 mb-1">
+                                {order.deliveryMethod === 'Dikirim Toko' ? <Car /> : <ShoppingBag />}
+                                Metode Pengambilan
+                            </h4>
+                            <p className="text-sm font-medium">{order.deliveryMethod}</p>
+                        </div>
+                         <div className="p-3 rounded-md bg-secondary border">
+                            <h4 className="font-semibold text-sm flex items-center gap-2 mb-1">
+                                {order.paymentMethod === 'QRIS' ? <QrCode /> : <HandCoins />}
+                                Metode Pembayaran
+                            </h4>
+                            <p className="text-sm font-medium">{order.paymentMethod}</p>
+                        </div>
+                    </div>
                     {order.deliveryMethod === 'Dikirim Toko' && order.customer.address && (
                         <div className="p-3 rounded-md bg-secondary border border-primary/20">
                             <h4 className="font-semibold text-primary flex items-center gap-2 mb-1"><Car /> Alamat Pengiriman</h4>
@@ -165,15 +184,18 @@ export default function PendingOrders() {
 
         // Filter on the client-side
         const storeOrders = allOrders.filter(order => order.storeId === currentStoreId);
-        setRealtimeOrders(storeOrders);
-
-        setIsLoading(false);
-        if (snapshot.docChanges().some(change => change.type === 'added' && change.doc.data().storeId === currentStoreId)) {
+        
+        if (snapshot.docChanges().some(change => change.type === 'added' && change.doc.data().storeId === currentStoreId && !realtimeOrders.some(o => o.id === change.doc.id))) {
              toast({
               title: "Ada Pesanan Baru!",
               description: "Pesanan baru dari katalog publik telah masuk.",
             });
+            // Assuming playNotificationSound is available or handled elsewhere
         }
+        
+        setRealtimeOrders(storeOrders);
+        setIsLoading(false);
+
     }, (error) => {
         console.error("Error listening to pending orders:", error);
         toast({
@@ -185,6 +207,7 @@ export default function PendingOrders() {
     });
 
     return () => unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStoreId, toast]);
 
   const handleDelete = async (orderId: string) => {
