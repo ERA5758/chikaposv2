@@ -233,7 +233,7 @@ export default function LoginPage() {
             <Link href="https://pujasera.era5758.co.id" target="_blank" className="block">
                 <Card className="text-center hover:bg-muted">
                     <CardHeader>
-                        <CardTitle className="text-lg font-headline tracking-wider">Aplikasi Pujasera Terpusat</CardTitle>
+                        <CardTitle className="text-lg font-headline tracking-wider uppercase">Aplikasi Pujasera Terpusat</CardTitle>
                         <CardDescription>Kelola banyak tenant dalam 1 grup dengan sistem pembayaran terpusat di kasir Pujasera.</CardDescription>
                     </CardHeader>
                     <CardContent className="flex justify-center items-center p-4">
@@ -244,7 +244,7 @@ export default function LoginPage() {
             <Link href="https://tenant.era5758.co.id" target="_blank" className="block">
                 <Card className="text-center hover:bg-muted">
                     <CardHeader>
-                        <CardTitle className="text-lg font-headline tracking-wider">Aplikasi Pujasera Terpisah</CardTitle>
+                        <CardTitle className="text-lg font-headline tracking-wider uppercase">Aplikasi Pujasera Terpisah</CardTitle>
                         <CardDescription>Kelola banyak tenant dalam 1 grup dengan sistem pembayaran terpisah by tenant.</CardDescription>
                     </CardHeader>
                     <CardContent className="flex justify-center items-center p-4">
@@ -255,7 +255,7 @@ export default function LoginPage() {
             <Link href="https://fnb.era5758.co.id" target="_blank" className="block">
                 <Card className="text-center hover:bg-muted">
                     <CardHeader>
-                        <CardTitle className="text-lg font-headline tracking-wider">APLIKASI POS F&amp;B</CardTitle>
+                        <CardTitle className="text-lg font-headline tracking-wider uppercase">APLIKASI POS F&amp;B</CardTitle>
                         <CardDescription>Untuk kafe, resto, atau cloud kitchen.</CardDescription>
                     </CardHeader>
                     <CardContent className="flex justify-center items-center p-4">
