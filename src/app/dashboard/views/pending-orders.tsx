@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -11,6 +10,7 @@ import {
   HandCoins,
   QrCode,
   ShoppingBag,
+  Trash2,
 } from 'lucide-react';
 import {
   Table,
@@ -30,6 +30,16 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { collection, onSnapshot, query, Unsubscribe, doc, deleteDoc, orderBy, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -48,7 +58,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 
-function OrderDetailsDialog({ order, open, onOpenChange }: { order: PendingOrder, open: boolean, onOpenChange: (open: boolean) => void }) {
+function OrderDetailsDialog({ order, open, onOpenChange, onDelete }: { order: PendingOrder, open: boolean, onOpenChange: (open: boolean) => void, onDelete: (order: PendingOrder) => void }) {
     const router = useRouter();
     const { activeStore } = useAuth();
     if (!order || !activeStore) return null;
@@ -147,12 +157,18 @@ function OrderDetailsDialog({ order, open, onOpenChange }: { order: PendingOrder
                         <ClipboardCheck className="mr-2 h-4 w-4" />
                         Proses ke Kasir
                     </Button>
-                    <Button variant="secondary" className="w-full" asChild>
-                       <Link href={whatsappUrl} target="_blank">
-                           <MessageSquare className="mr-2 h-4 w-4" />
-                           Konfirmasi via WhatsApp
-                       </Link>
-                    </Button>
+                    <div className='flex gap-2'>
+                        <Button variant="secondary" className="w-full" asChild>
+                           <Link href={whatsappUrl} target="_blank">
+                               <MessageSquare className="mr-2 h-4 w-4" />
+                               Konfirmasi via WA
+                           </Link>
+                        </Button>
+                        <Button variant="destructive" className="w-full" onClick={() => onDelete(order)}>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Batalkan Pesanan
+                        </Button>
+                    </div>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -164,6 +180,7 @@ export default function PendingOrders() {
   const [realtimeOrders, setRealtimeOrders] = React.useState<PendingOrder[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [selectedOrder, setSelectedOrder] = React.useState<PendingOrder | null>(null);
+  const [orderToDelete, setOrderToDelete] = React.useState<PendingOrder | null>(null);
   const { toast } = useToast();
   
   const currentStoreId = activeStore?.id || '';
@@ -182,15 +199,19 @@ export default function PendingOrders() {
             allOrders.push({ id: doc.id, ...doc.data() } as PendingOrder);
         });
 
-        // Filter on the client-side
         const storeOrders = allOrders.filter(order => order.storeId === currentStoreId);
         
-        if (snapshot.docChanges().some(change => change.type === 'added' && change.doc.data().storeId === currentStoreId && !realtimeOrders.some(o => o.id === change.doc.id))) {
-             toast({
-              title: "Ada Pesanan Baru!",
-              description: "Pesanan baru dari katalog publik telah masuk.",
+        const hasNewOrders = snapshot.docChanges().some(change => 
+            change.type === 'added' && 
+            change.doc.data().storeId === currentStoreId
+        );
+
+        if (hasNewOrders && realtimeOrders.length > 0) {
+            // playNotificationSound(); - Let's assume this is handled in context now
+            toast({
+                title: "Ada Pesanan Baru!",
+                description: "Pesanan baru dari katalog publik telah masuk.",
             });
-            // Assuming playNotificationSound is available or handled elsewhere
         }
         
         setRealtimeOrders(storeOrders);
@@ -210,12 +231,15 @@ export default function PendingOrders() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStoreId, toast]);
 
-  const handleDelete = async (orderId: string) => {
+  const handleDelete = async () => {
+      if (!orderToDelete) return;
       try {
-        await deleteDoc(doc(db, "pendingOrders", orderId));
-        toast({ title: "Pesanan Dihapus", description: "Pesanan tertunda telah dihapus dari daftar."});
+        await deleteDoc(doc(db, "pendingOrders", orderToDelete.id));
+        toast({ title: "Pesanan Dibatalkan", description: "Pesanan tertunda telah dihapus dari daftar."});
+        setOrderToDelete(null); // Close the confirmation dialog
+        setSelectedOrder(null); // Close the details dialog if it's the same order
       } catch (error) {
-        toast({ variant: "destructive", title: "Gagal Menghapus", description: "Terjadi kesalahan saat menghapus pesanan."});
+        toast({ variant: "destructive", title: "Gagal Membatalkan", description: "Terjadi kesalahan saat menghapus pesanan."});
       }
   }
 
@@ -288,8 +312,32 @@ export default function PendingOrders() {
           </CardContent>
       </Card>
       {selectedOrder && (
-          <OrderDetailsDialog order={selectedOrder} open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)} />
+          <OrderDetailsDialog 
+            order={selectedOrder} 
+            open={!!selectedOrder} 
+            onOpenChange={() => setSelectedOrder(null)}
+            onDelete={(order) => {
+                setSelectedOrder(null);
+                setTimeout(() => setOrderToDelete(order), 150); // Delay to allow details dialog to close
+            }}
+          />
       )}
+       <AlertDialog open={!!orderToDelete} onOpenChange={setOrderToDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Anda Yakin Ingin Membatalkan?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tindakan ini akan menghapus pesanan tertunda untuk <strong>{orderToDelete?.customer.name}</strong> secara permanen. Pesanan tidak akan dapat diproses.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Ya, Batalkan Pesanan
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
