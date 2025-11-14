@@ -7,7 +7,7 @@ import type { Store as StoreType, Product, ProductCategory, RedemptionOption, Cu
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Image from 'next/image';
-import { Store, PackageX, MessageCircle, Sparkles, Send, Loader, Gift, ShoppingCart, PlusCircle, MinusCircle, XCircle, LogIn, UserCircle, LogOut, Crown, Coins, Receipt, Percent, HandCoins, MessageSquare, Car, Walking, ShoppingBag } from 'lucide-react';
+import { Store, PackageX, MessageCircle, Sparkles, Send, Loader, Gift, ShoppingCart, PlusCircle, MinusCircle, XCircle, LogIn, UserCircle, LogOut, Crown, Coins, Receipt, Percent, HandCoins, MessageSquare, Car, Walking, ShoppingBag, QrCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetTrigger, SheetClose } from '@/components/ui/sheet';
@@ -336,6 +336,33 @@ function AddressDialog({ open, onOpenChange, onSave, currentAddress, currentLat,
     );
 }
 
+function QrisPaymentDialog({ open, onOpenChange, qrisImageUrl, totalAmount }: { open: boolean; onOpenChange: (open: boolean) => void; qrisImageUrl: string; totalAmount: number; }) {
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle className="text-center font-headline tracking-wider">Pembayaran QRIS</DialogTitle>
+                    <DialogDescription className="text-center">Silakan scan QR Code di bawah ini untuk membayar.</DialogDescription>
+                </DialogHeader>
+                <div className="flex flex-col items-center justify-center py-4 gap-4">
+                    <p className="text-3xl font-bold">Rp {totalAmount.toLocaleString('id-ID')}</p>
+                    <Image src={qrisImageUrl} alt="QRIS Payment" width={250} height={250} className="rounded-md border p-1" />
+                    <Alert>
+                        <QrCode className="h-4 w-4" />
+                        <AlertTitle>Penting!</AlertTitle>
+                        <AlertDescription>
+                            Setelah membayar, pesanan Anda akan segera diproses oleh kasir.
+                        </AlertDescription>
+                    </Alert>
+                </div>
+                <DialogFooter>
+                     <Button onClick={() => onOpenChange(false)} className="w-full">Tutup</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
 export default function CatalogPage() {
     const params = useParams();
     const slug = params?.slug as string;
@@ -369,8 +396,10 @@ export default function CatalogPage() {
 
     // --- Delivery Method & Address ---
     const [deliveryMethod, setDeliveryMethod] = React.useState<'Ambil Sendiri' | 'Dikirim Toko'>('Ambil Sendiri');
+    const [paymentMethod, setPaymentMethod] = React.useState<'Bayar di Kasir' | 'QRIS'>('Bayar di Kasir');
     const [orderNotes, setOrderNotes] = React.useState('');
     const [isAddressDialogOpen, setIsAddressDialogOpen] = React.useState(false);
+    const [isQrisDialogOpen, setIsQrisDialogOpen] = React.useState(false);
 
 
     React.useEffect(() => {
@@ -574,10 +603,14 @@ export default function CatalogPage() {
                 localStorage.setItem(activeOrderKey, JSON.stringify(newOrder));
             }
             
-            toast({
-                title: 'Pesanan Berhasil Dibuat!',
-                description: 'Pesanan Anda sedang diproses oleh kasir. Mohon tunggu notifikasi selanjutnya.',
-            });
+            if (paymentMethod === 'QRIS' && store.qrisImageUrl) {
+                setIsQrisDialogOpen(true);
+            } else {
+                 toast({
+                    title: 'Pesanan Berhasil Dibuat!',
+                    description: 'Pesanan Anda sedang diproses oleh kasir. Mohon tunggu notifikasi selanjutnya.',
+                });
+            }
             setCart([]);
             setOrderNotes('');
 
@@ -876,8 +909,7 @@ export default function CatalogPage() {
                         <span>Total</span>
                         <span>Rp {totalAmount.toLocaleString('id-ID')}</span>
                     </div>
-
-                    <div className="space-y-2">
+                     <div className="space-y-2">
                         <Label>Metode Pengambilan</Label>
                         <RadioGroup defaultValue="Ambil Sendiri" value={deliveryMethod} onValueChange={(value: 'Ambil Sendiri' | 'Dikirim Toko') => setDeliveryMethod(value)} className="grid grid-cols-2 gap-4">
                             <div>
@@ -910,8 +942,25 @@ export default function CatalogPage() {
                             )}
                         </div>
                     )}
-
-
+                     <div className="space-y-2">
+                        <Label>Metode Pembayaran</Label>
+                         <RadioGroup defaultValue="Bayar di Kasir" value={paymentMethod} onValueChange={(value: 'Bayar di Kasir' | 'QRIS') => setPaymentMethod(value)} className="grid grid-cols-2 gap-4">
+                            <div>
+                                <RadioGroupItem value="Bayar di Kasir" id="cashier" className="peer sr-only" />
+                                <Label htmlFor="cashier" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                                    <HandCoins className="mb-3 h-6 w-6" />
+                                    Bayar di Kasir
+                                </Label>
+                            </div>
+                             <div>
+                                <RadioGroupItem value="QRIS" id="qris" className="peer sr-only" disabled={!store.qrisImageUrl} />
+                                <Label htmlFor="qris" className={cn("flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4", store.qrisImageUrl ? "hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary" : "opacity-50 cursor-not-allowed")}>
+                                     <QrCode className="mb-3 h-6 w-6" />
+                                    QRIS
+                                </Label>
+                            </div>
+                        </RadioGroup>
+                    </div>
                     {loggedInCustomer ? (
                          <Button className="w-full" onClick={handleCreateOrder} disabled={isSubmittingOrder}>
                            {isSubmittingOrder ? <Loader className="animate-spin" /> : <Receipt className="mr-2 h-4 w-4"/>}
@@ -979,6 +1028,16 @@ export default function CatalogPage() {
                 onSave={(newNote) => handleNoteSave(noteProduct.productId, newNote)}
             />
         )}
+        
+        {store?.qrisImageUrl && (
+            <QrisPaymentDialog
+                open={isQrisDialogOpen}
+                onOpenChange={setIsQrisDialogOpen}
+                qrisImageUrl={store.qrisImageUrl}
+                totalAmount={totalAmount}
+            />
+        )}
         </>
     );
 }
+

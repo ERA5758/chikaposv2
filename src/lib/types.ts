@@ -147,7 +147,6 @@ export type OrderPayload = {
     serviceFeeAmount: number;
     totalAmount: number;
     deliveryMethod: 'Ambil Sendiri' | 'Dikirim Toko';
-    deliveryAddress?: string;
     notes?: string;
 };
 
