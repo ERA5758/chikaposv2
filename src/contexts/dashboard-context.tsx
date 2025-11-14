@@ -7,7 +7,6 @@ import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { defaultFeeSettings } from '@/lib/types';
 import type { User, RedemptionOption, Product, Store, Customer, Transaction, PendingOrder, Table, ChallengePeriod, TransactionFeeSettings } from '@/lib/types';
-// Removed direct import of server action
 
 interface DashboardContextType {
   dashboardData: {
@@ -211,6 +210,19 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         }, (error) => console.error("Error listening to tables: ", error));
         
         const unsubPendingOrders = onSnapshot(pendingOrdersQuery, (snapshot) => {
+            const hasNewOrders = snapshot.docChanges().some(change => 
+                change.type === 'added' && 
+                change.doc.data().storeId === storeId
+            );
+
+            if (hasNewOrders) {
+                playNotificationSound();
+                toast({
+                    title: "Ada Pesanan Baru!",
+                    description: "Pesanan baru dari katalog publik telah masuk.",
+                });
+            }
+
             setPendingOrders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PendingOrder)));
         }, (error) => console.error("Error listening to pending orders: ", error));
 
