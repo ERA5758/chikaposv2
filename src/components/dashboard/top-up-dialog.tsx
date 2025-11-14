@@ -17,7 +17,7 @@ import { Loader, Banknote, History, Send, Copy, Coins, MessageSquare } from 'luc
 import { useAuth } from '@/contexts/auth-context';
 import { db } from '@/lib/firebase';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, where } from 'firebase/firestore';
 import type { TopUpRequest, BankAccountSettings } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Badge } from '../ui/badge';
@@ -314,5 +314,3 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
     </DialogContent>
   );
 }
-
-    
