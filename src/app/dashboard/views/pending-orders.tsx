@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -322,12 +323,12 @@ export default function PendingOrders() {
             }}
           />
       )}
-       <AlertDialog open={!!orderToDelete} onOpenChange={setOrderToDelete}>
+       <AlertDialog open={!!orderToDelete} onOpenChange={() => setOrderToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Anda Yakin Ingin Membatalkan?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tindakan ini akan menghapus pesanan tertunda untuk <strong>{orderToDelete?.customer.name}</strong> secara permanen. Pesanan tidak akan dapat diproses.
+              Tindakan ini akan menghapus pesanan tertunda untuk <strong>{orderToDelete?.customer?.name}</strong> secara permanen. Pesanan tidak akan dapat diproses.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
