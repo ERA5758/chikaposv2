@@ -42,23 +42,17 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
   const [isLoading, setIsLoading] = React.useState(false);
   const [isConfirming, setIsConfirming] = React.useState(false);
   const [history, setHistory] = React.useState<TopUpRequest[]>([]);
-  const [bankSettings, setBankSettings] = React.useState<BankAccountSettings | null>(null);
+  
+  // Read bank settings from environment variables
+  const bankSettings: BankAccountSettings = {
+    bankName: process.env.NEXT_PUBLIC_BANK_NAME || 'BANK BCA',
+    accountNumber: process.env.NEXT_PUBLIC_BANK_ACCOUNT_NUMBER || '6225089802',
+    accountHolder: process.env.NEXT_PUBLIC_BANK_ACCOUNT_HOLDER || 'PT. ERA MAJU MAPAN BERSAMA PRADANA',
+  };
 
   React.useEffect(() => {
     setUniqueCode(Math.floor(Math.random() * 900) + 100);
-    const fetchBankSettings = async () => {
-        try {
-            const response = await fetch('/api/bank-settings');
-            if (!response.ok) throw new Error('Failed to fetch bank settings');
-            const data = await response.json();
-            setBankSettings(data);
-        } catch (error) {
-            console.error(error);
-            toast({ variant: 'destructive', title: 'Gagal memuat info bank.' });
-        }
-    };
-    fetchBankSettings();
-  }, [toast]);
+  }, []);
 
   React.useEffect(() => {
     if (!activeStore) return;
@@ -205,24 +199,18 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
             <form onSubmit={handleSubmit} className="space-y-4">
                <div>
                   <p className="text-sm text-muted-foreground mb-2">Silakan transfer ke rekening berikut:</p>
-                  {bankSettings ? (
-                    <Card className="bg-secondary/50">
-                        <CardContent className="p-4 space-y-2">
-                           <div className="text-lg font-bold">{bankSettings.bankName}</div>
-                           <div className="flex items-center justify-between">
-                             <div className="font-mono text-xl text-primary">{bankSettings.accountNumber}</div>
-                             <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => copyToClipboard(bankSettings.accountNumber)}>
-                               <Copy className="h-4 w-4"/>
-                             </Button>
-                           </div>
-                           <div className="text-sm">a/n {bankSettings.accountHolder}</div>
-                        </CardContent>
-                    </Card>
-                  ) : (
-                    <div className="space-y-1">
-                      <Skeleton className="h-24 w-full" />
-                    </div>
-                  )}
+                  <Card className="bg-secondary/50">
+                      <CardContent className="p-4 space-y-2">
+                         <div className="text-lg font-bold">{bankSettings.bankName}</div>
+                         <div className="flex items-center justify-between">
+                           <div className="font-mono text-xl text-primary">{bankSettings.accountNumber}</div>
+                           <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => copyToClipboard(bankSettings.accountNumber)}>
+                             <Copy className="h-4 w-4"/>
+                           </Button>
+                         </div>
+                         <div className="text-sm">a/n {bankSettings.accountHolder}</div>
+                      </CardContent>
+                  </Card>
                </div>
               <div className="space-y-2">
                 <Label htmlFor="amount">Jumlah Top Up (Rp)</Label>
@@ -325,3 +313,5 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
     </DialogContent>
   );
 }
+
+    
