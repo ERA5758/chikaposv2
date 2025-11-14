@@ -345,7 +345,6 @@ function QrisPaymentDialog({ open, onOpenChange, qrisImageUrl, totalAmount }: { 
                     <DialogDescription className="text-center">Silakan scan QR Code di bawah ini untuk membayar.</DialogDescription>
                 </DialogHeader>
                 <div className="flex flex-col items-center justify-center py-4 gap-4">
-                    <p className="text-3xl font-bold">Rp {totalAmount.toLocaleString('id-ID')}</p>
                     <Image src={qrisImageUrl} alt="QRIS Payment" width={250} height={250} className="rounded-md border p-1" />
                     <Alert>
                         <QrCode className="h-4 w-4" />
