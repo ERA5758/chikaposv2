@@ -28,7 +28,7 @@ import { Form, FormField, FormItem, FormControl, FormMessage } from '@/component
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { Logo } from '@/components/dashboard/logo';
-import { Loader, Sparkles, LogIn, Megaphone, Eye, EyeOff, MessageSquare, Phone, Building, Utensils, Wrench, Store } from 'lucide-react';
+import { Loader, Sparkles, LogIn, Megaphone, Eye, EyeOff, MessageSquare, Phone, Building, Utensils, Wrench, Store, ChefHat } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import Link from 'next/link';
 import { auth } from '@/lib/firebase';
@@ -229,18 +229,41 @@ export default function LoginPage() {
             </CardContent>
         </Card>
 
-        <Link href="https://fnb.era5758.co.id" target="_blank" className="block">
-            <Card className="text-center hover:bg-muted">
-                <CardHeader>
-                    <CardTitle className="text-lg font-headline tracking-wider">APLIKASI POS F&B</CardTitle>
-                    <CardDescription>Coba aplikasi POS F&B kami yang baru!</CardDescription>
-                </CardHeader>
-                <CardContent className="flex justify-center items-center p-4">
-                    <Store className="h-12 w-12 text-primary" />
-                </CardContent>
-            </Card>
-        </Link>
-
+        <div className="space-y-4">
+            <Link href="https://pujasera.era5758.co.id" target="_blank" className="block">
+                <Card className="text-center hover:bg-muted">
+                    <CardHeader>
+                        <CardTitle className="text-lg font-headline tracking-wider">Aplikasi Pujasera Terpusat</CardTitle>
+                        <CardDescription>Kelola banyak tenant dalam 1 grup dengan sistem pembayaran terpusat di kasir Pujasera.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex justify-center items-center p-4">
+                        <Building className="h-12 w-12 text-primary" />
+                    </CardContent>
+                </Card>
+            </Link>
+            <Link href="https://tenant.era5758.co.id" target="_blank" className="block">
+                <Card className="text-center hover:bg-muted">
+                    <CardHeader>
+                        <CardTitle className="text-lg font-headline tracking-wider">Aplikasi Pujasera Terpisah</CardTitle>
+                        <CardDescription>Kelola banyak tenant dalam 1 grup dengan sistem pembayaran terpisah by tenant.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex justify-center items-center p-4">
+                        <Building className="h-12 w-12 text-primary" />
+                    </CardContent>
+                </Card>
+            </Link>
+            <Link href="https://fnb.era5758.co.id" target="_blank" className="block">
+                <Card className="text-center hover:bg-muted">
+                    <CardHeader>
+                        <CardTitle className="text-lg font-headline tracking-wider">APLIKASI POS F&amp;B</CardTitle>
+                        <CardDescription>Untuk kafe, resto, atau cloud kitchen.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex justify-center items-center p-4">
+                        <ChefHat className="h-12 w-12 text-primary" />
+                    </CardContent>
+                </Card>
+            </Link>
+        </div>
 
       </div>
     </main>
