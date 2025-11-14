@@ -7,9 +7,9 @@ export async function POST(req: NextRequest) {
     const { db } = getFirebaseAdmin();
     try {
         const payload: OrderPayload = await req.json();
-        const { storeId, customer, cart, subtotal, taxAmount, serviceFeeAmount, totalAmount, deliveryMethod, notes } = payload;
+        const { storeId, customer, cart, subtotal, taxAmount, serviceFeeAmount, totalAmount, deliveryMethod, paymentMethod, notes } = payload;
 
-        if (!storeId || !customer || !cart || !cart.length || !deliveryMethod) {
+        if (!storeId || !customer || !cart || !cart.length || !deliveryMethod || !paymentMethod) {
             return NextResponse.json({ error: 'Data pesanan tidak lengkap.' }, { status: 400 });
         }
         
@@ -26,6 +26,7 @@ export async function POST(req: NextRequest) {
             serviceFeeAmount,
             totalAmount,
             deliveryMethod,
+            paymentMethod,
             notes: notes || '',
             status: 'Baru', // Initial status
             createdAt: new Date().toISOString(),

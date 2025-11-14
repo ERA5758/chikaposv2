@@ -336,7 +336,7 @@ function AddressDialog({ open, onOpenChange, onSave, currentAddress, currentLat,
     );
 }
 
-function QrisPaymentDialog({ open, onOpenChange, qrisImageUrl, totalAmount }: { open: boolean; onOpenChange: (open: boolean) => void; qrisImageUrl: string; totalAmount: number; }) {
+function QrisPaymentDialog({ open, onOpenChange, qrisImageUrl }: { open: boolean; onOpenChange: (open: boolean) => void; qrisImageUrl: string;}) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
@@ -569,6 +569,7 @@ export default function CatalogPage() {
                 serviceFeeAmount: serviceFeeAmount,
                 totalAmount: totalAmount,
                 deliveryMethod: deliveryMethod,
+                paymentMethod: paymentMethod,
                 notes: orderNotes,
             };
             const response = await fetch('/api/catalog/order', {
@@ -594,6 +595,7 @@ export default function CatalogPage() {
                     serviceFeeAmount: serviceFeeAmount,
                     totalAmount: totalAmount,
                     deliveryMethod: deliveryMethod,
+                    paymentMethod: paymentMethod,
                     notes: orderNotes,
                     status: 'Baru',
                     createdAt: new Date().toISOString(),
@@ -1033,7 +1035,6 @@ export default function CatalogPage() {
                 open={isQrisDialogOpen}
                 onOpenChange={setIsQrisDialogOpen}
                 qrisImageUrl={store.qrisImageUrl}
-                totalAmount={totalAmount}
             />
         )}
         </>

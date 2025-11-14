@@ -147,6 +147,7 @@ export type OrderPayload = {
     serviceFeeAmount: number;
     totalAmount: number;
     deliveryMethod: 'Ambil Sendiri' | 'Dikirim Toko';
+    paymentMethod: 'Bayar di Kasir' | 'QRIS';
     notes?: string;
 };
 
@@ -160,6 +161,7 @@ export type PendingOrder = {
   serviceFeeAmount: number;
   totalAmount: number;
   deliveryMethod: 'Ambil Sendiri' | 'Dikirim Toko';
+  paymentMethod: 'Bayar di Kasir' | 'QRIS';
   notes?: string;
   status: 'Baru';
   createdAt: string; // ISO 8601
@@ -221,7 +223,7 @@ export type TopUpRequest = {
   uniqueCode: number;
   totalAmount: number;
   proofUrl: string;
-  status: 'pending' | 'completed' | 'rejected';
+  status: 'pending' | 'disetujui' | 'ditolak';
   requestedAt: string; // ISO 8601 string
   processedAt?: string; // ISO 8601 string
 };
