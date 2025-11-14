@@ -57,8 +57,7 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
   React.useEffect(() => {
     if (!activeStore) return;
     const q = query(
-      collection(db, 'topUpRequests'),
-      where('storeId', '==', activeStore.id),
+      collection(db, 'stores', activeStore.id, 'topUpRequests'),
       orderBy('requestedAt', 'desc')
     );
 
@@ -314,3 +313,5 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
     </DialogContent>
   );
 }
+
+    
