@@ -45,9 +45,9 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
   
   // Read bank settings from environment variables
   const bankSettings: BankAccountSettings = {
-    bankName: process.env.NEXT_PUBLIC_BANK_NAME || 'BANK BCA',
-    accountNumber: process.env.NEXT_PUBLIC_BANK_ACCOUNT_NUMBER || '6225089802',
-    accountHolder: process.env.NEXT_PUBLIC_BANK_ACCOUNT_HOLDER || 'PT. ERA MAJU MAPAN BERSAMA PRADANA',
+    bankName: process.env.NEXT_PUBLIC_BANK_NAME || 'N/A',
+    accountNumber: process.env.NEXT_PUBLIC_BANK_ACCOUNT_NUMBER || 'N/A',
+    accountHolder: process.env.NEXT_PUBLIC_BANK_ACCOUNT_HOLDER || 'N/A',
   };
 
   React.useEffect(() => {
@@ -57,7 +57,8 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
   React.useEffect(() => {
     if (!activeStore) return;
     const q = query(
-      collection(db, 'stores', activeStore.id, 'topUpRequests'),
+      collection(db, 'topUpRequests'),
+      where('storeId', '==', activeStore.id),
       orderBy('requestedAt', 'desc')
     );
 
@@ -170,8 +171,8 @@ export function TopUpDialog({ setDialogOpen }: TopUpDialogProps) {
   const getStatusBadge = (status: TopUpRequest['status']) => {
     switch (status) {
       case 'pending': return <Badge variant="secondary" className='bg-yellow-500/20 text-yellow-700 border-yellow-500/50'>Pending</Badge>;
-      case 'completed': return <Badge variant="secondary" className='bg-green-500/20 text-green-700 border-green-500/50'>Selesai</Badge>;
-      case 'rejected': return <Badge variant="destructive">Ditolak</Badge>;
+      case 'disetujui': return <Badge variant="secondary" className='bg-green-500/20 text-green-700 border-green-500/50'>Disetujui</Badge>;
+      case 'ditolak': return <Badge variant="destructive">Ditolak</Badge>;
       default: return <Badge variant="outline">{status}</Badge>;
     }
   }
